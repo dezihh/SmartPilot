@@ -1,8 +1,7 @@
 ﻿# SmartPilot einrichten und verstehen
 
-Diese Dokumentation ist die maßgebliche Nutzer-Dokumentation des Projekts.
-Die Design-Dokumente in `doc/` bleiben als technischer Hintergrund für
-Entwickler bestehen und werden dort verlinkt, wo sie passen.
+Diese Dokumentation ist die maßgebliche Dokumentation des Projekts.
+Technischer Hintergrund für Entwickler steht in [Architektur](ARCHITECTURE.md).
 
 Du musst nicht zuerst die gesamte Architektur verstehen. Für den Einstieg
 reichen vier Begriffe und ein vollständiger Einrichtungsweg.
@@ -59,7 +58,8 @@ Zielsystem abzufragen.
    parametrieren.
 5. [Cache und Aktualität](CACHE.md): Verstehen, wann Daten lokal bleiben und
    wann Netzwerkverkehr entsteht.
-6. [Praxisrezepte](RECIPES.md): Home Assistant, Musik, Websuche und Berichte
+6. [Praxisrezepte](RECIPES.md): Pakete installieren und eigene Funktionen
+   erweitern
    schrittweise einrichten.
 7. [Alexa anbinden](ALEXA.md): Erst anbinden, wenn der Testmonitor antwortet.
 8. [Fehler beheben](TROUBLESHOOTING.md): Fehler anhand klarer Prüfpunkte
@@ -84,20 +84,6 @@ Zielsystem abzufragen.
 | `llm` | Agent wählt Werkzeuge und Funktionen selbst | offene, kombinierte oder mehrdeutige Fragen |
 
 Faustregel: **So deterministisch wie möglich, so agentisch wie nötig.**
-
-## Noch nicht belastbar dokumentiert
-
-Die folgenden Angaben lassen sich aus dem Repository derzeit nicht vollständig
-ableiten. Die zugehörigen Kapitel sind trotzdem angelegt und beschreiben
-jeweils, welche Information noch ergänzt und wie sie geprüft werden muss.
-
-- Installation und Betrieb der OpenAI-kompatiblen LLM-Schnittstelle
-  (unterstützte Anbieter, getestete Modellnamen, Latenzwerte)
-- Vollständiger manueller AWS-Lambda- und Alexa-Deploymentweg
-  (der Workflow-Weg ist dokumentiert, der manuelle Weg fehlt)
-- Unterstützte Host-Betriebssysteme und Mindestanforderungen
-
-Eine zentrale Liste steht in [Offene Angaben](OPEN_QUESTIONS.md).
 
 ## Schreibprinzip dieses Entwurfs
 

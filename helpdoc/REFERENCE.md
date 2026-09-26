@@ -39,7 +39,7 @@ Argumentierte Funktionen sollten erforderliche Felder in `required` nennen.
 | `index.state(id, key?)` | Zustand als Text | nur Daten des Index |
 | `index.get(id, key?)` | Eintrag samt Zusatzdaten | nur Daten des Index |
 | `mcp.call(tool, args)` | MCP-Werkzeug aufrufen | exakter Toolname und gültiges Schema |
-| `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen | Timeout und Body-Limit |
+| `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen | 5 s, 100 KB Body-Limit |
 | `shell(command)` | Befehl in Gateway-Laufzeit | 5 s, 4000 Zeichen |
 | `fn(name)` | Funktion einbetten | Tiefe 3, Zyklusschutz |
 | `args` | Funktionsargumente | Schema für Agentennutzung nötig |
@@ -82,10 +82,29 @@ id|area|state|unit|name|key=value;key=value
 ```
 
 Der leere Key bezeichnet den Standard-Index. Weitere Quellen verwenden einen
-Namen wie `ma` und werden als zweites Argument übergeben.
+Namen wie `ma` und werden als zweites Argument übergeben. Benannte Quellen
+liegen als Setting `entity_index_<key>` (Standard: `entity_index`).
 
 `ttlMs` löst keinen Timer und kein Polling aus. Der Snapshot wird erst beim
 nächsten Indexzugriff nach Ablauf der TTL neu geladen.
+
+Die Basis-Werkzeuge `fn_find_entities` / `fn_get_entity` nehmen optional
+`args.index` entgegen (z. B. `{"query": "lautsprecher", "index": "ma"}`).
+Fällt der Key erst zur Renderzeit aus `args`, werden alle konfigurierten
+Quellen vorgewärmt.
+
+## Index-Assistent (Admin-API)
+
+Neue Index-Quellen ohne Handarbeit entwerfen:
+
+- `POST /admin/api/index/assist` `{ "goal": "…" }` — das LLM liest den
+  Tool-Katalog der MCP-Registry und entwirft ein Draft (Tool, Argumente,
+  Aliase, Probefragen). Ein deterministischer Validator führt es probehalber
+  aus (nur erkennbar lesende Tools), prüft den Datenvertrag (mindestens fünf
+  Einträge) und lässt das LLM maximal dreimal nachbessern.
+- `POST /admin/api/index/apply` `{ "draft": … }` — speichert das erneut
+  geprüfte Draft nach Admin-Bestätigung als Index-Setting und verwirft den
+  Cache.
 
 ## Vorgangsfelder
 
@@ -151,16 +170,7 @@ Funktionen des Gateways.
 - Interne IDs nie vom Modell erfinden lassen.
 - Schreibende Aktionen erst nach erfolgreichem Tool-Aufruf bestätigen.
 
-## Weiterführende Originaldokumente
+## Weiterführende Dokumente
 
-Technische Hintergründe und Design-Entscheidungen stehen in:
-
-- `../doc/ARCHITECTURE.md`
-- `../doc/FUNKTIONEN.md`
-- `../doc/DESIGN_WEBUI.md`
-- [Praxisrezepte](RECIPES.md) für aktuelle Anwendungsbeispiele
-
-Hinweis: Die verbleibenden Originale sind technische Hintergrunddokumente und
-enthalten teilweise veraltete Beispiele (alte `ha.*`-Bausteine,
-`search_summary`-Modus, `tool_budgets`-Setting). Bei Widersprüchen gilt diese
-Referenz und der Code.
+- `ARCHITECTURE.md` – technischer Hintergrund und Architekturregeln
+- [Praxisrezepte](RECIPES.md) – aktuelle Anwendungsbeispiele

@@ -22,4 +22,4 @@ labels: ["idea"]
 
 ## Referenzen
 
-<!-- doc/DESIGN_WEBUI.md, Diskussionsstand -->
+<!-- Architektur-Hintergrund: helpdoc/ARCHITECTURE.md -->

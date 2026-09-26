@@ -97,6 +97,10 @@ Argument angesprochen:
 {{ index.find('lautsprecher küche', 'ma') }}
 ```
 
+Die Basis-Werkzeuge `fn_find_entities` / `fn_get_entity` akzeptieren optional
+`args.index`, damit der Agent jede benannte Quelle durchsuchen kann. Liegt der
+Key erst zur Renderzeit fest, werden alle konfigurierten Quellen vorgewärmt.
+
 **Prüfung:** Die Probe-Abfrage liefert erwartbare IDs, Namen und Zustände.
 
 ## Funktionen
@@ -125,7 +129,20 @@ wörtliche Phrase und mindestens eine leichte Abwandlung.
 
 Die Auswahl begrenzt die Tool-Schemas in LLM- und Hybrid-Vorgängen. Ein
 deterministisches Funktionstemplate verwendet seine konfigurierten
-Datenbausteine unabhängig davon.
+Datenbausteine unabhängig davon. Angehakte Einträge bedeuten „freigegeben";
+keine Auswahl bedeutet „keine". Budgets pro Werkzeug (Spalte `budget` der
+Funktionen; die Basis-Lesetools sind fest auf 2 bzw. 3 gesetzt) verhindern
+Schleifen.
+
+### Funktion und PUT-Verhalten
+
+- **Daten aus Funktion**: Pflicht bei `deterministic` und `hybrid`.
+- **`function_args`**: feste Argumente für die zugewiesene Funktion (z. B.
+  `{"road": "A24"}`); das Template liest sie als `args`.
+- Ein `PUT` ist ein **Full-Replace**: ein fehlendes Feld wird geleert
+  (System-Prompt, Trigger, Tools). Beim Bearbeiten den vollständigen Body
+  senden. `tools: []` heißt bewusst „ohne Tools", ein fehlendes `tools`-Feld
+  „unverändert".
 
 **Prüfung:** Der Monitor-Trace zeigt den erwarteten Vorgang und nur die
 beabsichtigten Werkzeugaufrufe.
@@ -141,6 +158,16 @@ Das Modell muss:
 
 Reasoning-Modelle lösen komplexe Kaskaden oft besser, benötigen aber mehr Zeit
 und ein ausreichend großes Ausgabe-Budget.
+
+## Konfigurationsebenen
+
+| Ebene | Inhalt | Beispiele |
+|---|---|---|
+| `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `AUTH_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` |
+| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `http_timeout_ms`, `http_body_cap` |
+| DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
+
+Ein Setting mit leerem Wert fällt auf den `.env`- bzw. Code-Default zurück.
 
 ## Abnahme
 

@@ -38,7 +38,7 @@ welche Werkzeuge und Funktionen es braucht. Standard ist der
 Session für Folgefragen offen.
 
 Details: [helpdoc/CONCEPTS.md](helpdoc/CONCEPTS.md) ·
-[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
+[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
 
 ## Schnellstart
 
@@ -79,14 +79,14 @@ Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
 | [Installation](helpdoc/INSTALLATION.md) | Gateway, Modell, Netzwerk, Alexa — Schritt für Schritt |
 | [Grundbegriffe](helpdoc/CONCEPTS.md) | Werkzeug, Index, Funktion, Vorgang |
 | [Konfiguration](helpdoc/CONFIGURATION.md) | Parametrier-Reihenfolge und Grundeinstellungen |
-| [Praxisrezepte](helpdoc/RECIPES.md) | Home Assistant, Musik, Websuche, Wetter, Berichte |
+| [Praxisrezepte](helpdoc/RECIPES.md) | Pakete installieren und eigene Funktionen erweitern |
 | [Cache und Aktualität](helpdoc/CACHE.md) | Wann Daten lokal bleiben und wann Netzwerkverkehr entsteht |
 | [Alexa anbinden](helpdoc/ALEXA.md) | Skill, Lambda, Sync und Härtung |
 | [Fehler beheben](helpdoc/TROUBLESHOOTING.md) | Systematische Fehlersuche von innen nach außen |
 | [Referenz](helpdoc/REFERENCE.md) | Felder, Bausteine, Env-Variablen, Sicherheitsgrenzen |
 
 Design- und Architektur-Dokumente (Hintergrund für Entwickler):
-[doc/](doc/ARCHITECTURE.md)
+[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
 
 Betriebs-/CI-CD-Doku (Deployments, Workflows, Secrets-Namen):
 [helpdoc/DEPLOYMENT.md](helpdoc/DEPLOYMENT.md)
@@ -112,8 +112,7 @@ alexa/           Alexa-Skill: Lambda-Adapter (Python/ask-sdk), Interaktionsmodel
 gateway/         Gateway (Node.js 22 + TypeScript): Router, MCP-Clients, LLM-Agent, Admin-API
 gateway/web/     Admin-Weboberfläche (vanilla HTML/CSS/JS)
 packages/        Installationspakete (Registry + Manifeste)
-helpdoc/         Nutzer-Dokumentation (Einstieg, Installation, Rezepte, Referenz)
-doc/             Design- und Architektur-Dokumente
+helpdoc/         Dokumentation (Einstieg, Installation, Rezepte, Referenz, Architektur)
 .github/         CI/CD: Smoke-Tests, Alexa-Modell-/Manifest-Sync, Lambda-Deployment
 ```
 
@@ -129,11 +128,10 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway
 ```
 
 Node.js ≥ 22 erforderlich. Details zur Architektur:
-[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
+[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
 
 ## Status
 
 **In aktiver Entwicklung.** Der lokale Weg (Gateway + Testmonitor + Pakete)
 ist stabil und getestet (22.09.2026); die Alexa-Anbindung läuft produktiv mit
-eigener AWS-Lambda. Offene Punkte und Roadmap: Issues und
-[doc/DESIGN_WEBUI.md](doc/DESIGN_WEBUI.md).
+eigener AWS-Lambda. Offene Punkte und Roadmap: Issues.

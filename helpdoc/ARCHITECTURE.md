@@ -1,7 +1,7 @@
 # Architektur
 
 > Zentrale Architekturregeln von smartpilot. Festgehalten nach Review 2026-09-06
-> (Improvement-Issues #3–#6, POC-Entscheidungen in [DESIGN_WEBUI.md](DESIGN_WEBUI.md)).
+> (Improvement-Issues #3–#6).
 >
 > **Hinweis zur Aktualität:** Dieses Dokument ist ein Design-Archiv. Einzelne
 > Beispiele und Details sind überholt — aktuell sind die Template-Bausteine
@@ -31,7 +31,7 @@ interface VoiceQuery {
 interface AssistantResponse {
   speech: string;            // für Sprachausgabe immer gesetzt
   ssml?: boolean;            // true: speech enthält fertiges SSML (Passthrough)
-  display?: DisplayPayload;  // optional, siehe helpdoc/CONCEPTS.md
+  display?: DisplayPayload;  // optional, siehe CONCEPTS.md
   followUp?: boolean;        // true: Session offen halten (Rückfrage)
 }
 ```
@@ -71,18 +71,17 @@ VoiceQuery
   ▼
 Router: Action-Route > Agent-Query (Default)
   ▼               ▼
- deterministisch  LLM frei mit MCP-Tools
- (Handler:       (System-Prompt, Tool-Allowlist,
-  template /      Clarification-Budget)
-  search_summary /            │
-  llm/hybrid)                 ▼
+  deterministisch  LLM frei mit MCP-Tools
+  (Handler:       (System-Prompt, Tool-Allowlist,
+   template /      Clarification-Budget)
+   llm/hybrid)                 │
+                               ▼
   └────────────────┬──────────┘
                    ▼
         AssistantResponse { speech, ssml?, display?, followUp?, keepOpen? }
 ```
 
-Routing-Details: [DESIGN_WEBUI.md](DESIGN_WEBUI.md). Laufzeit-Hinweise stehen in
-`../helpdoc/TROUBLESHOOTING.md`.
+Laufzeit-Hinweise stehen in `TROUBLESHOOTING.md`.
 
 ## Authentifizierung: zwei getrennte Ebenen
 
@@ -110,33 +109,24 @@ SmartPilot
 
 SmartPilot baut **keine zweite Entity-Berechtigungsschicht** nach.
 
-## Template-Action: kontrollierter Kontext
+## Funktionen: kontrollierter Kontext
 
-Jinja2 erhält **keinen direkten MCP-Zugriff**, sondern einen kontrollierten Kontext:
+Jinja2 erhält **keinen direkten MCP-Zugriff**, sondern feste, freigegebene
+Bausteine (vollständige Liste: `REFERENCE.md`):
 
-- `ha.state(entity_id)`, `ha.entities(domain, …)`, `ha.call(…)` – oder allgemeiner `tools.<name>(…)`
-- Bestandteile einer Template-Action: Template, definierter Kontext, verfügbare
-  Daten-/Tool-Funktionen, optionale Bedingungen, resultierender Text
+- `index.find` / `index.state` / `index.get` – lokale, gecachte Lesesicht
+- `mcp.call(tool, args)` – gezielter Aufruf eines MCP-Werkzeugs
+- `http(url, ttlMs?)` / `shell(command)` – Dienste ohne MCP-Fassade
+- `fn(name)`, `args`, `now` – Einbettung, Argumente, Gateway-Zeit
 
 Beispiel:
 
-```yaml
-name: house_status
-type: template
-template: |
-  {% set temp = ha.state("sensor.living_room_temperature") %}
-  {% set lights = ha.entities("light") | selectattr("state", "eq", "on") | list %}
-
-  Im Wohnzimmer sind {{ temp }} Grad.
-
-  {% if lights | length > 0 %}
-  Es sind {{ lights | length }} Lichter eingeschaltet.
-  {% else %}
-  Es sind keine Lichter eingeschaltet.
-  {% endif %}
+```jinja
+{% set temp = index.state("sensor.living_room_temperature") %}
+Im Wohnzimmer sind {{ temp }} Grad.
 ```
 
-Damit behalten wir die Kontrolle darüber, was ein Template ausführen darf
+Damit behalten wir die Kontrolle darüber, was eine Funktion ausführen darf
 (POC: sehr einfach gehalten).
 
 ## Datenmodell (POC)
@@ -146,7 +136,7 @@ SQLite, bewusst klein:
 | Tabelle | Inhalt |
 |---|---|
 | `mcp_servers` | MCP-Server-Registry (URL, Auth-Vermerk, Aktiv-Status) |
-| `actions` | Vorgänge inkl. Trigger, Templates, `mode` (deterministic/llm/hybrid/search_summary), `handler_config` (JSON), Flags |
+| `actions` | Vorgänge inkl. Trigger, Templates, `mode` (deterministic/llm/hybrid), `handler_config` (JSON), Flags |
 | `prompts` | System-/Agent-Prompte |
 | `settings` | Laufzeit-Einstellungen (Warteton, Timeouts, Fuzzy global, Session-Followup) |
 | `logs` | Request-Log inkl. Route, Latenz, Trace (Tool-Calls, LLM-Schritte) |
@@ -205,9 +195,9 @@ Domain mitgeben) und Doppel-/Geister-Entities im Quellsystem ausräumen.
 - Die generischen Template-Bausteine (`http`, `shell`) bleiben für Dienste
   **ohne** MCP-Fassade (z. B. externe Web-APIs).
 - Neue Index-Quellen werden über den Index-Assistenten eingebunden (siehe
-  [FUNKTIONEN.md](FUNKTIONEN.md)); die generischen Lesetools heißen
+  `REFERENCE.md`); die generischen Lesetools heißen
   systemneutral `fn_find_entities` / `fn_get_entity`.
-- Konkrete Rezepte (nur Beispiele) leben in [FUNKTIONEN.md](FUNKTIONEN.md),
+- Konkrete Rezepte (nur Beispiele) leben in [Praxisrezepte](RECIPES.md),
   nicht hier.
 
 ### Gateway-eigene REST-API (Angebot)
@@ -227,7 +217,7 @@ Domain mitgeben) und Doppel-/Geister-Entities im Quellsystem ausräumen.
 Weitere fachliche Dienste werden bewusst **nur allgemein** hier geführt: sie
 werden generisch über die Template-Bausteine angebunden und sind austauschbar.
 Konkrete Endpunkte und Rezepte sind Beispiele und gehören in
-[FUNKTIONEN.md](FUNKTIONEN.md), nicht in die Architektur-Doku.
+[Praxisrezepte](RECIPES.md), nicht in die Architektur-Doku.
 
 ## Conversation State
 
@@ -254,4 +244,4 @@ session
 
 Jeder Tool-Call wird geloggt (inkl. Szenario und Latenz) – Basis für spätere
 Permissions (#3/#4) und Betriebsauswertung (Phase-2-Trigger, siehe
-  `../helpdoc/TROUBLESHOOTING.md`).
+  `TROUBLESHOOTING.md`).
