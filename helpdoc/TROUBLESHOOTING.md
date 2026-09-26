@@ -130,6 +130,14 @@ nötig.
 6. Vergleiche Lambda- und Gateway-Logs anhand des Zeitpunkts.
 7. Prüfe den Buildstatus des Interaction Model und des Manifests.
 
+### Endpoint-Zertifikat wird abgelehnt (Wildcard)
+
+Alexa akzeptiert am Skill-Endpoint kein **Wildcard-Zertifikat**
+(`*.example.com`) — auch nicht in der Alexa-hosted-Variante. Der Endpoint
+braucht ein Zertifikat, dessen Name exakt dem verwendeten Host
+(`<gateway-host>`) entspricht. Prüfe, dass dieser Host als Subject/SAN im
+Zertifikat steht und die vollständige Zertifikatskette ausgeliefert wird.
+
 ### Antwort kommt zu spät
 
 1. Prüfe Tool-Laufzeiten im Trace.
