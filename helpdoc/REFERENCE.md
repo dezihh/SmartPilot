@@ -1,7 +1,7 @@
 ﻿# Referenz
 
 Diese Seite ist zum Nachschlagen gedacht. Für den ersten Aufbau beginne mit
-dem [Schnellstart](QUICKSTART.md).
+der [Installation](INSTALLATION.md).
 
 ## Admin-Tabs
 

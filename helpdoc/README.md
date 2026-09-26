@@ -49,22 +49,20 @@ Zielsystem abzufragen.
 
 ## Empfohlener Lernpfad
 
-1. [Schnellstart](QUICKSTART.md): Einen ersten Vorgang im Testmonitor zum
-   Laufen bringen.
+1. [Installation](INSTALLATION.md): Gateway, Modell und Netzwerk vorbereiten;
+   erster Erfolg im Testmonitor.
 2. [Grundbegriffe](CONCEPTS.md): Werkzeuge, Index, Funktionen und Vorgänge
    sicher unterscheiden.
-3. [Installation](INSTALLATION.md): Gateway, Modell und Netzwerk vorbereiten.
-4. [Konfiguration](CONFIGURATION.md): Grundeinstellungen und Admin-Oberfläche
+3. [Konfiguration](CONFIGURATION.md): Grundeinstellungen und Admin-Oberfläche
    parametrieren.
-5. [Cache und Aktualität](CACHE.md): Verstehen, wann Daten lokal bleiben und
+4. [Cache und Aktualität](CACHE.md): Verstehen, wann Daten lokal bleiben und
    wann Netzwerkverkehr entsteht.
-6. [Praxisrezepte](RECIPES.md): Pakete installieren und eigene Funktionen
-   erweitern
-   schrittweise einrichten.
-7. [Alexa anbinden](ALEXA.md): Erst anbinden, wenn der Testmonitor antwortet.
-8. [Fehler beheben](TROUBLESHOOTING.md): Fehler anhand klarer Prüfpunkte
+5. [Praxisrezepte](RECIPES.md): Pakete installieren und eigene Funktionen
+   erweitern.
+6. [Alexa anbinden](ALEXA.md): Erst anbinden, wenn der Testmonitor antwortet.
+7. [Fehler beheben](TROUBLESHOOTING.md): Fehler anhand klarer Prüfpunkte
    eingrenzen.
-9. [Referenz](REFERENCE.md): Felder, Grenzen und technische Details
+8. [Referenz](REFERENCE.md): Felder, Grenzen und technische Details
    nachschlagen.
 
 ## Was du für den ersten Erfolg brauchst

@@ -75,7 +75,6 @@ Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
 
 | Kapitel | Inhalt |
 |---|---|
-| [Schnellstart](helpdoc/QUICKSTART.md) | Erste Antwort im Testmonitor, Schritt für Schritt |
 | [Installation](helpdoc/INSTALLATION.md) | Gateway, Modell, Netzwerk, Alexa — Schritt für Schritt |
 | [Grundbegriffe](helpdoc/CONCEPTS.md) | Werkzeug, Index, Funktion, Vorgang |
 | [Konfiguration](helpdoc/CONFIGURATION.md) | Parametrier-Reihenfolge und Grundeinstellungen |
