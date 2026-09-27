@@ -1,25 +1,22 @@
 # Architektur
 
-> Zentrale Architekturregeln von smartpilot. Festgehalten nach Review 2026-09-06
-> (Improvement-Issues #3–#6).
->
-> **Hinweis zur Aktualität:** Dieses Dokument ist ein Design-Archiv. Einzelne
-> Beispiele und Details sind überholt — aktuell sind die Template-Bausteine
-> `index.*` / `mcp.call` / `http` / `shell` / `fn` (nicht mehr `ha.*`), der
-> Modus `search_summary` wurde entfernt, das LLM wird über einen eigenen
-> OpenAI-kompatiblen Client angebunden (kein litellm), und die frühere
-> Gateway-Route `/alexa` samt Alexa-Signaturprüfung wurde entfernt (Alexa
-> läuft jetzt über AWS Lambda und `POST /api/query`). Bei Widersprüchen
-> gilt der Code und die Nutzer-Doku in `doc/`.
+Stand: aus dem Code abgeleitet (Gateway `0.1.0`, Node 22 / TypeScript ESM).
+Dieses Dokument beschreibt den **aktuellen** Aufbau. Bei Widersprüchen gilt der
+Code; Nutzer-Doku steht in den übrigen Dateien unter `doc/`.
 
-## Zentrale Architekturregel: Adapter-Muster
+## Zentrale Architekturregel: Lieferanten-Muster (Adapter)
 
-Der Core kennt **kein Alexa**. Alexa-spezifisches (Requests, JSON-Strukturen,
-Response Cards, APL) liegt ausschließlich im Adapter:
+Der Core kennt **kein Alexa** und generell **keinen Sprachclient**. Alles
+Client-spezifische (Request-Typen, JSON-Strukturen, Cards, APL, SSML-Wrapping)
+liegt ausschließlich im Adapter **außerhalb** des Gateways:
 
 ```text
-Alexa Adapter ──▶ VoiceQuery ──▶ SmartPilot Core ──▶ AssistantResponse ──▶ Alexa Adapter
+Sprachclient (Lieferant) ──▶ Adapter ──▶ VoiceQuery ─────────▶ Gateway-Core
+Sprachclient (Lieferant) ◀── Adapter ◀── AssistantResponse ◀──┘
+            (SSML / Card / APL)
 ```
+
+Der Übergabepunkt ist die generische HTTP-Route `POST /api/query`:
 
 ```typescript
 interface VoiceQuery {
@@ -31,217 +28,303 @@ interface VoiceQuery {
 interface AssistantResponse {
   speech: string;            // für Sprachausgabe immer gesetzt
   ssml?: boolean;            // true: speech enthält fertiges SSML (Passthrough)
-  display?: DisplayPayload;  // optional, siehe CONCEPTS.md
+  display?: DisplayPayload;  // optional, siehe unten
   followUp?: boolean;        // true: Session offen halten (Rückfrage)
+  followupPrompt?: string;   // konkrete Rückfrage der Engine (situativ)
+  keepOpen?: boolean;        // LLM-Signal, dass die Antwort nachfrageoffen ist
 }
 ```
 
-Damit sind weitere Adapter möglich, ohne den Core anzufassen:
-**Alexa Adapter** (MVP), später Web Adapter, API Adapter, Home-Assistant-Voice-Adapter.
+### Lieferanten-Agnostik (Design-Prinzip)
 
-Der Core kennt: Query, Session, User, Response, MCP, LLM, Actions –
-aber keine Alexa-Requests, Alexa-JSON-Strukturen oder Response Cards.
+Das Gateway weiß **nicht**, von wem ein Auftrag kommt — es bekommt eine
+`VoiceQuery` und liefert eine `AssistantResponse`. „Lieferant" ist damit
+austauschbar:
 
-## SSML: Verantwortung liegt beim Adapter
+- **Heute implementiert:** der **Alexa-Adapter** (AWS Lambda, `alexa/`, siehe
+  unten). Er übersetzt Alexa-Requests in `POST /api/query` und die Antwort
+  zurück in SSML/Card/APL.
+- **Konzeptionell möglich, heute nicht vorhanden:** jeder weitere Lieferant,
+  z. B. ein **Google-Assistant-Adapter**, ein Web-Adapter, ein eigener
+  Voice-Adapter oder ein API-Client. Er müsste nur seine Eingaben auf
+  `VoiceQuery` abbilden und `POST /api/query` aufrufen — **der Core bleibt
+  unverändert**.
 
-Die Sprachausgabe braucht SSML (Erfahrung aus dem Vorgängerprojekt: ohne
-`<break>`-Pausen und `<say-as>`/`<sub>` für Einheiten und Zahlen klingt die
-Ausgabe schlecht bzw. wird falsch ausgesprochen). Der Grundsatz:
+Voraussetzung dafür ist, dass weder Core noch MCP-/Template-Schicht
+Client-Wissen enthalten. Deshalb existiert im Gateway keine Alexa-Route und
+keine Alexa-Signaturprüfung mehr; diese Verantwortung liegt vollständig beim
+Adapter.
 
-- **Der Core arbeitet sprachneutral.** `AssistantResponse.speech` ist standardmäßig
-  Klartext. Enthält eine Quelle (z. B. HA-Skript) fertiges SSML, setzt der Core
-  `ssml: true` und reicht es unverändert durch – er strippt es nicht mehr.
-- **Der Adapter erzeugt bzw. validiert SSML.** Der Alexa-Adapter wrappt Klartext
-  selbst (inkl. XML-Escaping) zu `<speak>…</speak>`; bei `ssml: true` wird das
-  vorhandene SSML unverändert übernommen und maximal auf genau einen
-  `<speak>`-Wrapper normalisiert. **Kein Doppel-Wrapping, kein Escaping von
-  gültigem SSML** – beides führt zu Invalid-SSML-Fehlern auf Alexa-Seite.
-- **Envelopes werden unwrappt, nicht zerstört.** Alte HA-Skripte antworten mit
-  `{"speech": {"ssml": {"speech": "<speak>…"}}}` – der Template-Kontext extrahiert
-  das innere SSML und markiert es als solches. Für die Card (Display) wird SSML
-  zu Klartext bereinigt.
+## Komponenten und Repo-Layout
 
-Damit kann jede Quelle (Skript, Template, LLM) selbst entscheiden, ob sie
-Prosodie-Kontrolle über SSML braucht – ohne dass der Core Alexa-Details kennt.
+| Pfad | Rolle |
+|---|---|
+| `gateway/` | Node-22-Gateway (TypeScript ESM, Express 5, better-sqlite3, nunjucks): Core, MCP-/LLM-Anbindung, Admin-API/-UI |
+| `alexa/` | Alexa-Adapter: `lambda/` (Python, ask-sdk), `skill-package/` (Interaktionsmodell + Manifest), `scripts/` (Skill-Sync) |
+| `packages/` | Installationspakete, sprachspezifisch unter `packages/<lang>/<id>/` (Registry für die Admin-UI) |
+| `doc/` | Diese Dokumentation |
 
-## Pipeline
+Gateway-Module unter `gateway/src/`:
+
+- `server.ts`, `config.ts`, `auth.ts`, `rateLimit.ts`, `version.ts`, `types.ts`
+- `routes/{query,admin,mcp,packages}.ts`
+- `core/{engine,router,template,extract,response,session,tools,inventory,indexTools,entityIndex,indexAssistant,packages,httpCache,normalize,usage}.ts`
+- `llm/client.ts`, `mcp/{client,stdio,registry}.ts`
+- `db/schema.ts` + `db/{actions,functions,mcpServers,settings,logs,packages}.ts`
+- `web/` — Admin-UI (Vanilla JS)
+
+## Pipeline (`core/engine.ts` → `processQuery`)
 
 ```text
-VoiceQuery
+POST /api/query  (VoiceQuery)
   ▼
-Router: Action-Route > Agent-Query (Default)
-  ▼               ▼
-  deterministisch  LLM frei mit MCP-Tools
-  (Handler:       (System-Prompt, Tool-Allowlist,
-   template /      Clarification-Budget)
-   llm/hybrid)                 │
-                               ▼
-  └────────────────┬──────────┘
-                   ▼
-        AssistantResponse { speech, ssml?, display?, followUp?, keepOpen? }
+1. Chat-/OneShot-Umschaltung (Regex, Session-Zustand) ──▶ route "chat"
+  ▼
+2. Router: Action-Treffer? (Bigram-Ähnlichkeit, Fuzzy global, Kombi-Erkennung)
+  │   ├─ Treffer ──▶ executeAction ──▶ route "action"
+  │   │       deterministic: nur Funktion rendern
+  │   │       llm:           Tool-Loop mit system_prompt + Tool-Allowlist
+  │   │       hybrid:        Funktion rendern, LLM formuliert sprachlich um
+  │   └─ kein Treffer ──▶ runAgent ──▶ route "agent"  (freier Tool-Loop)
+  ▼
+3. Nachbereitung: withSsmlBreaks → withDisplay
+  ▼
+4. FollowUp-Entscheidung (Chat-Modus bzw. Setting session_followup)
+  ▼
+5. addLog(...) mit Route, Latenz, Trace, Token-Usage
+  ▼
+EngineResult { response, route, actionId?, score?, durationMs, trace }
 ```
 
-Laufzeit-Hinweise stehen in `TROUBLESHOOTING.md`.
+- **Router** (`core/router.ts`): normalisiert (lowercase, Satzzeichen weg),
+  Treffer per Gleichheit/Enthaltensein/Bigram-Ähnlichkeit; kombinierte
+  Anfragen („und/sowie/&“/Komma) überspringen deterministische Actions und
+  gehen an den Agenten.
+- **Kombinierte Anfragen** nutzen das Tool-Inventory des Agenten.
+- **`POST /admin/api/query`** ruft denselben Handler (für Tests/UI).
 
-## Authentifizierung: zwei getrennte Ebenen
+## Agent-Tool-Loop und LLM
 
-| Ebene | Stand (Implementierung) | Später (Improvement) |
-|---|---|---|
-| **Client-Auth** (Alexa → Lambda) | `applicationId`-Vergleich gegen `ALEXA_SKILL_ID` in der AWS-Lambda (eingebauter ask-sdk-Verifier, `alexa_skill_id`); das Gateway hat keinen direkten Alexa-Endpunkt mehr | — |
-| **API-/Admin-Auth** (`/api/*`, `/admin/*`) | Bearer-Token (`AUTH_TOKEN`), constant-time über `timingSafeEqual`; Admin-UI zusätzlich mit Session-Login | Replay-Schutz via HMAC (Timestamp + Nonce) → Issue #5 |
-| **MCP-Server-Auth** (Gateway → MCP-Server) | je nach Server: ohne Token (LAN-intern) oder Bearer-Token in der MCP-Registry | falls später exponiert: Bearer-Token in der MCP-Registry |
+- **LLM-Client** (`llm/client.ts`): eigener OpenAI-kompatibler Client gegen
+  `POST {LLM_BASE_URL}/chat/completions` (mit Tool-Calling) — **kein litellm**.
+  Modell/Token/Reasoning stammen aus Env bzw. überschreibenden DB-Settings
+  (`llm_model`, `llm_max_tokens`, `llm_reasoning_effort`). Tool-Runden können
+  ein eigenes, schnelles Modell nutzen (`tool_model`).
+- **Tool-Loop** (`runToolLoop`): baut Tool-Specs (`buildTools`), schickt sie
+  mit System-Prompt + Gedächtnis an das LLM, führt Tool-Calls **parallel** aus,
+  zählt Budgets pro Tool, respektiert ein Gesamt-Deadline
+  (`tool_deadline_ms`, Hälfte für Tool-Runden, Hälfte für Formulierung) und
+  erzwingt in der letzten Runde die finale Formulierung. Timeouts werden
+  abgefangen (ein Retry-Round, sonst Zeitüberschreitungs-Antwort).
+- **Tool-Quellen** (`core/tools.ts`):
+  1. **Basis-Werkzeuge** `fn_find_entities` / `fn_get_entity` (fest im Code,
+     immer angeboten, außer bei explizit leerer Allowlist),
+  2. **MCP-Tools** aus der Registry (Namensbereinigung, serverpräfixte Namen
+     bei Kollisionen, hart geblockte Tools via `LLM_BLOCKED_TOOLS`),
+  3. **registrierte Funktionen** als `fn_<name>` mit optionalem Parameter-Schema.
+- **Allowlist-Semantik** (Setting `agent_tools`): nicht gesetzt / `alle` = alle
+  Tools, `keine` = keine, sonst Komma-Liste. Actions haben zusätzlich ihre
+  eigene `tools`-Liste. Budgets (`budget`-Spalte) begrenzen Aufrufe pro Frage.
+- **Agent-Antwortformat**: JSON `{ "needs_clarification", "speech", "keep_open" }`
+  (`parseAgentAnswer`, toleriert Text-Reste und filtet Leaks).
 
-- Verbindliche Architektur: Alexa Skill → AWS Lambda → `POST /api/query` → Gateway.
-- Zweck der Client-Auth in der Lambda: „Der Request kommt von meinem Alexa-Skill (applicationId)."
-- Die frühere Gateway-Route `/alexa` samt Alexa-Signaturprüfung (`ALEXA_VERIFY_MODE`, Zertifikatskette) wurde entfernt; Alexa erreicht das Gateway ausschließlich über die Lambda und `POST /api/query`.
-- Eine spätere Trennung zwischen Client-Authentifizierung und User-Identität bleibt möglich
-- Beide Ebenen bewusst nicht vermischt und nicht verkompliziert
+## MCP-Schicht (`mcp/`)
 
-## Berechtigungen: zwei getrennte Ebenen
+- **Transporte**: **Streamable HTTP** (`McpClient`, Bearer-Token optional,
+  `mcp-session-id`, SSE-Antworten) und **stdio** (`McpStdioClient`, spawnt
+  Prozess, JSON-RPC über stdin/stdout, Timeout 60 s).
+- **Registry** (`getMcpContext`): lädt je aktivem Server `initialize` +
+  `tools/list`, hält sie im Cache („serve-stale": liefert sofort den letzten
+  Stand, aktualisiert im Hintergrund nach 300 s) und isoliert Fehler pro
+  Server. `side_effect: read|write` steuert die Index-Invalidierung.
+- **Discovery-Vertrag**: Tools werden automatisch zu LLM-Specs und
+  Admin-UI-Einträgen; Zielsysteme liefern vollständige JSON-Schemas.
+
+## Funktionen, Templates und Bausteine
+
+Jinja2/nunjucks bekommt **keinen direkten MCP-Zugriff**, sondern feste
+Bausteine. Der Template-`preheat` (`core/extract.ts` + `core/template.ts`)
+findet alle datenholenden Aufrufe statisch und führt sie **parallel** vor dem
+Rendern aus:
+
+- `index.find` / `index.state` / `index.get` — lokale, gecachte Lesesicht
+- `mcp.call(tool, args)` — gezielter MCP-Aufruf (auch mit dynamischen Args)
+- `http(url, ttlMs?)` — generischer GET (Timeout + Größen-Cap; **dynamische**
+  URLs mit SSRF-Schutz gegen private Netze; TTL-Cache)
+- `shell(command)` — Admin-only, Timeout 5 s + Output-Cap
+- `fn(name)` — Einbettung anderer Funktionen (Tiefe ≤ 3, Zyklus-Erkennung)
+- `args`, `now` — Argumente bzw. Gateway-Zeit
+
+Rückgabe: `AssistantResponse`. Erkennt der Renderer `<speak>…</speak>` oder
+ein `{"speech": …}`-Objekt, setzt er `ssml: true` bzw. übernimmt Display-Daten
+(inkl. Unwrap alter Envelope-Formen).
+
+## Entity-Index (`core/entityIndex.ts`, `core/indexTools.ts`)
+
+- **Generisch und systemneutral**: pro Index wird **ein** parametrierter
+  MCP-Call je TTL-Fenster ausgeführt (Default 60 s) und lokal interpretiert.
+- **Datenvertrag** pro Zeile: `id|area|state|unit|name|key=value;key=value…`.
+- **Configuration statt Code**: Setting `entity_index` (Default-Index) bzw.
+  `entity_index_<key>` (Multi-Index, z. B. `ma`) enthält `tool`, `args`,
+  optional `transform` (nunjucks: JSON → Pipe-Zeilen für reine JSON-Server),
+  `ttlMs`, `aliases`, `domainHints`, `stopwords`. Der Code-Default ist **leer**
+  (kein Tool) — die Anbindung eines Systems (HA, Music Assistant, …) ist reine
+  Konfiguration, kein Sonderfall.
+- **Fuzzy-Suche** (Umlaut-Folding, Aliase, Domain-Hints, Stopwords) läuft im
+  RAM (< 1 ms); Treffer werden sprechbar formatiert.
+- **Basis-Werkzeuge** `fn_find_entities` / `fn_get_entity` sind fest im Code
+  (nicht mehr geseedet) und unzerstörbar.
+- **Index-Assistent** (`core/indexAssistant.ts`, `POST /admin/api/index/assist`
+  + `/index/apply`): das LLM entwirft ein Draft, ein **deterministischer
+  Validator** prüft es live gegen Server und Datenvertrag (nur erkennbar
+  lesende Tools, max. 3 Self-Correction-Iterationen); gespeichert wird erst
+  nach Admin-Bestätigung.
+
+## Tool-Inventory und Prompts
+
+- Der Fähigkeits-Katalog des Agenten wird **generiert** (`core/inventory.ts`):
+  aus dem `inventory_prompt` der registrierten Funktionen und dem
+  `inventory_prompt` der MCP-Server. Der Prompt `agent_inventory` ist der
+  Regel-Block mit Marker `{{AGENT_FNS}}`.
+- Prompts liegen in der DB (`prompts`): `agent_system`, `agent_inventory`.
+  Der Assistenten-Name kommt aus dem Setting `assistant_name` (Platzhalter
+  `{assistant_name}`). Seed-Texte für frische Installationen:
+  `db/seeds.ts`.
+
+## SSML, Display und Response-Nachbearbeitung
+
+- **Der Core arbeitet sprachneutral**; `AssistantResponse.speech` ist
+  standardmäßig Klartext. Enthält eine Quelle fertiges SSML, wird `ssml: true`
+  gesetzt und unverändert durchgereicht.
+- **`withSsmlBreaks`** (`core/response.ts`) wandelt mehrteiligen Klartext
+  (Absätze/Listen bzw. lange Sätze ≥ 150 Zeichen) in
+  `<speak>…<break/>…</speak>` um.
+- **`withDisplay`** füllt `display` (Titel aus Setting `display_title`, Text
+  aus speech, SSML zu Klartext bereinigt).
+- **Das SSML-/Card-/APL-Wrapping macht der Adapter** (Alexa-Lambda), nicht der
+  Core — kein Doppel-Wrapping, kein Escaping von gültigem SSML.
+
+## Authentifizierung: getrennte Ebenen
+
+| Ebene | Umsetzung im Code |
+|---|---|
+| **Client-Auth** (Sprachclient → Adapter) | liegt beim Adapter: die Alexa-Lambda nutzt den eingebauten ask-sdk-Skill-ID-Verifier (`applicationId` gegen `alexa_skill_id`). Das Gateway hat **keinen** Client-Endpunkt. |
+| **API-/Admin-Auth** (`/api/*`, `/admin/*`) | Bearer-Token (`AUTH_TOKEN`, constant-time via `timingSafeEqual`); Admin-UI zusätzlich per Session-Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/admin`, 12 h) |
+| **Admin-Login** (`POST /admin/login`) | Token → Session-Cookie, rate-limited (10 Versuche/Minute pro IP) |
+| **MCP-Server-Auth** (Gateway → MCP) | je Server: ohne Token (LAN-intern) oder Bearer-Token in der Registry; stdio über `env` |
+
+Beide Ebenen sind bewusst getrennt: Client-Authentifizierung sagt „welcher
+Skill/Lieferant“, die API-Auth „welcher Aufrufer darf das Gateway nutzen“. Eine
+spätere Trennung von Client-Auth und User-Identität bleibt möglich.
+
+## Berechtigungen
 
 ```text
-Home Assistant
-└── Welche Entities darf MCP sehen?          (HA-eigene Steuerung)
+Quellsystem (z. B. Home Assistant)
+└── Welche Entities/States darf MCP sehen?   (Steuerung des Quellsystems)
 
-SmartPilot
-└── Welche MCP-Tools darf das LLM verwenden? (später pro Action, Issues #3/#4)
+Gateway
+└── Welche Tools darf das LLM nutzen?         (agent_tools / Action-tools / fn_Budgets)
 ```
 
-SmartPilot baut **keine zweite Entity-Berechtigungsschicht** nach.
+Das Gateway baut **keine zweite Entity-Berechtigungsschicht** nach. Zusätzlich
+blockt `LLM_BLOCKED_TOOLS` einzelne Tool-Namen hart aus dem Agent-Katalog.
 
-## Funktionen: kontrollierter Kontext
+## Datenmodell (SQLite)
 
-Jinja2 erhält **keinen direkten MCP-Zugriff**, sondern feste, freigegebene
-Bausteine (vollständige Liste: `REFERENCE.md`):
-
-- `index.find` / `index.state` / `index.get` – lokale, gecachte Lesesicht
-- `mcp.call(tool, args)` – gezielter Aufruf eines MCP-Werkzeugs
-- `http(url, ttlMs?)` / `shell(command)` – Dienste ohne MCP-Fassade
-- `fn(name)`, `args`, `now` – Einbettung, Argumente, Gateway-Zeit
-
-Beispiel:
-
-```jinja
-{% set temp = index.state("sensor.living_room_temperature") %}
-Im Wohnzimmer sind {{ temp }} Grad.
-```
-
-Damit behalten wir die Kontrolle darüber, was eine Funktion ausführen darf
-(POC: sehr einfach gehalten).
-
-## Datenmodell (POC)
-
-SQLite, bewusst klein:
+Schema in `db/schema.ts` (Init + idempotente Migrationen inline):
 
 | Tabelle | Inhalt |
 |---|---|
-| `mcp_servers` | MCP-Server-Registry (URL, Auth-Vermerk, Aktiv-Status) |
-| `actions` | Vorgänge inkl. Trigger, Templates, `mode` (deterministic/llm/hybrid), `handler_config` (JSON), Flags |
-| `prompts` | System-/Agent-Prompte |
-| `settings` | Laufzeit-Einstellungen (Warteton, Timeouts, Fuzzy global, Session-Followup) |
-| `logs` | Request-Log inkl. Route, Latenz, Trace (Tool-Calls, LLM-Schritte) |
+| `mcp_servers` | MCP-Registry (Name, URL, Token, `transport` http/stdio + command/args/env, `inventory_prompt`, `side_effect`, aktiv) |
+| `actions` | Vorgänge: `mode` (deterministic/llm/hybrid), Trigger, `system_prompt`, `function_ref` + `function_args`, `tools`, Flags |
+| `tpl_functions` | Funktions-Registry: `template`, Parameter-Schema, `budget`, `inventory_prompt`, `side_effect` |
+| `prompts` | `agent_system`, `agent_inventory` |
+| `settings` | Laufzeit-Einstellungen (u. a. `assistant_name`, `fuzzy_global`, `session_followup`, `memory_turns`/`memory_minutes`, `agent_tools`, `entity_index*`, `registry_language`) |
+| `packages` / `package_items` | Provenienz installierter Pakete (Version, Quelle, Hashes der angelegten Artefakte) |
+| `logs` | Request-Log (Route, Latenz, Trace, Token-Usage) |
 
-Credentials pragmatisch (`.env`/Env-Vars) – kein ausgefeiltes Secret-Management
-als POC-Blocker.
+Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
 
-## Schnittstellen: vollständig MCP, Code ohne Systembezug
+## Admin-API und Admin-UI
 
-Fähigkeiten externer Systeme (z. B. Smart Home) laufen **ausschließlich** über
-deren **MCP-Server**. Der Gateway-Code enthält **keinen** Systembezug mehr:
-weder REST (`/api/states`, `/api/template` wurden entfernt) noch HA-Toolnamen
-oder HA-Fuzzy-Logik. Zwei generische Muster decken alles ab:
+- Routen unter `/admin/api/*` (alle mit `requireAuth`): `bootstrap`,
+  `settings` (+ `restore-defaults`), `actions`, `functions` (+ `preview`),
+  `indexes` (+ `index/assist`, `index/apply`), `mcp-servers` (+ `health`),
+  `tools`, `prompts`, `logs`, `usage`, `packages/*` (+ `backup`/`restore`).
+- Statische Admin-UI (`web/`) hinter Session-Auth; Admin-Zugriff bedeutet
+  bewusst weitreichende Kontrolle (Templates mit `shell`, stdio-MCP).
 
-1. **`mcp.call(tool, args)`** — Weiterleitung an ein beliebiges MCP-Tool aus
-   Templates (deterministische Vorgänge); der Agent ruft MCP-Tools direkt im
-   Toolloop auf.
-2. **Parametrierter Entity-Index** — Fuzzy-Suche/Lookups im RAM (< 1 ms) gegen
-   einen Index, der per **einem** MCP-Call pro TTL-Fenster gefüllt wird
-   (gemessen ~0,6 s für ~1200 Einträge). Tool, freies Argument-Objekt
-  (Datenvertrag `id|area|state|unit|name|key=value;...`), Aliase,
-   Domain-Hints und Stopwords stehen als JSON-Setting `entity_index`
-   (Code-Default leer; HA wird z. B. ueber das Installationspaket mit
-   `ha_eval_template` gebunden) — ein anderes System wird durch ein
-   anderes Setting angebunden, nicht durch Code. Begründung: Serverseitige
-   Fuzzy-Suche (z. B. `ha_search`) bleibt für deutsche Mehrwort-Voice-Queries
-   klar schwächer (BM25-AND-Gating, kein Umlaut-Folding, keine Aliase, im
-   Test 0 Treffer auf existierende Entities) — Treffersicherheit und
-   Performance leben daher lokal, Universalität in der Parametrisierung.
-3. **Index-Assistent** (`POST /admin/api/index/assist` + `/index/apply`) —
-   LLM entwirft das Index-Binding, ein deterministischer Validator prüft es
-   live gegen den Datenvertrag (nur lesende Tools, max. 3 Self-Correction-
-   Iterationen), das Speichern erfolgt erst nach Admin-Bestaetigung.
+## Installationspakete (`packages/`, `core/packages.ts`, `db/packages.ts`)
 
-### Tool-Vertrag: Was wir von MCP-Tools erwarten
+- **Zweck**: fertige, generische Rezepte (MCP-Server + Index + Funktionen +
+  Allowlist) statt Handarbeit. Quelle: das Repo selbst über
+  `raw.githubusercontent.com/.../packages/<lang>/<id>/` (Setting
+  `registry_language`, Default `de`), alternativ **Offline-Import**.
+- **Manifest** (`manifest.json`): `id`/`version` (semver), Anzeige- und
+  Vertrauensfelder (`author`, `license`, `homepage`, `changelog`),
+  `minGatewayVersion` (erzwungen), `params` (`${key}`-Substitution),
+  `servers`/`functions`/`indexes`, `allowTools`.
+- **Sicherheit/Vorschau**: `shell()`-Templates gelten als **gefährlich** und
+  verlangen eine Bestätigung (`dangerousAck`); `http()` als Info. Installation
+  ist Dry-Run-fähig, Upsert mit Konflikt-Entscheidungen pro Element
+  (`know`-Abgleich über `content_hash`), Deinstallation, JSON-Backup/Restore.
 
-Damit Agent, Template-Bausteine und Funktions-Registry ein MCP-Tool **ohne
-Sondercode** nutzen können:
+## Externe Dienste und Konfiguration
 
-| Anforderung | Warum |
-|---|---|
-| Discovery via `tools/list` mit vollständigem JSON-Schema (Parameternamen, Typen, Pflichtfelder) | Agent und Admin-UI leiten Aufruf und Prompt-Beschreibung automatisch daraus ab |
-| Ziele in **Nutzersprache** (Name, Raum, Etage), nicht interne IDs | Sprachclient und LLM kennen keine internen IDs; IDs sind Implementierungsdetail des Zielsystems |
-| Typsichere Parameter inkl. Validierung (z. B. Ganzzahl 0–100 statt Float 0.0–1.0) | Falsche Typen/Einheiten sollen beim Aufruf abgelehnt werden, nicht falsch ausgeführt |
-| Deterministische, maschinenlesbare Fehler **mit Trefferliste** (z. B. `DUPLICATE_NAME`, `MULTIPLE_TARGETS`) | Mehrdeutigkeiten übersetzt der Agent in eine Rückfrage (Clarification) statt zu raten |
-| Lesende und schreibende Tools am Naming/der Beschreibung erkennbar | Grundlage für spätere Tool-Allowlists und Berechtigungen (#3/#4) |
+- **LLM**: OpenAI-kompatibler Endpunkt (`chat/completions`) — Env
+  `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (Pflicht).
+- **MCP-Server**: beliebige Server (HTTP oder stdio), die per Registry
+  angebunden werden. Home Assistant, Music Assistant usw. kommen als Paket.
+- **`.env`** (Pflicht): `AUTH_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`,
+  `LLM_MODEL`. **Optional**: `PORT`, `DB_PATH`, `LLM_MAX_TOKENS`,
+  `LLM_REASONING_EFFORT`, `LLM_TOOL_DEADLINE_MS`, `MAX_TOOL_ITERATIONS`,
+  `AGENT_CLARIFICATION_BUDGET`, `LLM_KEEPALIVE_MS`.
+- **DB-Settings** überschreiben zur Laufzeit (u. a. Modell, Token-Budget,
+  Fuzzy, Gedächtnis, Followup).
 
-Beispielhafte Erfahrung aus dem HA-MCP: Namensauflösung ohne Raumbezug scheitert
-schnell an Duplikaten — Aufrufe so spezifisch wie möglich formulieren (Raum +
-Domain mitgeben) und Doppel-/Geister-Entities im Quellsystem ausräumen.
+Fachliche Dienste (Wetter, Verkehr, Suche …) sind bewusst **nur allgemein**
+über Template-Bausteine bzw. Pakete angebunden und austauschbar; konkrete
+Endpunkte/Rezepte stehen in [Praxisrezepte](RECIPES.md).
 
-### MCP-Einsatz
+## Conversation State und Gedächtnis
 
-- Alle Systemzugriffe (Index, Lookups, Aufrufe) laufen über MCP-Tools der in
-  der MCP-Registry eingetragenen Server.
-- Die generischen Template-Bausteine (`http`, `shell`) bleiben für Dienste
-  **ohne** MCP-Fassade (z. B. externe Web-APIs).
-- Neue Index-Quellen werden über den Index-Assistenten eingebunden (siehe
-  `REFERENCE.md`); die generischen Lesetools heißen
-  systemneutral `fn_find_entities` / `fn_get_entity`.
-- Konkrete Rezepte (nur Beispiele) leben in [Praxisrezepte](RECIPES.md),
-  nicht hier.
+- In-Memory-History pro `sessionId` (`core/session.ts`): gekappt
+  (`HISTORY_MAX_MESSAGES`), TTL 2 h, harter Session-Deckel; zusätzlich ein
+  Chat-Modus-Flag.
+- **DB-Recall** über die letzten Agent-Logs (`recentAgentTurns`), wenn keine
+  In-Memory-History vorliegt; ältere Turns werden als „alt“ markiert.
+- Steuerung über Settings `memory_turns`, `memory_minutes` und
+  `session_followup` (`llm`/`keyword`/`beides`). Der Chat-Modus
+  („starte chat modus“ / „chat beenden“, Regex in der Engine) hält die Session
+  offen.
 
-### Gateway-eigene REST-API (Angebot)
+## Trace und Logging
 
-| Endpoint | Zweck |
-|---|---|
-| `POST /api/query` | Einstieg für Adapter (Text/Session → AssistantResponse), Bearer-Token |
-| `/admin/api/*` | Admin-UI: Vorgänge, Funktionen-Registry, MCP-Registry, Logs, Einstellungen |
+Jede Anfrage wird geloggt (`logs`): Query, Route, Action/Score, Latenz,
+Antwort und `trace` (u. a. `route.*`, `tool.call/error/budget_hit`, `llm.usage`,
+`template.mcp/http/shell/index/state`, `fn.*`). `llm.usage`-Events speisen die
+Token-/Cache-Auswertung (`summarizeUsage`, Admin `GET /admin/api/usage`).
 
-## Externe Dienste
+## Alexa-Adapter (heutiger Lieferant, `alexa/`)
 
-| Dienst | Endpoint (konfigurierbar via `.env`) |
-|---|---|
-| LLM | eigener OpenAI-kompatibler Client (`chat/completions`; Base-URL via Env `LLM_BASE_URL`, Modell via `LLM_MODEL`, API-Key via Env) |
-| MCP (HA) | HA-MCP-Server (Streamable HTTP, Bearer; URL/Token in der MCP-Registry) |
+- **Lambda** (`lambda_function.py`, Python, ask-sdk): ruft `POST /api/query`
+  mit Bearer-Token auf, übersetzt `EngineResult`/`AssistantResponse` zurück.
+  Watchdog + Warteton (Progressive Response), Timeouts gegen das
+  8-s-/Alexa-Fenster; lediglich die primäre Locale ist de-DE (weitere Sprache =
+  zusätzlicher `STRINGS`-Eintrag + Interaktionsmodell).
+- **Anzeige**: SimpleCard immer, APL-Dokument für Echo-Show-Geräte (das sich
+  nach `apl_exit_delay_ms` selbst beendet); rohe Request-Interfaces werden für
+  die APL-Erkennung gepuffert.
+- **Client-Auth**: eingebauter Skill-ID-Verifier (`alexa_skill_id`).
+- **`/api/lambda-trace`**: Fire-and-forget-Lebenszyklus-Log (Invoke/Antwort),
+  nur bei Setting `debug_logging=1` persistiert.
 
-Weitere fachliche Dienste werden bewusst **nur allgemein** hier geführt: sie
-werden generisch über die Template-Bausteine angebunden und sind austauschbar.
-Konkrete Endpunkte und Rezepte sind Beispiele und gehören in
-[Praxisrezepte](RECIPES.md), nicht in die Architektur-Doku.
+## Betrieb und Tests
 
-## Conversation State
-
-Die API kennt `sessionId`:
-
-```json
-{"sessionId": "…", "query": "Mach es auf 21 Grad"}
-```
-
-Implementiert (2026-09): Kurzzeitgedächtnis pro Session (`rememberTurn`/`priorTurns`,
-in-memory + Rückgriff auf die letzten Agent-Logs), steuerbar über das Setting
-`session_followup` (llm/keyword/beides) — eine offene Session erlaubt Folgefragen
-ohne erneute Invocation. Ausbaubar zu:
-
-```text
-session
-├── conversation history
-├── previous action
-├── clarification
-└── context
-```
-
-## Trace & Logging
-
-Jeder Tool-Call wird geloggt (inkl. Szenario und Latenz) – Basis für spätere
-Permissions (#3/#4) und Betriebsauswertung (Phase-2-Trigger, siehe
-  `TROUBLESHOOTING.md`).
+- **Docker**: Wurzel-`docker-compose.yaml` (Runtime-Target, Port via
+  `GATEWAY_PORT`), `gateway/docker-compose.yml` (Dev-Target, tsx-watch,
+  Volume-Mount `.:/app`).
+- **Tests**: `gateway/test/*.test.ts` mit `node:test`/`node:assert/strict`
+  (`npm test`), Typecheck `npm run typecheck`, Build `npm run build`. Der
+  Lambda-Adapter hat eigene Python-Tests unter `alexa/lambda/`.
