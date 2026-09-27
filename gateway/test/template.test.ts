@@ -38,6 +38,7 @@ interface FakeRes {
 }
 
 let fetchCalls: string[] = [];
+let lastInit: RequestInit | undefined;
 let fetchHandler: (url: string) => FakeRes = () => ({
   ok: true,
   status: 200,
@@ -52,7 +53,9 @@ function defaultHandler(): FakeRes {
 function stubFetch(handler?: (url: string) => FakeRes): void {
   fetchHandler = handler ?? defaultHandler;
   fetchCalls = [];
-  globalThis.fetch = (async (url: string | URL) => {
+  lastInit = undefined;
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    lastInit = init;
     fetchCalls.push(String(url));
     return fetchHandler(String(url));
   }) as typeof fetch;
@@ -172,6 +175,20 @@ test('http: dynamischer Hostname mit privater DNS-Aufloesung -> blockiert (SSRF,
     assert.equal(r.speech, '');
     assert.equal(fetchCalls.length, 0, 'kein Fetch ins private Netz');
     assert.ok(findStep(trace, 'template.http.blocked'));
+  } finally {
+    lk.mock.restore();
+  }
+});
+
+test('http: dynamischer oeffentlicher Host erhaelt gepinnten Dispatcher (F-07)', async () => {
+  stubFetch();
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]);
+  try {
+    const r = await renderActionTemplate(`{{ http('http://' ~ args.host ~ '/x') | dump }}`, mcp, [], {
+      host: 'public.example.org',
+    });
+    assert.match(r.speech, /"quelle":"test"/);
+    assert.ok((lastInit as { dispatcher?: unknown } | undefined)?.dispatcher, 'gepinnter Dispatcher wird uebergeben');
   } finally {
     lk.mock.restore();
   }

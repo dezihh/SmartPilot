@@ -1,6 +1,7 @@
 import nunjucks from 'nunjucks';
 import { exec } from 'node:child_process';
 import { promises as dns } from 'node:dns';
+import { Agent } from 'undici';
 import type { McpContext } from '../mcp/registry.js';
 import { getIndexSnapshot, listIndexKeys, type IndexEntry } from './entityIndex.js';
 import { findInSnapshot, getFromSnapshot } from './indexTools.js';
@@ -152,14 +153,14 @@ async function readCapped(res: Response, cap: number): Promise<string> {
   return out.slice(0, cap);
 }
 
-// F-07: loest einen dynamischen Hostnamen auf und meldet, ob eine der
-// Adressen in ein privates Netz zeigt (Schutz vor DNS-Rebinding).
-async function resolvesToPrivate(hostname: string): Promise<boolean> {
+// F-07: dynamische Hostnamen vorab aufloesen. null = keine Aufloesung
+// (NXDOMAIN/offline) -> der Aufrufer faellt auf den normalen fetch zurueck.
+async function resolveDynamicHost(hostname: string): Promise<{ address: string; family: number }[] | null> {
   try {
     const addrs = await dns.lookup(hostname, { all: true });
-    return addrs.some((a) => isPrivateHost(a.address));
+    return addrs.map((a) => ({ address: a.address, family: a.family }));
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -178,32 +179,51 @@ async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Pro
         trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
         return null;
       }
-      // F-07: DNS-Rebinding - ein oeffentlicher Hostname kann auf eine private
-      // IP zeigen. Best-effort-Aufloesung vorab; scheitert sie (NXDOMAIN/
-      // offline), wird nicht blockiert, da der fetch dann ohnehin fehlschlaegt.
-      if (dynamic && (await resolvesToPrivate(u.hostname))) {
-        trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
-        return null;
-      }
-      const res = await fetch(target, { signal: controller.signal, redirect: dynamic ? 'manual' : 'follow' });
-      if (dynamic && res.status >= 300 && res.status < 400) {
-        const loc = res.headers.get('location');
-        if (!loc) {
-          trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, error: 'Redirect ohne Location' } });
+      // F-07: DNS-Rebinding - oeffentlichen Hostnamen vorab aufloesen, private
+      // Ziele blockieren UND die gepruefte IP im Request pinnen (dispatcher).
+      // So ist ein Rebinding zwischen Pruefung und Verbindungsaufbau wirkungslos.
+      let dispatcher: Agent | undefined;
+      if (dynamic) {
+        const addrs = await resolveDynamicHost(u.hostname);
+        if (addrs && addrs.some((a) => isPrivateHost(a.address))) {
+          trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
           return null;
         }
-        target = new URL(loc, target).toString();
-        continue;
+        const pin = addrs?.[0];
+        if (pin) {
+          dispatcher = new Agent({
+            connect: { lookup: (_h, _o, cb) => cb(null, [{ address: pin.address, family: pin.family }]) },
+          });
+        }
       }
-      const raw = await readCapped(res, bodyCap);
-      if (!res.ok) {
-        trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, body: raw.slice(0, 200) } });
-        return null;
-      }
+      const init: RequestInit = {
+        signal: controller.signal,
+        redirect: dynamic ? 'manual' : 'follow',
+      };
+      if (dispatcher) (init as { dispatcher?: unknown }).dispatcher = dispatcher;
       try {
-        return JSON.parse(raw) as unknown;
-      } catch {
-        return raw;
+        const res = await fetch(target, init);
+        if (dynamic && res.status >= 300 && res.status < 400) {
+          const loc = res.headers.get('location');
+          if (!loc) {
+            trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, error: 'Redirect ohne Location' } });
+            return null;
+          }
+          target = new URL(loc, target).toString();
+          continue;
+        }
+        const raw = await readCapped(res, bodyCap);
+        if (!res.ok) {
+          trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, body: raw.slice(0, 200) } });
+          return null;
+        }
+        try {
+          return JSON.parse(raw) as unknown;
+        } catch {
+          return raw;
+        }
+      } finally {
+        if (dispatcher) await dispatcher.close().catch(() => {});
       }
     }
     trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url, error: 'zu viele Redirects' } });
