@@ -76,7 +76,7 @@ test('buildMcpTools: alle Tools werden Specs+Routes', () => {
 });
 
 test('buildMcpTools: Blocklist-Tools fehlen komplett', () => {
-  const blocked = [...LLM_BLOCKED_TOOLS][0];
+  const blocked = [...LLM_BLOCKED_TOOLS][0]!;
   const routes = new Map<string, ToolRoute>();
   const specs: ToolSpec[] = [];
   buildMcpTools(mcpWith([{ name: 'tool_a' }, { name: blocked }]), null, routes, specs);

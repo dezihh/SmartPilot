@@ -35,7 +35,7 @@ test('mcp.call mit args ist dynamisch, nicht literal', () => {
   // Nicht-literal (args) -> KEIN calls-Eintrag, nur dynamische Expression.
   assert.deepEqual(x.calls, []);
   assert.equal(x.mcpCallDyn.length, 1);
-  assert.ok(x.mcpCallDyn[0].expr.includes('args.url'));
+  assert.ok(x.mcpCallDyn[0]!.expr.includes('args.url'));
 });
 
 test('shell- und fn-Abrufe', () => {
@@ -54,8 +54,8 @@ test('http mit dynamischer Expression und TTL-Suffix', () => {
   const x = extractLiterals("{{ http('https://' ~ args.host ~ '/rss', 60000) }}");
   assert.deepEqual(x.httpCalls, []);
   assert.equal(x.httpDyn.length, 1);
-  assert.ok(x.httpDyn[0].expr.includes("args.host"));
-  assert.equal(x.httpDyn[0].ttl, 60000);
+  assert.ok(x.httpDyn[0]!.expr.includes("args.host"));
+  assert.equal(x.httpDyn[0]!.ttl, 60000);
 });
 
 test('keine Abrufe: alles leer', () => {

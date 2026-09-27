@@ -120,10 +120,10 @@ test('Install: Upsert + Provenienz + agent_tools-Merge; Reinstall aktualisiert',
   // Provenienz
   const pkgs = listInstalledPackages();
   assert.equal(pkgs.length, 1);
-  assert.equal(pkgs[0].id, 'test-package');
-  assert.ok(pkgs[0].params.includes('10.0.0.5'));
+  assert.equal(pkgs[0]!.id, 'test-package');
+  assert.ok(pkgs[0]!.params.includes('10.0.0.5'));
   // Secret-Wert nicht in der Provenienz
-  const safe = JSON.parse(pkgs[0].params) as Record<string, string>;
+  const safe = JSON.parse(pkgs[0]!.params) as Record<string, string>;
   assert.equal(safe.token, '(gesetzt)');
   assert.equal(safe.host, '10.0.0.5');
   const items = listPackageItems('test-package');

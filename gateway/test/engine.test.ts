@@ -295,7 +295,7 @@ test('memory_turns: Kontext-Tiefe konfigurierbar (Default 4)', async () => {
     await q('zweite frage', 'mem1');
     await q('dritte frage', 'mem1');
     // 3. LLM-Call: system + letzte Pair (1 Turn) + aktuelle Frage
-    const third = llmBodies[2];
+    const third = llmBodies[2]!;
     const users = userMessages(third);
     assert.deepEqual(users, ['zweite frage', 'dritte frage']);
   } finally {
@@ -308,7 +308,7 @@ test('memory_turns: mit Default sieht der 3. Aufruf beide frueheren Pairs', asyn
   await q('erste frage', 'mem2');
   await q('zweite frage', 'mem2');
   await q('dritte frage', 'mem2');
-  const users = userMessages(llmBodies[2]);
+  const users = userMessages(llmBodies[2]!);
   assert.deepEqual(users, ['erste frage', 'zweite frage', 'dritte frage']);
 });
 
@@ -325,7 +325,7 @@ test('memory_minutes: DB-Recall ueber Session-Grenzen mit Zeitfenster', async ()
     resetSessionsForTests(); // In-Memory leer -> DB-Recall greift
     llmScript = [content('neue antwort')];
     await q('neue frage', 'mem-recall');
-    let msgs = llmBodies[0].messages;
+    let msgs = llmBodies[0]!.messages;
     assert.ok(!msgs.some((m) => m.role === 'system' && (m.content ?? '').includes('fruehere Unterhaltungen')), 'frischer Turn ohne ALT-Hinweis');
     assert.ok(msgs.some((m) => m.role === 'user' && m.content === 'alte frage frisch'), 'frischer Turn im Recall');
     assert.ok(msgs.some((m) => m.role === 'assistant' && m.content === 'frische Antwort'), 'frische Antwort im Recall');
@@ -341,7 +341,7 @@ test('memory_minutes: DB-Recall ueber Session-Grenzen mit Zeitfenster', async ()
     llmBodies = [];
     llmScript = [content('neue antwort 2')];
     await q('neue frage zwei', 'mem-recall-2');
-    msgs = llmBodies[0].messages;
+    msgs = llmBodies[0]!.messages;
     assert.ok(msgs.some((m) => m.role === 'system' && (m.content ?? '').includes('fruehere Unterhaltungen')), 'ALT-Hinweis bei >5min fehlt');
     assert.ok(msgs.some((m) => m.role === 'user' && m.content === 'alte frage alt'), 'Turn im Fenster (6 min) drin');
     assert.ok(!msgs.some((m) => (m.content ?? '').includes('alte frage uralt')), 'Turn ausserhalb des Fensters (35 min) raus');

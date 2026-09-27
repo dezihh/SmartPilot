@@ -31,8 +31,8 @@ test('parseIndexResult: HA-Envelope (result-String) -> Eintraege', () => {
   });
   assert.equal(r.error, null);
   assert.equal(r.entries.length, 1);
-  assert.equal(r.entries[0].id, 'light.1');
-  assert.equal(r.entries[0].name, 'Deckenlicht');
+  assert.equal(r.entries[0]!.id, 'light.1');
+  assert.equal(r.entries[0]!.name, 'Deckenlicht');
 });
 
 test('parseIndexResult: success=false-Envelope -> Fehlermeldung', () => {
@@ -48,7 +48,7 @@ test('parseIndexResult: Rohtext ohne Envelope -> Eintraege', () => {
   const r = parseIndexResult('light.1|Wohnzimmer|on||Deckenlicht|\nsensor.2|Kueche|21||Tempsensor|current_temperature=21.5');
   assert.equal(r.error, null);
   assert.equal(r.entries.length, 2);
-  assert.equal(r.entries[1].attributes.current_temperature, '21.5');
+  assert.equal(r.entries[1]!.attributes.current_temperature, '21.5');
 });
 
 test('parseIndexResult: Zeilen mit < 5 Feldern fallen weg, leere id verwerfen', () => {
@@ -59,9 +59,9 @@ test('parseIndexResult: Zeilen mit < 5 Feldern fallen weg, leere id verwerfen', 
 test('parseIndexResult: area "None" wird leer, irrelevante Extras gefiltert', () => {
   const r = parseIndexResult('light.1|None|on||Licht|bogus=1;battery_level=55;unit_of_measurement=%');
   assert.equal(r.entries.length, 1);
-  assert.equal(r.entries[0].area, '');
-  assert.equal(r.entries[0].attributes.battery_level, '55');
-  assert.equal('bogus' in r.entries[0].attributes, false);
+  assert.equal(r.entries[0]!.area, '');
+  assert.equal(r.entries[0]!.attributes.battery_level, '55');
+  assert.equal('bogus' in r.entries[0]!.attributes, false);
 });
 
 test('parseIndexResult: transform rendert JSON in Pipe-Zeilen', () => {
@@ -72,8 +72,8 @@ test('parseIndexResult: transform rendert JSON in Pipe-Zeilen', () => {
   const r = parseIndexResult(json, transform);
   assert.equal(r.error, null);
   assert.equal(r.entries.length, 1);
-  assert.equal(r.entries[0].id, 'player.anlage');
-  assert.equal(r.entries[0].name, 'Anlage');
+  assert.equal(r.entries[0]!.id, 'player.anlage');
+  assert.equal(r.entries[0]!.name, 'Anlage');
 });
 
 test('parseIndexResult: transform ohne JSON -> Fehler statt Crash', () => {
@@ -95,7 +95,7 @@ test('scoreEntries: Alias draussen->aussen + Temperatur-Boost', () => {
   ];
   const hits = scoreEntries(entries, 'wie ist die temperatur draussen', 8);
   assert.ok(hits.length > 0);
-  assert.equal(hits[0].id, 'sensor.aussen_temp');
+  assert.equal(hits[0]!.id, 'sensor.aussen_temp');
   // Lampe/Luftfeuchte haben keinen Themetreffer
   assert.equal(hits.find((h) => h.id === 'light.lampe'), undefined);
 });

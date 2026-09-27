@@ -5,6 +5,7 @@ import { setSetting, getSetting, getSettingNum, deleteSetting, getSettings, setP
 import { createAction, updateAction, getAction, listActions, deleteAction } from '../src/db/actions.js';
 import { createFunction, getFunctionByName, deleteFunction } from '../src/db/functions.js';
 import { addLog, listLogs, recentAgentTurns, summarizeUsage } from '../src/db/logs.js';
+import Database from 'better-sqlite3';
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('meinhelfer');
@@ -106,8 +107,8 @@ test('Logs + Usage-Summary + recentAgentTurns', () => {
   const trace = [{ ts: 1, step: 'route.agent' }, { ts: 2, step: 'llm.usage', detail: { model: 'm', prompt_tokens: 10, completion_tokens: 5, cached: false } }];
   addLog({ sessionId: 's1', query: 'frage', route: 'agent', response: 'antwort', durationMs: 100, trace, promptTokens: 10, completionTokens: 5, model: 'm' });
   const logs = listLogs(1) as { query: string; trace: unknown[] }[];
-  assert.equal(logs[0].query, 'frage');
-  assert.equal(logs[0].trace.length, 2);
+  assert.equal(logs[0]!.query, 'frage');
+  assert.equal(logs[0]!.trace.length, 2);
 
   const usage = summarizeUsage();
   assert.ok(usage.llmRequests >= 1);
@@ -115,4 +116,37 @@ test('Logs + Usage-Summary + recentAgentTurns', () => {
 
   const turns = recentAgentTurns(2, 60 * 60_000);
   assert.ok(turns.some((t) => t.query === 'frage'));
+});
+
+// F-26: Migrationen laufen in einer Transaktion. Dieser Test baut eine Alt-DB
+// ohne handler_config auf (der Pfad, den ein frischer initDb nie durchlaeuft)
+// und prueft, dass die Migration vollstaendig durchlaeuft und Daten erhaelt.
+test('Migration: Alt-DB ohne handler_config wird migriert, Daten bleiben erhalten', () => {
+  const oldPath = tmpDb('migration');
+  const raw = new Database(oldPath);
+  raw.exec(`
+    CREATE TABLE actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      mode TEXT NOT NULL DEFAULT 'llm',
+      trigger_phrases TEXT,
+      fuzzy_threshold REAL,
+      system_prompt TEXT,
+      template TEXT,
+      tools TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO actions (name, mode, template) VALUES ('alt_vorgang', 'llm', 'Hallo {{ 1 }}');
+  `);
+  raw.close();
+  closeDb();
+  initDb(oldPath, true);
+  const cols = (getDb().prepare('PRAGMA table_info(actions)').all() as { name: string }[]).map((c) => c.name);
+  assert.ok(cols.includes('handler_config'), 'handler_config muss ergaenzt sein');
+  const row = getDb().prepare("SELECT function_ref FROM actions WHERE name = 'alt_vorgang'").get() as
+    | { function_ref: string | null }
+    | undefined;
+  assert.ok(row, 'Alt-Vorgang darf die Migration nicht verlieren');
 });

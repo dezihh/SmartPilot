@@ -10,14 +10,14 @@ test('traceUsage: nutzt usage.model (Response-echo), faellt auf arg zurueck', ()
     message: { role: 'assistant', content: null },
     usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, model: 'gpt-oss-120b' },
   });
-  assert.equal(trace[0].step, 'llm.usage');
-  const d = trace[0].detail as { model?: string; total_tokens?: number };
+  assert.equal(trace[0]!.step, 'llm.usage');
+  const d = trace[0]!.detail as { model?: string; total_tokens?: number };
   assert.equal(d.model, 'gpt-oss-120b');
   assert.equal(d.total_tokens, 15);
 
   const trace2: TraceEvent[] = [];
   traceUsage(trace2, 'default-modell', { message: { role: 'assistant', content: null }, usage: { total_tokens: 1 } });
-  const d2 = trace2[0].detail as { model?: string };
+  const d2 = trace2[0]!.detail as { model?: string };
   assert.equal(d2.model, 'default-modell');
 });
 

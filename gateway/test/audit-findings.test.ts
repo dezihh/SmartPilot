@@ -42,6 +42,18 @@ test('extractLiterals: shell() in nunjucks-Kommentar wird nicht extrahiert', () 
   assert.deepEqual(found.shells, []);
 });
 
+// ---- F-01 (Rest): Kontrollfluss wird weiterhin ignoriert ----
+// Die statische Extraktion kennt keine Laufzeit-Branches: shell()/http()/mcp.call
+// in einem nie durchlaufenen if-Zweig werden trotzdem vorgewaermt und ausgefuehrt.
+test(
+  'extractLiterals: shell() in nicht durchlaufenem if-Zweig wird nicht extrahiert',
+  { todo: 'F-01 (Rest) Preheat ignoriert Kontrollfluss' },
+  () => {
+    const found = extractLiterals("{% if false %}{{ shell('rm -rf /tmp/x') }}{% endif %}");
+    assert.deepEqual(found.shells, []);
+  }
+);
+
 // ---- F-02: extract.ts ohne Wortgrenzen ----
 // `xfn('a')`, `myshell('x')`, `myhttp(...)` werden als fn()/shell()/http()
 // fehlinterpretiert, weil die Regexe keine Wortgrenze pruefen.
@@ -105,7 +117,11 @@ test('isPrivateHost: bekannte Kurzform 127.0.0.1 ist privat', () => {
 test('isPrivateHost: Dezimal-/Hex-/IPv6-Form privater Netze wird erkannt', () => {
   assert.equal(isPrivateHost('2130706433'), true); // 127.0.0.1 als Dezimalzahl
   assert.equal(isPrivateHost('0x7f000001'), true);
+  assert.equal(isPrivateHost('0177.0.0.1'), true); // 127.0.0.1 in Oktalschreibweise
+  assert.equal(isPrivateHost('127.1'), true); // 127.0.0.1 in Kurzform
+  assert.equal(isPrivateHost('0x7f.0.0.1'), true); // gemischte Hex-Oktette
   assert.equal(isPrivateHost('::ffff:7f00:1'), true);
+  assert.equal(isPrivateHost('8.8.8.8'), false); // oeffentliche Adresse bleibt erlaubt
 });
 
 // ---- F-08: LLM-Aufruf ohne Default-Timeout ----
@@ -128,8 +144,8 @@ test('chatCompletion: ohne expliziten Timeout greift ein Default-Signal', async 
 });
 
 // ---- F-09: MCP-Server-Endpunkt liefert Geheimnisse im Klartext ----
-// listMcpServers(false) liefert auth_token (und env) ungefiltert an die
-// Admin-API; ein Token ist damit im Browser/Netz sichtbar.
+// listMcpServers(false) liefert auth_token ungefiltert an die Admin-API; ein
+// Token ist damit im Browser/Netz sichtbar.
 test('listMcpServers: auth_token wird nicht im Klartext geliefert', () => {
   createMcpServer({
     name: 'audit-srv',
@@ -144,6 +160,25 @@ test('listMcpServers: auth_token wird nicht im Klartext geliefert', () => {
   });
   const row = listMcpServers(false).find((s) => s.name === 'audit-srv');
   assert.equal(row?.auth_token ?? null, null);
+});
+
+// ---- F-34: env-Secrets werden maskiert ----
+// listMcpServers(false) maskiert seit der Behebung auch env (stdio-Transport);
+// die Admin-API liefert keine Umgebungsvariablen mehr im Klartext.
+test('listMcpServers: env wird nicht im Klartext geliefert', () => {
+  createMcpServer({
+    name: 'audit-env-srv',
+    url: '',
+    auth_token: null,
+    transport: 'stdio',
+    command: 'true',
+    args: '[]',
+    env: JSON.stringify({ SECRET_TOKEN: 'streng-geheim-env' }),
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  const row = listMcpServers(false).find((s) => s.name === 'audit-env-srv');
+  assert.equal(row?.env ?? null, null);
 });
 
 // ---- F-10: bewusste Entscheidung, kein Defekt ----

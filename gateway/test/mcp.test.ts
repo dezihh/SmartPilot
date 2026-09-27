@@ -139,6 +139,20 @@ test('callTool: RPC-Error wirft mit Tool-Namen', async () => {
   await assert.rejects(() => client.callTool('tool_x', {}), /tool_x.*kaputt|kaputt/);
 });
 
+test('callTool: isError=true im Result wird als Fehler geworfen (F-13)', async () => {
+  stubFetch();
+  handler = () => rpcRes({ isError: true, content: [{ type: 'text', text: 'schreibfehler' }] });
+  const client = new McpClient('https://mcp.example.org/rpc', null);
+  await assert.rejects(() => client.callTool('tool_x', {}), /tool_x.*schreibfehler/);
+});
+
+test('callTool: isError=true ohne Text meldet generischen Fehler (F-13)', async () => {
+  stubFetch();
+  handler = () => rpcRes({ isError: true, content: [] });
+  const client = new McpClient('https://mcp.example.org/rpc', null);
+  await assert.rejects(() => client.callTool('tool_x', {}), /tool_x.*meldet Fehler/);
+});
+
 test('rpc: haengender Server wird nach Timeout abgebrochen', async () => {
   stubFetch();
   handler = () => ({ hang: true });

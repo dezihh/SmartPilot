@@ -90,7 +90,7 @@ test('Tool-Runden gehen ans Primaermodell', async () => {
   stub.respond = () => ({ data: chatJson('primary', 'tool-antwort') });
   await chatCompletion(msgs, [{ type: 'function', function: { name: 'x', parameters: {} } }], 1000);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].tools, 1);
+  assert.equal(calls[0]!.tools, 1);
 });
 
 test('Primaerfehler -> klare Rejection', async () => {
@@ -101,5 +101,5 @@ test('Primaerfehler -> klare Rejection', async () => {
 test('chatCompletion reicht bei Timeout ein Abbruch-Signal an fetch weiter', async () => {
   stub.respond = () => ({ data: chatJson('m', 'ok') });
   await chatCompletion(msgs, undefined, 1000);
-  assert.ok(calls[0].signal instanceof AbortSignal);
+  assert.ok(calls[0]!.signal instanceof AbortSignal);
 });

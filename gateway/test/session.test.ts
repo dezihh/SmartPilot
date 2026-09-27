@@ -8,8 +8,8 @@ test('rememberTurn/priorTurns: Rundecken auf HISTORY_MAX_MESSAGES', () => {
   for (let i = 0; i < 10; i++) rememberTurn('s1', `frage ${i}`, `antwort ${i}`);
   const t = priorTurns('s1');
   assert.equal(t.length, HISTORY_MAX_MESSAGES);
-  assert.equal(t[0].content, 'frage 6');
-  assert.equal(t[t.length - 1].content, 'antwort 9');
+  assert.equal(t[0]!.content, 'frage 6');
+  assert.equal(t[t.length - 1]!.content, 'antwort 9');
 });
 
 test('Sessions ohne Eintrag = leer', () => {
