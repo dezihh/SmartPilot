@@ -12,6 +12,13 @@ export function stripSsmlTags(text: string): string {
     .replace(/<speak>|<\/speak>/gi, '')
     .replace(/<break[^>]*\/?>/gi, ' ')
     .replace(/<[^>]+>/g, '')
+    // XML-Entities aufloesen (escapeXml erzeugt sie); &amp; zuletzt, damit
+    // "&amp;lt;" korrekt zu "&lt;" und nicht zu "<" wird.
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }

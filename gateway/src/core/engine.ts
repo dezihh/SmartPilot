@@ -13,6 +13,7 @@ import { chatCompletion, type ChatCompletionResult, type ChatMessage, type ToolS
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
 import { routeAction, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
+import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt } from './inventory.js';
 import { escapeXml, stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
 import { buildTools, type ToolRoute } from './tools.js';
@@ -109,7 +110,6 @@ function activeServerNames(mcp: McpContext, allowlist: string[] | null): string[
 async function runToolLoop(
   system: string,
   queryText: string,
-  source: string | null,
   mcp: McpContext,
   trace: TraceEvent[],
   sessionId: string,
@@ -130,7 +130,7 @@ async function runToolLoop(
   // Budgets: DB-Budgets der Funktionen (budget-Spalte) gewinnen, dann die
   // Code-Defaults unten. (Das fruehere Setting 'tool_budgets' ist entfernt:
   // es referenzierte Raw-MCP-Tool-Namen, die nicht mehr im Agent-Katalog sind.)
-  const toolBudgets: Record<string, number> = { fn_find_entities: 2, fn_get_entity: 3, fn_hausstatus_gw: 1 };
+  const toolBudgets: Record<string, number> = { fn_find_entities: 2, fn_get_entity: 3 };
   const budgetFor = (name: string): number | undefined =>
     budgets.get(name) ?? toolBudgets[name];
   const toolCalls: Record<string, number> = {};
@@ -259,7 +259,7 @@ async function runAgent(query: VoiceQuery, mcp: McpContext, trace: TraceEvent[])
   else if (agentToolsRaw === 'keine') allowlist = [];
   else allowlist = agentToolsRaw.split(',').map((s) => s.trim()).filter(Boolean);
   const system = agentSystemPrompt(mcp, allowlist);
-  const response = await runToolLoop(system, query.text, null, mcp, trace, query.sessionId, allowlist);
+  const response = await runToolLoop(system, query.text, mcp, trace, query.sessionId, allowlist);
   rememberTurn(query.sessionId, query.text, response.speech);
   return response;
 }
@@ -273,7 +273,7 @@ async function executeAction(
   if (action.mode === 'llm') {
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? agentSystemPrompt(mcp, action.toolList))
       .replace('{agent_inventory}', buildInventoryPrompt(activeServerNames(mcp, action.toolList)));
-    return runToolLoop(system, query.text, null, mcp, trace, query.sessionId, action.toolList);
+    return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList);
   }
   // deterministic/hybrid: Daten kommen ausschliesslich aus einer Funktion
   if (!action.function_ref) {
@@ -295,6 +295,17 @@ async function executeAction(
   ];
   const result = await chatCompletion(messages);
   return parseAgentAnswer(result.message.content ?? '', trace);
+}
+
+// MCP-Kontext nur laden, wenn der Weg ihn tatsaechlich braucht: der Agent und
+// LLM-Vorgaenge immer, deterministische/hybride Vorgaenge nur, wenn ihre
+// Funktion MCP/index/fn nutzt (reine http-/shell-Funktionen sparen den
+// Kaltstart; F-11).
+function actionNeedsMcp(action: ParsedAction): boolean {
+  if (action.mode === 'llm') return true;
+  const fn = action.function_ref ? getFunctionByName(action.function_ref) : null;
+  const lit = extractLiterals(fn?.template ?? '');
+  return lit.calls.length > 0 || lit.mcpCallDyn.length > 0 || lit.usesIndex || lit.fns.length > 0;
 }
 
 const CHAT_ON_RE = /(chat[-\s]?modus|chatmodus|unterhaltung[-\s]?modus|gespraechs?[-\s]?modus|im gespraech bleiben)/i;
@@ -339,10 +350,13 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
   const actions = listActions(true);
   const fuzzyGlobal = getSetting('fuzzy_global') !== '0';
   const match: RouteMatch | null = routeAction(query.text, actions, fuzzyGlobal);
-  const mcp = await getMcpContext().catch((e: unknown) => {
-    trace.push({ ts: Date.now(), step: 'mcp.error', detail: String(e) });
-    return { servers: [] } as McpContext;
-  });
+  const needsMcp = !match || actionNeedsMcp(match.action);
+  const mcp = needsMcp
+    ? await getMcpContext().catch((e: unknown) => {
+        trace.push({ ts: Date.now(), step: 'mcp.error', detail: String(e) });
+        return { servers: [] } as McpContext;
+      })
+    : ({ servers: [] } as McpContext);
 
   let response: AssistantResponse;
   let route: string;

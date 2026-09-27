@@ -56,14 +56,17 @@ export function routeAction(
   const combined = isCombinedQuery(text);
   let best: RouteMatch | null = null;
   for (const action of actions) {
+    // Schwellwert haerten: negative/ungueltige Werte wuerden sonst jede Anfrage
+    // treffen (score 0 >= threshold). Nur (0,1] zulassen, sonst Default.
+    const rawThreshold = action.fuzzy_threshold ?? 0.85;
+    const threshold = Number.isFinite(rawThreshold) && rawThreshold > 0 ? Math.min(1, rawThreshold) : 0.85;
     for (const phrase of action.triggers) {
       const target = normalize(phrase);
       if (!target) continue;
       let score = 0;
       if (query === target) score = 1;
-      else if (query.includes(target)) score = Math.max(0.95, action.fuzzy_threshold ?? 0);
+      else if (query.includes(target)) score = Math.max(0.95, threshold);
       else if (fuzzyGlobal) score = similarity(query, target);
-      const threshold = action.fuzzy_threshold ?? 0.85;
       if (score >= threshold && (!best || score > best.score)) {
         if (combined && action.mode === 'deterministic') continue;
         best = { action, score, phrase };

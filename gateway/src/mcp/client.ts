@@ -90,6 +90,15 @@ export class McpClient implements McpTransport {
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const res = await this.rpc('tools/call', { name, arguments: args });
     if (res?.error) throw new Error(`MCP tools/call ${name}: ${res.error.message}`);
+    // MCP-Fehler kommen oft als erfolgreiches Result mit isError=true (statt
+    // JSON-RPC-error). In den Fehlerpfad/Trace ueberfuehren.
+    const result = res?.result as { isError?: boolean; content?: unknown } | undefined;
+    if (result?.isError) {
+      const text = Array.isArray(result.content)
+        ? (result.content as { text?: string }[]).map((c) => c?.text ?? '').join(' ').trim()
+        : '';
+      throw new Error(`MCP tools/call ${name}: ${text.slice(0, 200) || 'Tool meldet Fehler'}`);
+    }
     return res?.result;
   }
 }

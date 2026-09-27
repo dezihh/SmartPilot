@@ -23,6 +23,9 @@ export interface McpContext {
 // erzeugen dauerhaft Prozess-Churn.
 const FRESH_MS = 300_000;
 const REFRESH_IN_FLIGHT = new Map<number, Promise<void>>();
+// Kaltstart-Guard: parallele Anfragen duerfen denselben Server nicht mehrfach
+// initialisieren (sonst doppelte stdio-Prozesse; F-32).
+const COLD_IN_FLIGHT = new Map<number, Promise<{ client: McpTransport; tools: ToolDef[]; ts: number }>>();
 const cache = new Map<number, { client: McpTransport; tools: ToolDef[]; ts: number }>();
 
 function stopClient(client: McpTransport | undefined): void {
@@ -93,7 +96,7 @@ async function refreshLater(id: number, row: { id: number; transport: 'http' | '
 }
 
 export async function getMcpContext(): Promise<McpContext> {
-  const rows = listMcpServers(true);
+  const rows = listMcpServers(true, true);
   // Alle Server parallel: gecachte sofort liefern, Kaltstarts parallel laden
   // (serve-stale-Refresh sowieso). Fehler isoliert pro Server abfangen.
   const results = await Promise.all(
@@ -107,9 +110,15 @@ export async function getMcpContext(): Promise<McpContext> {
         return { id: row.id, name: row.name, sideEffect: row.side_effect, client: entry.client, tools: entry.tools };
       }
       // Kaltstart: erstmalig laden (blockierend, da Daten zwingend noetig),
-      // aber ueber alle Rows parallel statt sequenziell.
+      // aber ueber alle Rows parallel statt sequenziell und mit Guard gegen
+      // parallele Doppel-Initialisierung.
       try {
-        const fresh = await loadServer(row);
+        let inflight = COLD_IN_FLIGHT.get(row.id);
+        if (!inflight) {
+          inflight = loadServer(row).finally(() => COLD_IN_FLIGHT.delete(row.id));
+          COLD_IN_FLIGHT.set(row.id, inflight);
+        }
+        const fresh = await inflight;
         cache.set(row.id, fresh);
         return { id: row.id, name: row.name, sideEffect: row.side_effect, client: fresh.client, tools: fresh.tools };
       } catch (e) {

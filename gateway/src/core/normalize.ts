@@ -33,11 +33,13 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     body.function_args && typeof body.function_args === 'object' && !Array.isArray(body.function_args)
       ? JSON.stringify(body.function_args)
       : null;
+  const ft = Number(body.fuzzy_threshold);
   return {
     name: String(body.name ?? '').trim(),
     mode: mode as ActionMode,
     trigger_phrases: JSON.stringify(triggers),
-    fuzzy_threshold: body.fuzzy_threshold == null ? null : Number(body.fuzzy_threshold),
+    // Schwellwert nur im sinnvollen Bereich (0,1] akzeptieren; sonst Default.
+    fuzzy_threshold: body.fuzzy_threshold == null || !Number.isFinite(ft) || ft <= 0 ? null : Math.min(1, ft),
     system_prompt: body.system_prompt == null ? null : String(body.system_prompt),
     template: body.template == null ? null : String(body.template),
     function_ref: body.function_ref == null ? null : String(body.function_ref).trim() || null,
@@ -45,7 +47,8 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     // Explizit leeres Array '[]' = bewusst OHNE Tools (z. B. Hilfe-Action);
     // null (Feld fehlt) = unveraendert/alle Tools.
     tools: tools ? JSON.stringify(tools) : null,
-    enabled: body.enabled === false ? 0 : 1,
+    // GET-Roundtrip liefert enabled als Zahl 0/1 -> 0 muss "aus" bleiben.
+    enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,
   };
 }
 
@@ -74,6 +77,6 @@ export function normalizeFunctionInput(body: Record<string, unknown>): FunctionI
     inventory_prompt: body.inventory_prompt == null ? null : String(body.inventory_prompt).trim() || null,
     // Default 'write' (konservativ): nur explizites 'read' verwirft den Index-Cache nicht.
     side_effect: body.side_effect === 'read' ? 'read' : 'write',
-    enabled: body.enabled === false ? 0 : 1,
+    enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,
   };
 }

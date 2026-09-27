@@ -33,6 +33,8 @@ export interface LogEntry {
   model?: string;
 }
 
+let logInserts = 0;
+
 export function addLog(entry: LogEntry): void {
   getDb().prepare(
     `INSERT INTO logs (session_id, query, route, action_id, score, response, duration_ms, trace, prompt_tokens, completion_tokens, llm_model)
@@ -50,9 +52,17 @@ export function addLog(entry: LogEntry): void {
     entry.completionTokens ?? null,
     entry.model ?? null
   );
+  // Retention: gelegentlich alte Logs entfernen (kein eigener Cron im Gateway).
+  if (++logInserts % 200 === 0) {
+    try {
+      getDb().prepare("DELETE FROM logs WHERE ts < datetime('now', '-30 days')").run();
+    } catch {
+      /* Retention ist best-effort */
+    }
+  }
 }
 
-export function summarizeUsage(): {
+export function summarizeUsage(days = 30): {
   requests: number;
   llmRequests: number;
   promptTokens: number;
@@ -60,10 +70,11 @@ export function summarizeUsage(): {
   totalTokens: number;
   cachedRequests: number;
 } {
+  const windowDays = Math.max(1, Math.floor(days));
   const rows = getDb().prepare(
-      "SELECT prompt_tokens, completion_tokens, trace FROM logs WHERE trace IS NOT NULL AND trace != ''"
+      "SELECT prompt_tokens, completion_tokens, trace FROM logs WHERE trace IS NOT NULL AND trace != '' AND ts >= datetime('now', ?)"
     )
-    .all() as { prompt_tokens: number | null; completion_tokens: number | null; trace: string }[];
+    .all(`-${windowDays} days`) as { prompt_tokens: number | null; completion_tokens: number | null; trace: string }[];
   let prompt = 0;
   let completion = 0;
   let cacheHits = 0;

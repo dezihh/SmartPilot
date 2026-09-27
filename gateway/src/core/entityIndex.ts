@@ -172,6 +172,9 @@ function parseLine(line: string): IndexEntry | null {
 }
 
 let cache = new Map<string, { ts: number; entries: IndexEntry[] }>();
+// In-Flight-Guard: parallele Kaltabrufe desselben Index teilen sich einen
+// Fetch (sonst mehrfache Tool-Calls). Siehe getIndexSnapshot (F-15).
+const inflight = new Map<string, Promise<IndexEntry[]>>();
 
 export function invalidateIndex(): void {
   cache.clear();
@@ -201,12 +204,7 @@ function settingNameFor(indexKey: string): string {
   return indexKey ? `entity_index_${indexKey}` : 'entity_index';
 }
 
-export async function getIndexSnapshot(indexKey = '', force = false): Promise<IndexEntry[]> {
-  const settingName = settingNameFor(indexKey);
-  const cfg = loadConfig(indexKey);
-  if (!cfg.tool) return []; // kein Index konfiguriert -> Basis-Werkzeuge melden das
-  const cached = cache.get(settingName);
-  if (!force && cached && Date.now() - cached.ts < cfg.ttlMs) return cached.entries;
+async function fetchSnapshot(settingName: string, cfg: IndexConfig): Promise<IndexEntry[]> {
   const mcp = await getMcpContext();
   let result: unknown = null;
   for (const server of mcp.servers) {
@@ -227,6 +225,27 @@ export async function getIndexSnapshot(indexKey = '', force = false): Promise<In
   }
   cache.set(settingName, { ts: Date.now(), entries });
   return entries;
+}
+
+export async function getIndexSnapshot(indexKey = '', force = false): Promise<IndexEntry[]> {
+  const settingName = settingNameFor(indexKey);
+  const cfg = loadConfig(indexKey);
+  if (!cfg.tool) return []; // kein Index konfiguriert -> Basis-Werkzeuge melden das
+  const cached = cache.get(settingName);
+  if (!force && cached && Date.now() - cached.ts < cfg.ttlMs) return cached.entries;
+  // Single-Flight: laufenden Abruf teilen statt parallel zu starten.
+  let p = inflight.get(settingName);
+  if (!p) {
+    p = fetchSnapshot(settingName, cfg).finally(() => inflight.delete(settingName));
+    inflight.set(settingName, p);
+  }
+  try {
+    return await p;
+  } catch (e) {
+    // Stale-while-error: letzten bekannten Stand liefern, statt hart zu werfen.
+    if (cached) return cached.entries;
+    throw e;
+  }
 }
 
 // Transform-Templates: JSON-Tool-Result (Array oder Objekt) -> Pipe-Zeilen

@@ -34,6 +34,9 @@ export function initDb(path: string, withReferenceSeed = false): void {
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
 
+// Migrationen in einer Transaktion: ein Abbruch laesst kein halb migriertes
+// Schema zurueck (F-26).
+db.transaction(() => {
 // Migration: actions um handler_config + search_summary-Mode erweitern (idempotent)
 {
   const cols = (db.prepare('PRAGMA table_info(actions)').all() as { name: string }[]).map((c) => c.name);
@@ -89,6 +92,7 @@ export function initDb(path: string, withReferenceSeed = false): void {
     `);
   }
 }
+})();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mcp_servers (

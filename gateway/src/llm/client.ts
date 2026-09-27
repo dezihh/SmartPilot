@@ -1,6 +1,10 @@
 import { config } from '../config.js';
 import { getSetting, getSettingNum } from '../db.js';
 
+// Hartes Default-Zeitfenster: kein LLM-Aufruf (auch der Hybrid-Pfad ohne
+// expliziten Timeout) darf unbegrenzt auf einen haengenden Server warten.
+const DEFAULT_LLM_TIMEOUT_MS = 9_000;
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
@@ -73,7 +77,7 @@ async function callLlm(
       ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
     },
     body: JSON.stringify(body),
-    signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
+    signal: AbortSignal.timeout(timeoutMs ?? DEFAULT_LLM_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text();

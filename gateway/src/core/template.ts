@@ -26,14 +26,129 @@ export const HTTP_BODY_CAP = 100_000;
 // SSRF-Schutz: dynamische http()-URLs (args-kontaminiert) duerfen niemals ins
 // private Netz zeigen. Literale URLs (Admin-Templates) sind vertrauenswuerdig
 // und bleiben unangetastet (LAN-Dienste wie CGIs muessen funktionieren).
-export function isPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return true;
-  if (/^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h) || /^0\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2[0-9]|3[01])\./.test(h)) return true;
-  if (h === '::1' || h === '::' || h.startsWith('fe80:') || /^f[cd][0-9a-f]{2}:/.test(h)) return true;
-  if (h.startsWith('::ffff:')) return isPrivateHost(h.slice(7));
+// Haertung: Der URL-Parser kanonisiert IPv4-Kurzformen (Dezimal/Oktal/Hex);
+// danach werden private IPv4-/IPv6-Bereiche inkl. IPv4-Mapped geprueft.
+function ipv4ToBytes(ip: string): number[] | null {
+  const parts = ip.split('.');
+  if (parts.length !== 4) return null;
+  const out: number[] = [];
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p)) return null;
+    const n = Number(p);
+    if (n > 255) return null;
+    out.push(n);
+  }
+  return out;
+}
+
+function ipv4InRange(bytes: number[], base: string, bits: number): boolean {
+  const b = ipv4ToBytes(base);
+  if (!b) return false;
+  const n = ((bytes[0]! << 24) | (bytes[1]! << 16) | (bytes[2]! << 8) | bytes[3]!) >>> 0;
+  const bn = ((b[0]! << 24) | (b[1]! << 16) | (b[2]! << 8) | b[3]!) >>> 0;
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+  return ((n & mask) >>> 0) === ((bn & mask) >>> 0);
+}
+
+function isPrivateIpv4(ip: string): boolean {
+  const b = ipv4ToBytes(ip);
+  if (!b) return false;
+  return (
+    ipv4InRange(b, '0.0.0.0', 8) ||
+    ipv4InRange(b, '10.0.0.0', 8) ||
+    ipv4InRange(b, '100.64.0.0', 10) ||
+    ipv4InRange(b, '127.0.0.0', 8) ||
+    ipv4InRange(b, '169.254.0.0', 16) ||
+    ipv4InRange(b, '172.16.0.0', 12) ||
+    ipv4InRange(b, '192.0.0.0', 24) ||
+    ipv4InRange(b, '192.168.0.0', 16) ||
+    ipv4InRange(b, '198.18.0.0', 15)
+  );
+}
+
+function expandIpv6(input: string): number[] | null {
+  let ip = input.replace(/^\[|\]$/g, '').toLowerCase().split('%')[0]!;
+  if (!ip.includes(':')) return null;
+  const dotIdx = ip.lastIndexOf('.');
+  if (dotIdx !== -1) {
+    // Eingebettete IPv4-Schreibweise (z. B. ::ffff:127.0.0.1) -> zwei Hextets.
+    const colonIdx = ip.lastIndexOf(':');
+    const v4 = ipv4ToBytes(ip.slice(colonIdx + 1));
+    if (!v4) return null;
+    const hi = ((v4[0]! << 8) | v4[1]!).toString(16);
+    const lo = ((v4[2]! << 8) | v4[3]!).toString(16);
+    ip = `${ip.slice(0, colonIdx + 1)}${hi}:${lo}`;
+  }
+  const parts = ip.split('::');
+  if (parts.length > 2) return null;
+  const head = parts[0] ? parts[0].split(':') : [];
+  const tail = parts.length === 2 ? (parts[1] ? parts[1].split(':') : []) : [];
+  if (parts.length === 1 && head.length !== 8) return null;
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0) return null;
+  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
+  if (groups.length !== 8) return null;
+  const out: number[] = [];
+  for (const g of groups) {
+    if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+    out.push(parseInt(g, 16));
+  }
+  return out;
+}
+
+function isPrivateIpv6(ip: string): boolean {
+  const g = expandIpv6(ip);
+  if (!g) return false;
+  const [g0, g1, g2, g3, g4, g5, g6, g7] = g;
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0 && g6 === 0 && (g7 === 0 || g7 === 1)) return true;
+  if ((g0! & 0xffc0) === 0xfe80) return true; // fe80::/10 Link-Local
+  if ((g0! & 0xfe00) === 0xfc00) return true; // fc00::/7 Unique Local
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff) {
+    return isPrivateIpv4(`${(g6! >> 8) & 0xff}.${g6! & 0xff}.${(g7! >> 8) & 0xff}.${g7! & 0xff}`);
+  }
   return false;
+}
+
+export function isPrivateHost(hostname: string): boolean {
+  let h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  // IPv4-Kurzformen (Dezimal/Oktal/Hex) ueber den URL-Parser kanonisieren.
+  try {
+    const canon = new URL(`http://${h}`).hostname.replace(/^\[|\]$/g, '');
+    if (canon) h = canon;
+  } catch {
+    /* kein parsbarer Host - mit dem Rohwert weiterpruefen */
+  }
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return true;
+  if (isPrivateIpv4(h)) return true;
+  if (isPrivateIpv6(h)) return true;
+  return false;
+}
+
+// Body streamend bis zum Cap lesen: eine riesige Antwort darf nicht erst
+// komplett in den Speicher geladen werden (Body-Cap greift sonst zu spaet).
+async function readCapped(res: Response, cap: number): Promise<string> {
+  if (!res.body) return (await res.text()).slice(0, cap);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let out = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      out += decoder.decode(value, { stream: true });
+      if (out.length >= cap) break;
+    }
+    out += decoder.decode();
+  } catch {
+    /* abgebrochene Verbindung: bisher Gelesenes verwenden */
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      /* ignore */
+    }
+  }
+  return out.slice(0, cap);
 }
 
 async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Promise<unknown | null> {
@@ -61,7 +176,7 @@ async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Pro
         target = new URL(loc, target).toString();
         continue;
       }
-      const raw = (await res.text()).slice(0, bodyCap);
+      const raw = await readCapped(res, bodyCap);
       if (!res.ok) {
         trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, body: raw.slice(0, 200) } });
         return null;

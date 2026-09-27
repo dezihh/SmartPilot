@@ -22,11 +22,15 @@ export interface LiteralCalls {
   httpUrls: string[];
 }
 
-export function extractLiterals(template: string): LiteralCalls {
+export function extractLiterals(rawTemplate: string): LiteralCalls {
+  // nunjucks-Kommentare {# ... #} werden nie gerendert -> nicht vorwaermen
+  // (F-01). Wortgrenzen in den Regexen verhindern Fehltreffer wie
+  // xfn()/myshell()/myhttp() (F-02).
+  const template = rawTemplate.replace(/\{#[\s\S]*?#\}/g, '');
   // 2. String-Arg eines index.*-Aufrufs = Index-Key ('' = Default-Index).
   const indexKeys = new Set<string>();
   for (const m of template.matchAll(
-    /index\.(?:state|get|find)\(\s*(?:"[^"]*"|'[^']*')(?:\s*,\s*["']([^"']+)["']\s*)?\)/g
+    /(?<![\w.])index\.(?:state|get|find)\(\s*(?:"[^"]*"|'[^']*')(?:\s*,\s*["']([^"']+)["']\s*)?\)/g
   )) {
     indexKeys.add((m[1] as string | undefined) ?? '');
   }
@@ -34,13 +38,13 @@ export function extractLiterals(template: string): LiteralCalls {
   // bleibt usesIndex false und der Agent-Pfad rendert ohne vorgewaermten
   // Index ("Entity-Index nicht verfuegbar"). Key aus 2. Literal-Arg.
   for (const m of template.matchAll(
-    /index\.(?:state|get|find)\(\s*args\.[a-zA-Z0-9_]+\s*(?:,\s*["']([^"']+)["'])?\s*\)/g
+    /(?<![\w.])index\.(?:state|get|find)\(\s*args\.[a-zA-Z0-9_]+\s*(?:,\s*["']([^"']+)["'])?\s*\)/g
   )) {
     indexKeys.add((m[1] as string | undefined) ?? '');
   }
   const states: { id: string; key: string }[] = [];
   for (const m of template.matchAll(
-    /index\.state\(\s*["']([^"']+)["']\s*(?:,\s*["']([^"']+)["']\s*)?\)/g
+    /(?<![\w.])index\.state\(\s*["']([^"']+)["']\s*(?:,\s*["']([^"']+)["']\s*)?\)/g
   )) {
     states.push({ id: m[1] as string, key: (m[2] as string | undefined) ?? '' });
     if ((m[2] as string | undefined) !== undefined) indexKeys.add(m[2] as string);
@@ -48,7 +52,7 @@ export function extractLiterals(template: string): LiteralCalls {
   const usesIndex = indexKeys.size > 0;
   // Dynamischer Index-Key als 2. Arg (index.find(args.q, args.index)): der Key
   // steht erst zur Renderzeit fest -> alle konfigurierten Keys vorwaermen.
-  const indexAll = /index\.(?:state|get|find)\([^()]*,\s*args\./.test(template);
+  const indexAll = /(?<![\w.])index\.(?:state|get|find)\([^()]*,\s*args\./.test(template);
   const calls: { tool: string; args: string | null }[] = [];
   const mcpCallDyn: { tool: string; expr: string }[] = [];
   const shells: string[] = [];
@@ -57,19 +61,19 @@ export function extractLiterals(template: string): LiteralCalls {
   const httpDyn: { expr: string; ttl: number }[] = [];
   // mcp.call('tool') bzw. mcp.call('tool', {flaches JSON-Literal, eine Zeile});
   // Literal-Args mit args./now. sind NICHT literal (die laufen als dynamisch).
-  for (const m of template.matchAll(/mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*\)/g)) {
+  for (const m of template.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*\)/g)) {
     calls.push({ tool: m[1] as string, args: (m[2] as string | undefined) ?? null });
   }
   // dynamische mcp.call-Args: {…args.x…} (keine verschachtelten Objekte)
-  for (const m of template.matchAll(/mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*\)/g)) {
+  for (const m of template.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*\)/g)) {
     mcpCallDyn.push({ tool: m[1] as string, expr: `{${m[2] as string}}` });
   }
-  for (const m of template.matchAll(/shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
-  for (const m of template.matchAll(/fn\(\s*["']([a-zA-Z0-9_]+)["']\s*\)/g)) fns.push(m[1] as string);
+  for (const m of template.matchAll(/(?<![\w.])shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
+  for (const m of template.matchAll(/(?<![\w.])fn\(\s*["']([a-zA-Z0-9_]+)["']\s*\)/g)) fns.push(m[1] as string);
   // http(...): Inneres je Call extrahieren (eine Klammerebene toleriert),
   // danach reines Literal (optional mit TTL) -> httpCalls; alles andere
   // (Konkatenation mit args/now) -> dynamische Expression.
-  for (const m of template.matchAll(/http\(\s*((?:[^()]|\([^()]*\))*?)\s*\)/g)) {
+  for (const m of template.matchAll(/(?<![\w.])http\(\s*((?:[^()]|\([^()]*\))*?)\s*\)/g)) {
     const inner = (m[1] as string).trim();
     if (!inner) continue;
     const lm = /^["']([^"']*)["']\s*(?:,\s*(\d+)\s*)?$/.exec(inner);

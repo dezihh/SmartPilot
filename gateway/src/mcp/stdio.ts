@@ -50,6 +50,8 @@ export class McpStdioClient implements McpTransport {
     });
     this.child.on('error', (e) => this.onExit(new Error(`stdio spawn: ${e.message}`)));
     this.child.on('close', () => this.onExit(new Error('stdio MCP-Server hat sich beendet')));
+    // EPIPE nach Server-Tod darf den Prozess nicht beenden.
+    this.child.stdin!.on('error', (e) => this.onExit(new Error(`stdio stdin: ${e.message}`)));
     return this.child;
   }
 

@@ -4,6 +4,7 @@ import type { McpContext } from '../mcp/registry.js';
 import type { ToolSpec } from '../llm/client.js';
 import type { SideEffect } from '../types.js';
 import { listFunctions } from '../db/functions.js';
+import { getSetting } from '../db/settings.js';
 
 export type ToolRoute =
   | { kind: 'mcp'; client: McpContext['servers'][number]['client']; toolName: string; sideEffect: SideEffect }
@@ -14,6 +15,14 @@ export type ToolRoute =
 export type ToolRouteMap = { specs: ToolSpec[]; routes: Map<string, ToolRoute>; budgets: Map<string, number> };
 
 export const LLM_BLOCKED_TOOLS = new Set(['googe_ai', 'gargedoor_open_script', '_433_gray4_off', '_433_gray4_on', 'XXXXXXXXXXXXXXhausstatus']);
+
+// Blockliste: Code-Default, per Setting 'llm_blocked_tools' (Komma-Liste)
+// ueberschreibbar. Leerer Wert = nichts blocken (F-17: kein Core-Bezug).
+function blockedTools(): Set<string> {
+  const raw = getSetting('llm_blocked_tools');
+  if (raw === undefined) return LLM_BLOCKED_TOOLS;
+  return new Set(raw.split(',').map((s) => s.trim()).filter(Boolean));
+}
 
 export function sanitizeToolName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -26,9 +35,10 @@ export function buildMcpTools(
   specs: ToolSpec[]
 ): void {
   const used = new Set(routes.keys());
+  const blocked = blockedTools();
   for (const server of mcp.servers) {
     for (const def of server.tools) {
-      if (LLM_BLOCKED_TOOLS.has(def.name)) continue;
+      if (blocked.has(def.name)) continue;
       let name = sanitizeToolName(def.name);
       if (routes.has(def.name) || used.has(name)) {
         name = `${sanitizeToolName(server.name)}__${sanitizeToolName(def.name)}`;
