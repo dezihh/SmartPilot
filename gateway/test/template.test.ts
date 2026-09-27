@@ -1,7 +1,7 @@
 import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as dns } from 'node:dns';
-import { renderActionTemplate, renderFunction } from '../src/core/template.js';
+import { renderActionTemplate, renderFunction, setPinDispatcherFactoryForTests } from '../src/core/template.js';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
 import { resetHttpCacheForTests } from '../src/core/httpCache.js';
@@ -180,17 +180,26 @@ test('http: dynamischer Hostname mit privater DNS-Aufloesung -> blockiert (SSRF,
   }
 });
 
-test('http: dynamischer oeffentlicher Host erhaelt gepinnten Dispatcher (F-07)', async () => {
+test('http: gepruefte Ziel-IP wird an den Dispatcher uebergeben (F-07/N-01)', async () => {
   stubFetch();
+  const pins: { address: string; family: number }[] = [];
+  const sentinel = { close: async () => {} };
+  setPinDispatcherFactoryForTests((pin) => {
+    pins.push(pin);
+    return sentinel;
+  });
   const lk = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]);
   try {
     const r = await renderActionTemplate(`{{ http('http://' ~ args.host ~ '/x') | dump }}`, mcp, [], {
       host: 'public.example.org',
     });
     assert.match(r.speech, /"quelle":"test"/);
-    assert.ok((lastInit as { dispatcher?: unknown } | undefined)?.dispatcher, 'gepinnter Dispatcher wird uebergeben');
+    // Nicht nur Praesenz: der Dispatcher bekommt genau die gepruefte IP.
+    assert.deepEqual(pins, [{ address: '203.0.113.5', family: 4 }]);
+    assert.equal((lastInit as { dispatcher?: unknown } | undefined)?.dispatcher, sentinel);
   } finally {
     lk.mock.restore();
+    setPinDispatcherFactoryForTests();
   }
 });
 

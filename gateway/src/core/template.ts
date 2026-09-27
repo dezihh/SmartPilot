@@ -164,6 +164,20 @@ async function resolveDynamicHost(hostname: string): Promise<{ address: string; 
   }
 }
 
+// F-07/N-01: Dispatcher-Factory fuer gepinnte dynamische Requests. Ausgelagert
+// und injizierbar, damit Tests die tatsaechlich verwendete Ziel-IP (nicht nur
+// die Praesenz) pruefen koennen. Default: undici-Agent mit gepinntem lookup.
+interface PinnedDispatcher {
+  close: () => Promise<void>;
+}
+type PinDispatcherFactory = (pin: { address: string; family: number }) => PinnedDispatcher;
+const defaultPinDispatcher = (pin: { address: string; family: number }): PinnedDispatcher =>
+  new Agent({ connect: { lookup: (_h, _o, cb) => cb(null, [pin]) } });
+let pinDispatcherFactory: PinDispatcherFactory = defaultPinDispatcher;
+export function setPinDispatcherFactoryForTests(factory?: PinDispatcherFactory): void {
+  pinDispatcherFactory = factory ?? defaultPinDispatcher;
+}
+
 async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Promise<unknown | null> {
   const timeoutMs = getSettingNum('http_timeout_ms', HTTP_TIMEOUT_MS);
   const bodyCap = getSettingNum('http_body_cap', HTTP_BODY_CAP);
@@ -182,7 +196,7 @@ async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Pro
       // F-07: DNS-Rebinding - oeffentlichen Hostnamen vorab aufloesen, private
       // Ziele blockieren UND die gepruefte IP im Request pinnen (dispatcher).
       // So ist ein Rebinding zwischen Pruefung und Verbindungsaufbau wirkungslos.
-      let dispatcher: Agent | undefined;
+      let dispatcher: PinnedDispatcher | undefined;
       if (dynamic) {
         const addrs = await resolveDynamicHost(u.hostname);
         if (addrs && addrs.some((a) => isPrivateHost(a.address))) {
@@ -190,11 +204,7 @@ async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Pro
           return null;
         }
         const pin = addrs?.[0];
-        if (pin) {
-          dispatcher = new Agent({
-            connect: { lookup: (_h, _o, cb) => cb(null, [{ address: pin.address, family: pin.family }]) },
-          });
-        }
+        if (pin) dispatcher = pinDispatcherFactory(pin);
       }
       const init: RequestInit = {
         signal: controller.signal,
