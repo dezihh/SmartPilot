@@ -94,6 +94,29 @@ in der [Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Für die
 Alexa-Anbindung über AWS Lambda benötigt das Gateway keine Alexa-spezifischen
 Umgebungsvariablen. Die Lambda greift mit `AUTH_TOKEN` auf `/api/query` zu.
 
+### LLM-Endpoint bereitstellen
+
+Das Gateway bringt kein eigenes Modell mit; es spricht jede **OpenAI-kompatible
+Chat-Completions-Schnittstelle mit Tool-Calling** an. Zwei übliche Wege:
+
+- **Lokal** auf eigener Hardware über einen OpenAI-kompatiblen Server (z. B.
+  Ollama, LM Studio, vLLM oder einen `llama.cpp`-Server). Diese stellen den
+  Endpunkt üblicherweise unter `http://<host>:<port>/v1` bereit.
+- **Cloud** über einen Anbieter mit OpenAI-kompatibler API (z. B. OpenAI oder
+  ein kompatibler Dienst).
+
+Für `gateway/.env` gilt:
+
+- `LLM_BASE_URL`: Basis-URL **bis einschließlich `/v1`** — das Gateway ruft
+  `<LLM_BASE_URL>/chat/completions` auf.
+- `LLM_API_KEY`: Schlüssel des Anbieters (lokale Server akzeptieren oft einen
+  beliebigen Platzhalter).
+- `LLM_MODEL`: Modellname genau so, wie ihn der Endpunkt erwartet.
+
+Das Modell muss Tool-Aufrufe beherrschen; teste es anschließend im Testmonitor,
+bevor du Pakete oder Alexa ergänzt. Ob der Endpunkt erreichbar ist, zeigt der
+erste Aufruf im Monitor (Route und Fehler im Trace).
+
 ### LLM-Modell wählen
 
 Das Modell muss Tool-Aufrufe und zuverlässige JSON-Antworten unterstützen.

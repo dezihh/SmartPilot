@@ -88,7 +88,7 @@ LLM-Schnittstelle (mit Tool-Calling).
 git clone https://github.com/dezihh/SmartPilot.git
 cd SmartPilot
 cp gateway/.env.example gateway/.env
-# gateway/.env ausfüllen: AUTH_TOKEN, LLM_BASE_URL, LLM_API_KEY (Pflicht)
+# gateway/.env ausfüllen: AUTH_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
 GATEWAY_PORT=3000 docker compose up -d --build
 ```
 

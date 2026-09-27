@@ -120,14 +120,14 @@
           </div>
           <div class="field" id="action-function-field">
             <div class="field-head"><label>Daten aus Funktion</label><button type="button" class="help" data-help="Pflicht im deterministischen/hybriden Modus: wähle eine Funktion aus dem Funktionen-Tab." aria-label="Hilfe zu Daten aus Funktion">?</button></div>
-            <div class="field-help hidden">Im deterministic/hybrid-Modus rendert dieser Vorgang die gewählte Funktion (ha.state, ha.call, shell + Jinja — pflegbar und testbar im Funktionen-Tab). Neue Funktionen dort anlegen, dann hier auswählen. Im reinen LLM-Modus nicht nötig.</div>
+            <div class="field-help hidden">Im deterministic/hybrid-Modus rendert dieser Vorgang die gewählte Funktion (index.find/state/get, mcp.call, http, shell + Jinja — pflegbar und testbar im Funktionen-Tab). Neue Funktionen dort anlegen, dann hier auswählen. Im reinen LLM-Modus nicht nötig.</div>
             <select id="action-function">
               <option value="">— Funktion wählen —</option>
             </select>
           </div>
           <div class="field">
-            <div class="field-head"><label>Erlaubte Tools</label><button type="button" class="help" data-help="Angehakt = in den LLM-Modi (llm/hybrid) erlaubt. Keins angehakt = keine Tool-Specs (z. B. reine Formulierung). Das Template im deterministic-Modus ruft Tools unabhängig davon über ha.call auf." aria-label="Hilfe zu Erlaubte Tools">?</button></div>
-            <div class="field-help hidden">Angehakt = in den LLM-Modi (llm/hybrid) erlaubt; das Modell sieht dann ausschließlich diese Tools. Keins angehakt = keine Tool-Specs (Vorgang läuft ohne Tools, z. B. reine Formulierung). Gespeichert wird immer die explizite Liste. Das Template im deterministic-Modus ruft Tools unabhängig davon über ha.call auf.</div>
+            <div class="field-head"><label>Erlaubte Tools</label><button type="button" class="help" data-help="Angehakt = in den LLM-Modi (llm/hybrid) erlaubt. Keins angehakt = keine Tool-Specs (z. B. reine Formulierung). Das Template im deterministic-Modus ruft Tools unabhängig davon über mcp.call auf." aria-label="Hilfe zu Erlaubte Tools">?</button></div>
+            <div class="field-help hidden">Angehakt = in den LLM-Modi (llm/hybrid) erlaubt; das Modell sieht dann ausschließlich diese Tools. Keins angehakt = keine Tool-Specs (Vorgang läuft ohne Tools, z. B. reine Formulierung). Gespeichert wird immer die explizite Liste. Das Template im deterministic-Modus ruft Tools unabhängig davon über mcp.call auf.</div>
             <details id="action-tools-picker">
               <summary>Tools auswählen</summary>
               <div id="action-tools-list"></div>
@@ -150,7 +150,7 @@
             <button id="fn-new" class="btn primary">Neu</button>
           </div>
           <p class="field-help" style="margin-bottom: 0.6rem;">
-            Wiederverwendbare Jinja-Bausteine mit Datenabruf (ha.state, ha.call, shell).
+            Wiederverwendbare Jinja-Bausteine mit Datenabruf (index.find/state/get, mcp.call, http, shell).
             In Templates aufrufen mit <code>{{ fn('name') }}</code>.
           </p>
           <table id="functions-table">
@@ -185,11 +185,12 @@
             </select>
           </div>
           <div class="field">
-            <div class="field-head"><label>Template</label><button type="button" class="help" data-help="Wie Vorgangs-Templates: ha.state('entity'), ha.entities('domain'), ha.call('toolname'), shell('befehl') + Jinja. Der gerenderte Text ist das Ergebnis der Funktion." aria-label="Hilfe zu Template">?</button></div>            <div class="field-help hidden">
+            <div class="field-head"><label>Template</label><button type="button" class="help" data-help="Wie Vorgangs-Templates: index.state('id'), index.find('suche'), mcp.call('toolname', {…}), http('url', ttlMs?), shell('befehl') + Jinja. Der gerenderte Text ist das Ergebnis der Funktion." aria-label="Hilfe zu Template">?</button></div>            <div class="field-help hidden">
               Gleiches Repertoire wie Vorgangs-Templates:
-              {{ ha.state('sensor.x') }} → Zustand einer Entität,
-              {{ ha.entities('domain') }} → Liste einer Domain,
-              {{ ha.call('toolname') }} → MCP-Tool ohne Argumente,
+              {{ index.state('sensor.x') }} → Zustand einer Entität,
+              {{ index.find('wohnzimmer licht') }} → Fuzzy-Suche (max. 8 Treffer),
+              {{ mcp.call('toolname', {...}) }} → MCP-Tool aufrufen,
+              {{ http('https://…', 60000) }} → HTTP-GET (5 s, 100 KB; ttlMs = Cache),
               {{ shell('befehl') }} → Shell im Gateway-Container (5 s Timeout, 4000 Zeichen).
               Jinja-Logik und Filter erlaubt. Das gerenderte Ergebnis ist der Rückgabewert der Funktion.
             </div>

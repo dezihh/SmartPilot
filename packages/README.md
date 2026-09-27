@@ -72,6 +72,60 @@ Umbau ergaenzt werden.
 `write`): schreibende Aufrufe verwerfen den Entity-Index-Cache des Agenten,
 rein lesende (`read`) nicht.
 
+## Artefakt-Felder (servers / functions / indexes)
+
+Die Oberfelder stehen oben; die darin enthaltenen Artefakte haben diese
+Felder:
+
+**`servers[]`** — Eintrag in der MCP-Tool-Registry:
+
+| Feld | Pflicht | Bedeutung |
+| --- | --- | --- |
+| `name` | ja | Anzeigename in der Tool-Registry |
+| `transport` | ja | `http` oder `stdio` |
+| `url` | bei `http` | Endpunkt, z. B. `http://<host>:<port>/mcp` |
+| `command`, `args`, `env` | bei `stdio` | Befehl im Gateway-Container (z. B. `node_modules/.bin/mcp-searxng`), Argumente, Umgebungsvariablen |
+| `auth_token` | nein | Bearer-Token (HTTP); `${key}` fuer Secrets |
+| `inventory_prompt` | nein | Kaskaden-/Regeltext fuer den Agenten |
+| `sideEffect` | nein | `read`/`write` (Default `write`) |
+| `enabled` | nein | Default `true` |
+
+**`functions[]`** — Funktion (Jinja-Template):
+
+| Feld | Pflicht | Bedeutung |
+| --- | --- | --- |
+| `name` | ja | `a-z`, `0-9`, `_` |
+| `template` | ja | Jinja/Nunjucks; Bausteine siehe `doc/REFERENCE.md` |
+| `description` | nein | Anzeigetext |
+| `parameters` | nein | JSON-Schema fuer Agentenargumente |
+| `budget` | nein | max. Aufrufe pro Frage |
+| `inventory_prompt` | nein | Faehigkeitszeile im Agent-Katalog |
+| `sideEffect` | nein | `read`/`write` (Default `write`) |
+
+**`indexes[]`** — Index-Quelle:
+
+| Feld | Pflicht | Bedeutung |
+| --- | --- | --- |
+| `key` | ja | `''` = Standard-Index, sonst `a-z`, `0-9`, `_` |
+| `config` | ja | Objekt mit mindestens `tool` (MCP-Toolname); optional `args`, `transform`, `ttlMs`, `aliases` … |
+
+## Validierungsregeln
+
+Das Gateway prueft das Manifest bei der Vorschau und beim Install und meldet
+Verstoesse im Klartext:
+
+- `id`: `a-z`, `0-9`, `_`, `-` (1–40 Zeichen); `version`: `x.y.z`.
+- Funktionsname: `a-z`, `0-9`, `_` (1–60) — direkt als `fn_<name>` nutzbar.
+- Index-Key: `a-z`, `0-9`, `_` (0–30); `config.tool` erforderlich.
+- `allowTools`: Tool-Namen aus `a-z`, `0-9`, `_`, `*`.
+- Param-Key: `a-z`, `0-9`, `_` (1–40) mit `label`.
+- `sideEffect`: nur `read` oder `write`.
+- `language`: z. B. `de`; `minGatewayVersion`: `x.y.z`.
+
+Ein Manifest laesst sich ohne Registry ueber den **Offline-Import** (Admin →
+„Wartung und Pakete") vorab pruefen und installieren — der praktische Weg,
+ein neues Paket lokal zu testen.
+
 ## Manifest und Vertrauen
 
 Die Tabelle oben ist die Feld-Referenz. Warum man einem Paket vertrauen
