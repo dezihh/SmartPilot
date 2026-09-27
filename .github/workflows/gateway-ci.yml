@@ -1,0 +1,52 @@
+name: Gateway CI
+
+# Typecheck + Tests fuer das Gateway. Laeuft nur bei Aenderungen unter gateway/.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gateway/**'
+      - '.github/workflows/gateway-ci.yml'
+  pull_request:
+    paths:
+      - 'gateway/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # config.ts erzwingt diese Werte beim Import; die Tests brauchen keine
+    # echten Dienste (fetch/DB werden isoliert).
+    env:
+      AUTH_TOKEN: ci-token
+      LLM_BASE_URL: http://127.0.0.1:9
+      LLM_API_KEY: ci-key
+      LLM_MODEL: ci-model
+    defaults:
+      run:
+        working-directory: gateway
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: gateway/package-lock.json
+
+      - name: Installieren
+        run: npm ci
+
+      - name: Typecheck (src)
+        run: npm run typecheck
+
+      - name: Typecheck (Tests)
+        run: npm run typecheck:tests
+
+      - name: Tests
+        run: npm test
