@@ -290,6 +290,11 @@ Endpunkte/Rezepte stehen in [Praxisrezepte](RECIPES.md).
   Chat-Modus-Flag.
 - **DB-Recall** über die letzten Agent-Logs (`recentAgentTurns`), wenn keine
   In-Memory-History vorliegt; ältere Turns werden als „alt“ markiert.
+- **Bewusste Entscheidung — Single-User:** Der DB-Recall ist *absichtlich*
+  session-übergreifend. SmartPilot ist für Single-User-Instanzen gedacht (ein
+  Haushalt, ein `AUTH_TOKEN`), daher teilen sich alle Personen dasselbe
+  Gedächtnis. Für Mehrbenutzer-Betrieb müsste `recentAgentTurns` auf
+  `session_id` gefiltert werden; die „alt“-Markierung mildert Verwechslungen ab.
 - Steuerung über Settings `memory_turns`, `memory_minutes` und
   `session_followup` (`llm`/`keyword`/`beides`). Der Chat-Modus
   („starte chat modus“ / „chat beenden“, Regex in der Engine) hält die Session
