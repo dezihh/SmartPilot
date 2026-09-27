@@ -197,8 +197,8 @@ entschlüsselten HTTP-Pfad auswertet. Öffentlich benötigt werden:
 
 | URL | Erforderlich | Schutz |
 |---|---|---|
-| `/api/query` | ja | Bearer-Token (`AUTH_TOKEN`) und Rate-Limit |
-| `/api/lambda-trace` | nur vorübergehend zur Diagnose | Bearer-Token (`AUTH_TOKEN`) und Rate-Limit |
+| `/api/query` | ja | Bearer-Token (`AUTH_TOKEN`); Rate-Limit im vorgelagerten Proxy |
+| `/api/lambda-trace` | nur vorübergehend zur Diagnose | Bearer-Token (`AUTH_TOKEN`); im Normalbetrieb gesperrt |
 
 `/api/lambda-trace` meldet die Ereignisse `invoke` und `response_sent` sowie
 die in der Lambda gemessene Dauer an das Gateway. Das erleichtert die
@@ -214,6 +214,10 @@ nebenläufig erfolgen. Die aktuelle Lambda versucht sie dennoch und schreibt
 bei einer gesperrten Route eine Warnung in ihr CloudWatch-Log. Für eine
 gezielte Fehlersuche kann die Route vorübergehend zusammen mit
 `debug_logging` freigegeben werden.
+
+Das Gateway selbst begrenzt nur den Admin-Login (`/admin/login`, 10 Versuche
+pro Minute und IP). Das Rate-Limit für `/api/query` übernimmt der vorgelagerte
+Proxy (`limit_req` im Beispiel unten).
 
 Testmonitor, WebUI, Admin-Oberfläche und Admin-API bleiben ausschließlich im
 internen Netz.
