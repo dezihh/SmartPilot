@@ -1,4 +1,4 @@
-import { test, before, afterEach } from 'node:test';
+import { test, before, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { setSetting, deleteSetting } from '../src/db/settings.js';
@@ -262,6 +262,68 @@ test('getIndexSnapshot: liefert bei Tool-Fehler den letzten Stand (Stale-while-e
     invalidateIndex();
     invalidateMcpCache();
     getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-idx2'").run();
+  }
+});
+
+// ---- F-38: jenseits der Altersgrenze darf der alte Stand nicht weiterleben ----
+// Der vorige Test deckt nur die Rueckgabe INNERHALB der Grenze ab. Hier wird
+// mit kontrollierter Zeit geprueft, dass der Fehler nach Ablauf der Grenze
+// (max(10 x ttlMs, 5 min)) durchgereicht wird statt still veraltete Daten zu liefern.
+test('getIndexSnapshot: veralteter Stand jenseits der Altersgrenze wirft (F-38)', async () => {
+  stubFetch();
+  const okHandler = (_url: string, body: Record<string, unknown>): FakeResInit => {
+    if (body.method === 'initialize') return { headers: { 'mcp-session-id': 's' }, json: { jsonrpc: '2.0', id: 1, result: {} } };
+    if (body.method === 'tools/list') return toolsList('ha_index_aged');
+    if (body.method === 'tools/call') {
+      return { json: { jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: 'light.1|Wohnzimmer|on||Licht|' }] } } };
+    }
+    return { status: 202 };
+  };
+  handler = okHandler;
+  createMcpServer({
+    name: 'audit-idx-aged',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  setSetting('entity_index_aged', JSON.stringify({ tool: 'ha_index_aged', ttlMs: 1_000 }));
+  invalidateMcpCache();
+  invalidateIndex();
+
+  let fakeNow = 1_000_000;
+  const nowMock = mock.method(Date, 'now', () => fakeNow);
+  try {
+    const first = await getIndexSnapshot('aged', true);
+    assert.equal(first.length, 1);
+
+    // Ab jetzt schlaegt der Tool-Call fehl.
+    handler = (_url, body) => {
+      if (body.method === 'tools/call') return { json: { jsonrpc: '2.0', id: 1, error: { code: -1, message: 'kaputt' } } };
+      return okHandler(_url, body);
+    };
+
+    // Alter 200s: innerhalb max(10x1s, 5min)=300s -> letzter Stand.
+    fakeNow += 200_000;
+    const stale = await getIndexSnapshot('aged', true);
+    assert.equal(stale.length, 1, 'innerhalb der Grenze letzter bekannter Stand');
+
+    // Alter 400s: jenseits der Grenze -> Fehler wird durchgereicht.
+    fakeNow += 200_000;
+    await assert.rejects(
+      () => getIndexSnapshot('aged', true),
+      /kaputt/
+    );
+  } finally {
+    nowMock.mock.restore();
+    deleteSetting('entity_index_aged');
+    invalidateIndex();
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-idx-aged'").run();
   }
 });
 
