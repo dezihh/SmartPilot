@@ -189,7 +189,9 @@ class FakeChild extends EventEmitter {
   stdin = new FakeStream();
   stdout = new FakeStream();
   stderr = new FakeStream();
+  killCalls = 0;
   kill(): boolean {
+    this.killCalls++;
     return true;
   }
 }
@@ -200,6 +202,18 @@ test('stdio: stdin-Fehler (EPIPE) lehnt offene Requests ab (F-16)', async () => 
   const p = client.init();
   child.stdin.emit('error', new Error('EPIPE'));
   await assert.rejects(p, /stdio stdin: EPIPE/);
+});
+
+// Nach einem stdin-Fehler gibt onExit den Child frei (kill + this.child = null),
+// damit kein Zombie/Prozess-Leck entsteht. stop() killt den bereits
+// freigegebenen Child nicht erneut.
+test('stdio: nach stdin-Fehler wird der Child freigegeben (F-37)', () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  void client.init().catch(() => {});
+  child.stdin.emit('error', new Error('EPIPE'));
+  client.stop();
+  assert.equal(child.killCalls, 1, 'EPIPE-Child muss genau einmal beendet werden');
 });
 
 test('getMcpContext: parallele Kaltstarts laden einen Server nur einmal (F-32)', async () => {

@@ -22,15 +22,18 @@ export interface LiteralCalls {
   httpUrls: string[];
 }
 
-// Entfernt Jinja-Kontrollbloecke (if/for/macro/block/filter/call/apply/
-// autoescape/raw/verbatim und Block-{% set %}) samt Inhalt. Seiteneffekt-
-// behaftete Aufrufe (shell, mcp.call) in solchen Zweigen duerfen nicht
-// vorgewaermt werden, weil der Zweig sonst auch bei nicht erfuellter
-// Bedingung liefe (F-01). Tags ausserhalb der Bloecke - etwa die uebliche
-// Form {% set x = http(...) %} - bleiben erhalten.
+// Entfernt nur echte Kontroll-/Definitionsbloecke samt Inhalt: if/for-Zweige
+// laufen evtl. nicht, macro-Bodies erst bei Aufruf, call-Bodies erst wenn der
+// Aufgerufene caller() nutzt, raw/verbatim sind reiner Text ohne Auswertung.
+// Seiteneffekt-behaftete Aufrufe (shell, mcp.call) in solchen Zweigen duerfen
+// nicht vorgewaermt werden, weil der Zweig sonst auch bei nicht erfuellter
+// Bedingung liefe (F-01). Bloecke, deren Inhalt beim Rendern ausgewertet wird
+// (filter/autoescape/block/apply und Block-{% set %}), bleiben UNANGETASTET -
+// sonst verlieren gerenderte shell-/mcp.call-Aufrufe ihr Ergebnis (F-36).
+// Tags ausserhalb der Bloecke - etwa {% set x = http(...) %} - bleiben erhalten.
 function stripControlBlocks(tpl: string): string {
-  const openers = new Set(['if', 'for', 'macro', 'block', 'filter', 'call', 'apply', 'autoescape', 'raw', 'verbatim']);
-  const closers = new Set(['endif', 'endfor', 'endmacro', 'endblock', 'endfilter', 'endcall', 'endapply', 'endautoescape', 'endraw', 'endverbatim', 'endset']);
+  const openers = new Set(['if', 'for', 'macro', 'call', 'raw', 'verbatim']);
+  const closers = new Set(['endif', 'endfor', 'endmacro', 'endcall', 'endraw', 'endverbatim']);
   const tagRe = /\{%-?\s*([\s\S]*?)\s*-?%\}/g;
   let out = '';
   let depth = 0;
@@ -39,7 +42,7 @@ function stripControlBlocks(tpl: string): string {
   while ((m = tagRe.exec(tpl)) !== null) {
     const tag = (m[1] ?? '').trim();
     const head = tag.split(/\s+/)[0] ?? '';
-    const isOpen = openers.has(head) || (head === 'set' && !tag.includes('='));
+    const isOpen = openers.has(head);
     const isEnd = closers.has(head);
     if (depth === 0) out += tpl.slice(last, tagRe.lastIndex);
     if (isOpen) depth++;

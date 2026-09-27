@@ -56,6 +56,17 @@ test('extractLiterals: shell()/mcp.call() in nicht durchlaufenem if-Zweig werden
   assert.deepEqual(top.calls, [{ tool: 'ha.turn_on', args: "{ 'x': 1 }" }]);
 });
 
+// ---- F-36: gerenderte Bloecke duerfen nicht gestrippt werden ----
+// filter/autoescape/block werten ihren Inhalt beim Rendern aus; ihre
+// shell-/mcp.call-Aufrufe muessen weiter extrahiert (und vorgewaermt) werden.
+test('extractLiterals: filter/autoescape/block-Bloecke werden weiter extrahiert (F-36)', () => {
+  assert.deepEqual(extractLiterals("{% filter upper %}{{ shell('echo hi') }}{% endfilter %}").shells, ['echo hi']);
+  assert.deepEqual(extractLiterals("{% autoescape true %}{{ shell('echo a') }}{% endautoescape %}").shells, ['echo a']);
+  assert.deepEqual(extractLiterals("{% block body %}{{ mcp.call('ha.turn_on', {}) }}{% endblock %}").calls, [
+    { tool: 'ha.turn_on', args: '{}' },
+  ]);
+});
+
 // ---- F-02: extract.ts ohne Wortgrenzen ----
 // `xfn('a')`, `myshell('x')`, `myhttp(...)` werden als fn()/shell()/http()
 // fehlinterpretiert, weil die Regexe keine Wortgrenze pruefen.

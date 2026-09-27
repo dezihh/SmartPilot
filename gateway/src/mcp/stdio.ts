@@ -62,7 +62,22 @@ export class McpStdioClient implements McpTransport {
   }
 
   private onExit(err: Error): void {
+    if (this.exited) return;
     this.exited = true;
+    // Kind freigeben (F-37): ohne kill bliebe der alte Prozess nach einem
+    // stdin-EPIPE am Leben und der naechste ensureChild() wuerde einen zweiten
+    // Prozess starten -> Prozess-Leck.
+    const child = this.child;
+    this.child = null;
+    if (child) {
+      child.removeAllListeners();
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* bereits beendet */
+      }
+    }
+    this.buffer = '';
     for (const p of this.pending.values()) {
       clearTimeout(p.timer);
       p.reject(err);

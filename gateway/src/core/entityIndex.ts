@@ -243,7 +243,16 @@ export async function getIndexSnapshot(indexKey = '', force = false): Promise<In
     return await p;
   } catch (e) {
     // Stale-while-error: letzten bekannten Stand liefern, statt hart zu werfen.
-    if (cached) return cached.entries;
+    // Nur innerhalb einer Altersgrenze und mit Warnung (F-38), damit still
+    // veraltete Daten nicht beliebig alt werden.
+    const staleLimit = Math.max(cfg.ttlMs * 10, 5 * 60_000);
+    if (cached && Date.now() - cached.ts <= staleLimit) {
+      console.warn(
+        `entity_index ${settingName}: liefere veralteten Stand (Alter ${Math.round((Date.now() - cached.ts) / 1000)}s) nach Fehler:`,
+        e
+      );
+      return cached.entries;
+    }
     throw e;
   }
 }
