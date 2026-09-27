@@ -8,10 +8,13 @@ import { setSetting, deleteSetting } from '../src/db/settings.js';
 import { resetSessionsForTests } from '../src/core/session.js';
 import { indexInvalidationsForTests } from '../src/core/entityIndex.js';
 import type { TraceEvent } from '../src/types.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('engine');
 
 const originalFetch = globalThis.fetch;
 let llmCalls = 0;
-let llmScript: ((i: number) => unknown)[] = [];
+let llmScript: unknown[] = [];
 let llmBodies: { messages: { role: string; content: string | null }[] }[] = [];
 
 function stubFetchEngine(): void {
@@ -55,7 +58,7 @@ function toolCalls(calls: { name: string; args: string }[]): unknown {
 }
 
 async function q(text: string, sessionId: string): Promise<Awaited<ReturnType<typeof processQuery>>> {
-  return processQuery({ text, sessionId, source: 'test' });
+  return processQuery({ text, sessionId });
 }
 
 function findStep(trace: TraceEvent[], step: string): TraceEvent | undefined {
@@ -64,7 +67,7 @@ function findStep(trace: TraceEvent[], step: string): TraceEvent | undefined {
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-engine.db');
+  initDb(DB_PATH);
   resetSessionsForTests();
   const db = getDb();
   db.exec('DELETE FROM actions; DELETE FROM tpl_functions; DELETE FROM logs; DELETE FROM settings;');
@@ -83,7 +86,7 @@ before(() => {
     template: 'Deterministisch: {{ args.wert }}',
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
 });
@@ -102,7 +105,7 @@ afterEach(() => {
 after(() => {
   globalThis.fetch = originalFetch;
   closeDb();
-  initDb('/tmp/opencode/test-engine.db');
+  initDb(DB_PATH);
   getDb().exec(
     "DELETE FROM actions WHERE name LIKE 'test%'; DELETE FROM tpl_functions WHERE name LIKE 'test%'; DELETE FROM logs; DELETE FROM settings;"
   );

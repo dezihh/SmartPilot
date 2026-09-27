@@ -5,6 +5,9 @@ import { createClient } from '../src/mcp/registry.js';
 import { McpStdioClient } from '../src/mcp/stdio.js';
 import { initDb, closeDb } from '../src/db/schema.js';
 import type { ToolDef } from '../src/types.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('mcp');
 
 const originalFetch = globalThis.fetch;
 let lastSignal: AbortSignal | null = null;
@@ -21,7 +24,7 @@ let handler: (url: string, body: Record<string, unknown>) => FakeResInit = () =>
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-mcp.db');
+  initDb(DB_PATH);
 });
 
 afterEach(() => {
@@ -94,12 +97,12 @@ test('rpc: Bearer-Header und mcp-session-id werden gesendet', async () => {
   };
   const client = new McpClient('https://mcp.example.org/rpc', 'geheimtoken');
   const spyFetch = globalThis.fetch as (url: string | URL, init?: RequestInit) => Promise<Response>;
-  globalThis.fetch = async (url: string | URL, init?: RequestInit) => {
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
     capturedHeaders = Object.fromEntries(
       Object.entries((init?.headers as Record<string, string>) ?? {})
     );
     return spyFetch(url, init);
-  };
+  }) as typeof fetch;
   await client.init(); // 2 RPCs: Session-ID wird gelernt
   await client.listTools(); // 3. RPC sendet mcp-session-id
   assert.equal(capturedHeaders.Authorization, 'Bearer geheimtoken');

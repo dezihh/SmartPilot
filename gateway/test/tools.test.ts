@@ -6,10 +6,13 @@ import { buildTools, buildMcpTools, sanitizeToolName, LLM_BLOCKED_TOOLS } from '
 import type { ToolSpec } from '../src/llm/client.js';
 import type { McpContext, McpServerContext } from '../src/mcp/registry.js';
 import type { ToolRoute } from '../src/core/tools.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('tools');
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-tools.db');
+  initDb(DB_PATH);
   getDb().exec('DELETE FROM tpl_functions');
   createFunction({
     name: 'recherche',
@@ -17,7 +20,7 @@ before(() => {
     template: 'test',
     parameters: '{"type":"object","properties":{"query":{"type":"string"}}}',
     budget: 2,
-    budget: 2,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   createFunction({
@@ -26,7 +29,7 @@ before(() => {
     template: 'test',
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
 });
@@ -50,6 +53,7 @@ function mcpWith(tools: { name: string; description?: string }[], serverName = '
       {
         id: 1,
         name: serverName,
+        sideEffect: 'write',
         tools: tools.map((t) => ({ ...t, inputSchema: { type: 'object' } })),
         client: client(),
       },
@@ -92,7 +96,9 @@ test('buildMcpTools: Namenskollision -> erster Server behaelt freien Namen, Folg
   buildMcpTools(ctx as McpContext, null, routes, specs);
   assert.deepEqual([...routes.keys()].sort(), ['srv_b__tool_x', 'tool_x']);
   assert.ok(routes.get('tool_x'), 'srv_a mit Rohname');
-  assert.equal(routes.get('srv_b__tool_x')?.toolName, 'tool_x', 'srv_b mit Praefix zeigt aufs gleiche Tool');
+  const prefixed = routes.get('srv_b__tool_x');
+  assert.ok(prefixed && prefixed.kind === 'mcp', 'srv_b mit Praefix zeigt aufs gleiche Tool');
+  assert.equal(prefixed.toolName, 'tool_x', 'srv_b mit Praefix zeigt aufs gleiche Tool');
   assert.equal(specs.length, 2);
 });
 
@@ -112,7 +118,7 @@ test('buildTools: Funktionen bekommen fn_-Praefix + Budget + Schema', () => {
   assert.equal(budgets.get('fn_recherche'), 2);
   const spec = specs.find((s) => s.function.name === 'fn_recherche');
   assert.ok(spec);
-  assert.equal(spec.function.description.length, 300);
+  assert.equal((spec.function.description ?? '').length, 300);
   assert.deepEqual((spec.function.parameters as { type: string }).type, 'object');
   assert.ok(routes.has('fn_ohne_budget'));
   assert.equal(budgets.has('fn_ohne_budget'), false);

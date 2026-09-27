@@ -2,6 +2,9 @@ import { test, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { chatCompletion, type ChatMessage } from '../src/llm/client.js';
 import { initDb, closeDb } from '../src/db/schema.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('llmclient');
 
 const originalFetch = globalThis.fetch;
 
@@ -12,7 +15,7 @@ interface LlmStub {
 let calls: { url: string; model?: string; tools?: number; signal?: AbortSignal }[] = [];
 let stub: LlmStub = {};
 
-function chatJson(model: string, content: string | null): unknown {
+function chatJson(model: string, content: string | null): Record<string, unknown> {
   return {
     model,
     choices: [{ message: { role: 'assistant', content } }],
@@ -45,7 +48,7 @@ const msgs: ChatMessage[] = [{ role: 'user', content: 'frage' }];
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-llmclient.db');
+  initDb(DB_PATH);
 });
 
 beforeEach(() => {

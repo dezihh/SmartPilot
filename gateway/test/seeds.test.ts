@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { rmSync } from 'node:fs';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { setSetting, restoreDefaultSettings } from '../src/db/settings.js';
+import { tmpDb } from './_tmpdb.js';
 
-const FRESH_DB = '/tmp/opencode/test-seeds-fresh.db';
+const FRESH_DB = tmpDb('seeds-fresh');
 
 function freshInit(): void {
   closeDb();

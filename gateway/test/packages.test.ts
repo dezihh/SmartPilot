@@ -24,7 +24,9 @@ import {
   manifestHash,
 } from '../src/core/packages.js';
 import { getSetting, setSetting } from '../src/db/settings.js';
-import { getDb } from '../src/db/schema.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('packages');
 
 const OK_MANIFEST = {
   id: 'test-package',
@@ -44,7 +46,7 @@ const OK_MANIFEST = {
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-packages.db');
+  initDb(DB_PATH);
   const db = getDb();
   db.exec("DELETE FROM packages WHERE id = 'test-package'");
   db.exec("DELETE FROM package_items WHERE package_id = 'test-package'");

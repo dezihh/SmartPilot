@@ -6,10 +6,13 @@ import { createFunction } from '../src/db/functions.js';
 import { resetHttpCacheForTests } from '../src/core/httpCache.js';
 import type { McpContext, McpServerContext } from '../src/mcp/registry.js';
 import type { TraceEvent } from '../src/types.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('template');
 
 before(() => {
   closeDb(); // hermetisch: Container-DB durch Temp-DB ersetzen
-  initDb('/tmp/opencode/test-template.db');
+  initDb(DB_PATH);
   resetHttpCacheForTests();
 });
 
@@ -58,6 +61,7 @@ function fakeMcp(): McpContext {
   const server: McpServerContext = {
     id: 1,
     name: 'test-mcp',
+    sideEffect: 'write',
     tools: [{ name: 'tool_x' }],
     client: {
       init: async () => {},
@@ -177,12 +181,12 @@ test('shell: dynamischer Befehl aus args ist NICHT ausfuehrbar (Security)', asyn
   assert.equal(findStep(trace, 'template.shell'), undefined, 'kein Shell-Aufruf ueber args');
 });
 
-test('shell: haengender Befehl wird vom Timeout abgeschnitten', async () => {
+test('shell: haengender Befehl wird vom Timeout abgeschnitten', { timeout: 15000 }, async () => {
   const trace: TraceEvent[] = [];
   const r = await renderActionTemplate(`{{ shell('sleep 8') }}`, mcp, trace);
   assert.equal(r.speech, '');
   assert.ok(findStep(trace, 'template.shell.error'));
-}, 15000);
+});
 
 test('fn: Zyklen werden erkannt und abgebrochen', async () => {
   const trace: TraceEvent[] = [];
@@ -210,7 +214,7 @@ before(async () => {
     template: `{{ mcp.call('tool_x', {'q': args.x}) }}`,
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   createFunction({
@@ -219,7 +223,7 @@ before(async () => {
     template: `{{ http('https://api.example.org/' ~ args.path, 0) | dump }}`,
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   createFunction({
@@ -228,7 +232,7 @@ before(async () => {
     template: `{{ http('http://' ~ args.host ~ '/api', 0) }}`,
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   createFunction({
@@ -237,7 +241,7 @@ before(async () => {
     template: `{{ fn('test_fn_a') }} B`,
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   createFunction({
@@ -246,7 +250,7 @@ before(async () => {
     template: `A {{ fn('test_fn_b') }}`,
     parameters: null,
     budget: null,
-    budget: null,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
 });

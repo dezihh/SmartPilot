@@ -5,12 +5,15 @@ import { createFunction } from '../src/db/functions.js';
 import { setPrompt, setSetting, deleteSetting } from '../src/db/settings.js';
 import { createMcpServer, deleteMcpServer } from '../src/db/mcpServers.js';
 import { buildInventoryPrompt } from '../src/core/inventory.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('inventory');
 
 const RULES = 'Nimm dieses Nachschlagewerk als Pflicht-Referenz.\n\n- Regel A\n- Regel B';
 
 before(() => {
   closeDb();
-  initDb('/tmp/opencode/test-inventory.db');
+  initDb(DB_PATH);
   const db = getDb();
   db.exec('DELETE FROM tpl_functions; DELETE FROM settings; DELETE FROM prompts;');
   setPrompt('agent_inventory', RULES);
@@ -45,7 +48,7 @@ before(() => {
 
 after(() => {
   closeDb();
-  initDb('/tmp/opencode/test-inventory.db');
+  initDb(DB_PATH);
   getDb().exec("DELETE FROM tpl_functions WHERE name IN ('recherche','vorgangs_baustein','ma_players')");
   closeDb();
 });

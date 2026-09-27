@@ -11,10 +11,13 @@ import {
   invalidateIndex,
   type IndexEntry,
 } from '../src/core/entityIndex.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('entityindex');
 
 before(() => {
   closeDb(); // Import-seitige Runtime-Init (Container-DB) ersetzen
-  initDb('/tmp/opencode/test-entityindex.db');
+  initDb(DB_PATH);
   invalidateIndex();
 });
 

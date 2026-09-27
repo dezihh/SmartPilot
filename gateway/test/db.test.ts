@@ -5,10 +5,13 @@ import { setSetting, getSetting, getSettingNum, deleteSetting, getSettings, setP
 import { createAction, updateAction, getAction, listActions, deleteAction } from '../src/db/actions.js';
 import { createFunction, getFunctionByName, deleteFunction } from '../src/db/functions.js';
 import { addLog, listLogs, recentAgentTurns, summarizeUsage } from '../src/db/logs.js';
+import { tmpDb } from './_tmpdb.js';
+
+const DB_PATH = tmpDb('meinhelfer');
 
 before(() => {
   closeDb(); // hermetisch: Container-DB durch Temp-DB ersetzen
-  initDb('/tmp/opencode/test-meinhelfer.db', true);
+  initDb(DB_PATH, true);
   // Hermetisch: Test-Reststaende entfernen (Datei kann von Vorlaeufen existieren)
   const db = getDb();
   db.exec("DELETE FROM actions WHERE name LIKE 'test_action%'");
@@ -89,7 +92,7 @@ test('Functions: Create + Name-Lookup + Budget', () => {
     template: "{{ index.find(args.query) }}",
     parameters: JSON.stringify({ type: 'object', properties: {} }),
     budget: 2,
-    budget: 2,inventory_prompt: null,
+    inventory_prompt: null,
     enabled: 1,
   });
   const byName = getFunctionByName('test_fn_x');

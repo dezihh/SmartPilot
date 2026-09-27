@@ -12,6 +12,7 @@
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
     "smoke": "node scripts/smoke-test.mjs",
     "test": "node --import tsx --test test/*.test.ts"
   },
