@@ -33,26 +33,28 @@ function capturedInit(): RequestInit | undefined {
   return lastInit;
 }
 
-// ---- F-01: Preheat ignoriert Kontrollfluss/Kommentare nicht ----
-// extractLiterals zaehlt datenholende Aufrufe auch dann, wenn sie in einem
-// nicht ausgefuehrten if-Zweig oder in einem nunjucks-Kommentar stehen. Der
-// Preheat in template.ts fuehrt sie folglich trotzdem aus.
+// ---- F-01: shell() in nunjucks-Kommentar wird nicht vorgewaermt ----
+// Kommentare werden nie gerendert; ihre Aufrufe werden nicht extrahiert.
 test('extractLiterals: shell() in nunjucks-Kommentar wird nicht extrahiert', () => {
   const found = extractLiterals("Hallo {# {{ shell('rm -rf /tmp/x') }} #}");
   assert.deepEqual(found.shells, []);
 });
 
-// ---- F-01 (Rest): Kontrollfluss wird weiterhin ignoriert ----
-// Die statische Extraktion kennt keine Laufzeit-Branches: shell()/http()/mcp.call
-// in einem nie durchlaufenen if-Zweig werden trotzdem vorgewaermt und ausgefuehrt.
-test(
-  'extractLiterals: shell() in nicht durchlaufenem if-Zweig wird nicht extrahiert',
-  { todo: 'F-01 (Rest) Preheat ignoriert Kontrollfluss' },
-  () => {
-    const found = extractLiterals("{% if false %}{{ shell('rm -rf /tmp/x') }}{% endif %}");
-    assert.deepEqual(found.shells, []);
-  }
-);
+// ---- F-01 (Rest): Side-Effect-Aufrufe in Kontrollbloecken ----
+// shell()/mcp.call() in einem if/for/macro-Zweig werden NICHT extrahiert, da
+// der Zweig zur Extraktionszeit nicht feststeht und der Side-Effect sonst
+// auch bei nicht erfuellter Bedingung liefe. Top-Level-Aufrufe bleiben.
+test('extractLiterals: shell()/mcp.call() in nicht durchlaufenem if-Zweig werden nicht extrahiert', () => {
+  const found = extractLiterals(
+    "{% if false %}{{ shell('rm -rf /tmp/x') }}{{ mcp.call('evil.write', {}) }}{% endif %}"
+  );
+  assert.deepEqual(found.shells, []);
+  assert.deepEqual(found.calls, []);
+  // Kontrolle: unbedingte Aufrufe werden weiterhin erkannt.
+  const top = extractLiterals("{{ shell('echo ok') }}{{ mcp.call('ha.turn_on', { 'x': 1 }) }}");
+  assert.deepEqual(top.shells, ['echo ok']);
+  assert.deepEqual(top.calls, [{ tool: 'ha.turn_on', args: "{ 'x': 1 }" }]);
+});
 
 // ---- F-02: extract.ts ohne Wortgrenzen ----
 // `xfn('a')`, `myshell('x')`, `myhttp(...)` werden als fn()/shell()/http()

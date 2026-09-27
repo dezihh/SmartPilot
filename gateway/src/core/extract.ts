@@ -22,11 +22,41 @@ export interface LiteralCalls {
   httpUrls: string[];
 }
 
+// Entfernt Jinja-Kontrollbloecke (if/for/macro/block/filter/call/apply/
+// autoescape/raw/verbatim und Block-{% set %}) samt Inhalt. Seiteneffekt-
+// behaftete Aufrufe (shell, mcp.call) in solchen Zweigen duerfen nicht
+// vorgewaermt werden, weil der Zweig sonst auch bei nicht erfuellter
+// Bedingung liefe (F-01). Tags ausserhalb der Bloecke - etwa die uebliche
+// Form {% set x = http(...) %} - bleiben erhalten.
+function stripControlBlocks(tpl: string): string {
+  const openers = new Set(['if', 'for', 'macro', 'block', 'filter', 'call', 'apply', 'autoescape', 'raw', 'verbatim']);
+  const closers = new Set(['endif', 'endfor', 'endmacro', 'endblock', 'endfilter', 'endcall', 'endapply', 'endautoescape', 'endraw', 'endverbatim', 'endset']);
+  const tagRe = /\{%-?\s*([\s\S]*?)\s*-?%\}/g;
+  let out = '';
+  let depth = 0;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(tpl)) !== null) {
+    const tag = (m[1] ?? '').trim();
+    const head = tag.split(/\s+/)[0] ?? '';
+    const isOpen = openers.has(head) || (head === 'set' && !tag.includes('='));
+    const isEnd = closers.has(head);
+    if (depth === 0) out += tpl.slice(last, tagRe.lastIndex);
+    if (isOpen) depth++;
+    else if (isEnd) depth = Math.max(0, depth - 1);
+    last = tagRe.lastIndex;
+  }
+  if (depth === 0) out += tpl.slice(last);
+  return out;
+}
+
 export function extractLiterals(rawTemplate: string): LiteralCalls {
   // nunjucks-Kommentare {# ... #} werden nie gerendert -> nicht vorwaermen
   // (F-01). Wortgrenzen in den Regexen verhindern Fehltreffer wie
   // xfn()/myshell()/myhttp() (F-02).
   const template = rawTemplate.replace(/\{#[\s\S]*?#\}/g, '');
+  // Seiteneffekt-Aufrufe zusaetzlich ohne Kontrollbloecke auswerten (F-01).
+  const sideEffectSrc = stripControlBlocks(template);
   // 2. String-Arg eines index.*-Aufrufs = Index-Key ('' = Default-Index).
   const indexKeys = new Set<string>();
   for (const m of template.matchAll(
@@ -61,14 +91,14 @@ export function extractLiterals(rawTemplate: string): LiteralCalls {
   const httpDyn: { expr: string; ttl: number }[] = [];
   // mcp.call('tool') bzw. mcp.call('tool', {flaches JSON-Literal, eine Zeile});
   // Literal-Args mit args./now. sind NICHT literal (die laufen als dynamisch).
-  for (const m of template.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*\)/g)) {
+  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*\)/g)) {
     calls.push({ tool: m[1] as string, args: (m[2] as string | undefined) ?? null });
   }
   // dynamische mcp.call-Args: {…args.x…} (keine verschachtelten Objekte)
-  for (const m of template.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*\)/g)) {
+  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*\)/g)) {
     mcpCallDyn.push({ tool: m[1] as string, expr: `{${m[2] as string}}` });
   }
-  for (const m of template.matchAll(/(?<![\w.])shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
+  for (const m of sideEffectSrc.matchAll(/(?<![\w.])shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
   for (const m of template.matchAll(/(?<![\w.])fn\(\s*["']([a-zA-Z0-9_]+)["']\s*\)/g)) fns.push(m[1] as string);
   // http(...): Inneres je Call extrahieren (eine Klammerebene toleriert),
   // danach reines Literal (optional mit TTL) -> httpCalls; alles andere
