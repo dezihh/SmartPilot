@@ -1,3 +1,4 @@
+import html
 import json
 import logging
 import os
@@ -65,6 +66,7 @@ STRINGS = {
         "error": "Entschuldigung, da ist etwas schiefgelaufen.",
         "processing": "Einen Moment bitte.",
         "warteton": "Einen Moment, ich schaue das kurz nach.",
+        "no_query": "Das habe ich akustisch nicht verstanden. Wie lautet deine Frage?",
     },
 }
 
@@ -94,6 +96,9 @@ def strip_ssml(text):
     text = re.sub(r"<speak>|</speak>", "", text, flags=re.I)
     text = re.sub(r"<break[^>]*/?>", " ", text, flags=re.I)
     text = re.sub(r"<[^>]+>", "", text)
+    # XML-Entities aufloesen (escape() erzeugt sie); &amp; zuletzt, damit
+    # "&amp;lt;" korrekt zu "&lt;" wird.
+    text = html.unescape(text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -309,13 +314,19 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         session = handler_input.request_envelope.session
         response_builder = handler_input.response_builder
 
-        query = request.intent.slots["query"].value
+        slots = request.intent.slots or {}
+        slot = slots.get("query")
+        query = (slot.value if slot else None) or ""
+        if not query.strip():
+            logger.info("GptQueryIntent ohne query-Slot empfangen")
+            return response_builder.speak(t(handler_input, "no_query")).set_should_end_session(False).response
         session_id = session.session_id if session else "unknown"
         user_id = None
         if session and session.user:
             user_id = session.user.user_id
 
-        logger.info("Query empfangen: %s", query)
+        # Kein Klartext der Nutzerfrage ins Log (PII): nur die Laenge.
+        logger.info("Query empfangen: %d Zeichen", len(query))
         trace_start = time.monotonic()
         lambda_trace(session_id, "invoke", 0)
 
@@ -350,8 +361,8 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         speech, follow_up, is_ssml, display_text, followup_prompt = result["value"]
 
         logger.info(
-            "Gateway-Antwort: %d Zeichen, ssml=%s, followUp=%s, ANFANG=%r, ENDE=%r",
-            len(speech), is_ssml, follow_up, speech[:40], speech[-40:],
+            "Gateway-Antwort: %d Zeichen, ssml=%s, followUp=%s",
+            len(speech), is_ssml, follow_up,
         )
 
         keep_open = follow_up or ask_for_further_commands

@@ -421,5 +421,43 @@ class SkillIdVerificationTest(unittest.TestCase):
             )
 
 
+class AuditFindingsTest(unittest.TestCase):
+    """Audit-Proben (Voll-Audit 2026-09-27): Regressionstests fuer F-23..F-25."""
+
+    def _handler_input(self):
+        hi = FakeHandlerInput(request=FakeRequest(), session=FakeSession())
+        hi.request_envelope.request.intent = FakeIntent(
+            slots={"query": types.SimpleNamespace(value="meine geheime frage")}
+        )
+        lambda_function._RAW_ENVELOPE.value = {}
+        return hi
+
+    def test_nutzerfrage_wird_nicht_geloggt(self):
+        """F-23: lambda_function.py loggt die Nutzerfrage im Klartext."""
+        hi = self._handler_input()
+        with mock.patch.object(lambda_function, "requests") as req, \
+                mock.patch.object(lambda_function.logger, "info") as log_info:
+            req.post.return_value = fake_response({"speech": "ok", "followUp": False})
+            lambda_function.GptQueryIntentHandler().handle(hi)
+        protokoll = " ".join(str(c) for c in log_info.call_args_list)
+        self.assertNotIn("meine geheime frage", protokoll)
+
+    def test_fehlender_query_slot_fuehrt_nicht_zum_crash(self):
+        """F-24: fehlt der Pflicht-Slot query, wirft der Handler KeyError."""
+        hi = FakeHandlerInput(request=FakeRequest(), session=FakeSession())
+        hi.request_envelope.request.intent = FakeIntent(slots={})
+        lambda_function._RAW_ENVELOPE.value = {}
+        with mock.patch.object(lambda_function, "requests") as req:
+            req.post.return_value = fake_response({"speech": "ok"})
+            lambda_function.GptQueryIntentHandler().handle(hi)  # darf nicht werfen
+
+    def test_strip_ssml_dekodiert_entities(self):
+        """F-25: strip_ssml dekodiert XML-Entities nicht (Anzeige zeigt '&amp;')."""
+        self.assertEqual(
+            lambda_function.strip_ssml("<speak>Milch &amp; Honig</speak>"),
+            "Milch & Honig",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
