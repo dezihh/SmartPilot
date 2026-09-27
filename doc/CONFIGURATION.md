@@ -8,13 +8,16 @@ und Grenzen stehen in [Referenz](REFERENCE.md).
 ## Empfohlene Reihenfolge
 
 1. Admin-Token im Browser speichern.
-2. Grundeinstellungen und Modell prüfen.
-3. Systeme in der **Tool-Registry** verbinden.
-4. **Index-Quellen** einrichten.
-5. Funktionen anlegen und mit **Ausführen** testen.
-6. Vorgänge anlegen.
-7. Den Gesamtweg unter **Monitor / Test** prüfen.
-8. Erst danach Alexa anbinden.
+2. Grundeinstellungen (Assistentenname, Modell) prüfen.
+3. **Optional:** unter **Wartung und Pakete** fertige Pakete installieren — sie
+   legen Server, Index und Funktionen in einem Schritt an. Ohne Paket die
+   Schritte 4–6 von Hand gehen.
+4. Systeme in der **Tool-Registry** verbinden.
+5. **Index-Quellen** einrichten.
+6. Funktionen anlegen und mit **Ausführen** testen.
+7. Vorgänge anlegen.
+8. Den Gesamtweg unter **Monitor / Test** prüfen.
+9. Erst danach Alexa anbinden.
 
 ## Grundeinstellungen
 
@@ -23,11 +26,13 @@ werden dabei nicht überschrieben.
 
 | Einstellung | Empfehlung für den Einstieg |
 |---|---|
+| Assistentenname (`assistant_name`) | kurz und aussprechbar; Grundlage von Begrüßung und Identität |
 | Hauptmodell | tool- und JSON-fähiges Modell |
-| Tool-Modell | zunächst leer; dann gilt das Hauptmodell |
+| Tool-Modell (`tool_model`) | zunächst leer; dann gilt das Hauptmodell |
 | Tool-Runden | Standard beibehalten |
 | Tool-Deadline | innerhalb des verfügbaren Antwortfensters halten |
 | Agent-Tool-Auswahl | nur tatsächlich benötigte Werkzeuge erlauben |
+| Paketsprache (`registry_language`) | Standard `de`; bestimmt die Sprache der Paket-Registry |
 
 Ein separates kleines Tool-Modell ist eine spätere Optimierung. Zuerst sollte
 der gesamte Ablauf mit einem Modell zuverlässig funktionieren.
@@ -139,10 +144,12 @@ Schleifen.
 - **Daten aus Funktion**: Pflicht bei `deterministic` und `hybrid`.
 - **`function_args`**: feste Argumente für die zugewiesene Funktion (z. B.
   `{"road": "A24"}`); das Template liest sie als `args`.
-- Ein `PUT` ist ein **Full-Replace**: ein fehlendes Feld wird geleert
-  (System-Prompt, Trigger, Tools). Beim Bearbeiten den vollständigen Body
-  senden. `tools: []` heißt bewusst „ohne Tools", ein fehlendes `tools`-Feld
-  „unverändert".
+- Ein `PUT` ist ein **Full-Replace** für die meisten Felder: ein fehlendes Feld
+  wird geleert (System-Prompt, Trigger, Daten aus Funktion, `function_args`).
+  Beim Bearbeiten den vollständigen Body senden.
+- Sonderfall **erlaubte Tools**: `tools: []` heißt bewusst „ohne Tools"
+  (z. B. Hilfe-Vorgang); fehlt das `tools`-Feld, bleibt es unverändert
+  (Standard: alle).
 
 **Prüfung:** Der Monitor-Trace zeigt den erwarteten Vorgang und nur die
 beabsichtigten Werkzeugaufrufe.
