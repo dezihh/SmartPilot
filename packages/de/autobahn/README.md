@@ -4,6 +4,9 @@ Legt die Funktion **`autobahn`** an: Stau, Baustellen und Warnungen je
 Autobahn aus der öffentlichen Autobahn-App-API des Bundes (keyless), gefiltert
 auf eine Geo-Box um Zuhause.
 
+> **Antwortweg:** deterministisch — Vorgang → Funktion spricht direkt
+> (hybrid möglich).
+
 ## Was es braucht (Gegenseite)
 
 Nichts — öffentliche API, kein Key. Der Gateway-Container braucht

@@ -4,6 +4,9 @@ Legt die Funktion **`wetter`** an: aktuelles Wetter und 3-Tage-Vorhersage aus
 der [Open-Meteo](https://open-meteo.com)-Forecast-API (DWD-ICON-Modell,
 Wettercodes als sprechbare Texte, Temperaturen mit Komma).
 
+> **Antwortweg:** deterministisch — Vorgang → Funktion spricht direkt
+> (hybrid möglich).
+
 ## Was es braucht (Gegenseite)
 
 Nichts — öffentliche API, kein Key. Der Gateway-Container braucht
@@ -26,4 +29,4 @@ Internetzugang zu `api.open-meteo.com`.
 
 1. Tab **Funktionen** → `wetter` → **Ausführen** (Test).
 2. Vorgänge anlegen? „Wetter heute" als Trigger → Modus `deterministic`,
-    Funktion `wetter` (siehe [Praxisrezepte](../../../helpdoc/RECIPES.md)).
+    Funktion `wetter` (siehe [Praxisrezepte](../../../doc/RECIPES.md)).

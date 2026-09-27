@@ -3,6 +3,8 @@
 Legt zwei **Shell-Funktionen** an: `gateway_uptime` (Laufzeit in Tagen via
 `/proc/uptime`) und `cpu_type` (CPU-Modell via `/proc/cpuinfo`).
 
+> **Antwortweg:** deterministisch — Funktion liefert den Messwert direkt.
+
 ## Was es braucht (Gegenseite)
 
 Nichts — die Funktionen lesen lokale Dateien (`/proc`) im Gateway-Container.

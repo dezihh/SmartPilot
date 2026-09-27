@@ -4,6 +4,8 @@ Legt den Registry-Eintrag für die **mcp-searxng**-stdio-Brücke an (läuft im
 Gateway-Container, kein Extra-Container auf Gateway-Seite) und hakt die
 Such-Werkzeuge in der Allowlist an.
 
+> **Antwortweg:** Agent (LLM) — der Agent ruft die Such-Werkzeuge selbst.
+
 ## Was es braucht (Gegenseite)
 
 Eine **SearXNG-Instanz** per Docker:

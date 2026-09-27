@@ -22,4 +22,4 @@ labels: ["idea"]
 
 ## Referenzen
 
-<!-- Architektur-Hintergrund: helpdoc/ARCHITECTURE.md -->
+<!-- Architektur-Hintergrund: doc/ARCHITECTURE.md -->

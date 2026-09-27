@@ -37,8 +37,8 @@ welche Werkzeuge und Funktionen es braucht. Standard ist der
 **OneShot-Modus** (eine Frage, eine Antwort); mit „Chat-Modus" bleibt die
 Session für Folgefragen offen.
 
-Details: [helpdoc/CONCEPTS.md](helpdoc/CONCEPTS.md) ·
-[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
+Details: [doc/CONCEPTS.md](doc/CONCEPTS.md) ·
+[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
 
 ## Schnellstart
 
@@ -57,7 +57,7 @@ Danach: `http://<host>:8332/admin` öffnen, mit `AUTH_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.
 
 Die vollständige Anleitung mit allen Etappen, Prüfungen und der
-Alexa-Anbindung: [helpdoc/INSTALLATION.md](helpdoc/INSTALLATION.md)
+Alexa-Anbindung: [doc/INSTALLATION.md](doc/INSTALLATION.md)
 
 ## Fähigkeiten als Pakete
 
@@ -69,26 +69,24 @@ Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
 - Verfügbare Pakete: [packages/de/index.json](packages/de/index.json)
 - Eigene Pakete schreiben:
   [packages/README.md](packages/README.md) und
-  [helpdoc/RECIPES.md](helpdoc/RECIPES.md)
+  [doc/RECIPES.md](doc/RECIPES.md)
 
 ## Dokumentation
 
-| Kapitel | Inhalt |
-|---|---|
-| [Installation](helpdoc/INSTALLATION.md) | Gateway, Modell, Netzwerk, Alexa — Schritt für Schritt |
-| [Grundbegriffe](helpdoc/CONCEPTS.md) | Werkzeug, Index, Funktion, Vorgang |
-| [Konfiguration](helpdoc/CONFIGURATION.md) | Parametrier-Reihenfolge und Grundeinstellungen |
-| [Praxisrezepte](helpdoc/RECIPES.md) | Pakete installieren und eigene Funktionen erweitern |
-| [Cache und Aktualität](helpdoc/CACHE.md) | Wann Daten lokal bleiben und wann Netzwerkverkehr entsteht |
-| [Alexa anbinden](helpdoc/ALEXA.md) | Skill, Lambda, Sync und Härtung |
-| [Fehler beheben](helpdoc/TROUBLESHOOTING.md) | Systematische Fehlersuche von innen nach außen |
-| [Referenz](helpdoc/REFERENCE.md) | Felder, Bausteine, Env-Variablen, Sicherheitsgrenzen |
+Maßgebliche Dokumentation ist das Verzeichnis [`doc/`](doc/). Empfohlener
+Lernpfad — du musst nicht zuerst die gesamte Architektur verstehen:
 
-Design- und Architektur-Dokumente (Hintergrund für Entwickler):
-[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
+1. [Installation](doc/INSTALLATION.md): Gateway, Modell und Netzwerk vorbereiten; erster Erfolg im Testmonitor.
+2. [Grundbegriffe](doc/CONCEPTS.md): Werkzeug, Index, Funktion und Vorgang sicher unterscheiden.
+3. [Konfiguration](doc/CONFIGURATION.md): Parametrier-Reihenfolge und Grundeinstellungen.
+4. [Cache und Aktualität](doc/CACHE.md): Wann Daten lokal bleiben und wann Netzwerkverkehr entsteht.
+5. [Praxisrezepte](doc/RECIPES.md): Pakete installieren und eigene Funktionen erweitern.
+6. [Alexa anbinden](doc/ALEXA.md): Skill, Lambda, Sync und Härtung — erst, wenn der Testmonitor antwortet.
+7. [Fehler beheben](doc/TROUBLESHOOTING.md): Systematische Fehlersuche von innen nach außen.
+8. [Referenz](doc/REFERENCE.md): Felder, Bausteine, Env-Variablen, Sicherheitsgrenzen.
 
-Betriebs-/CI-CD-Doku (Deployments, Workflows, Secrets-Namen):
-[helpdoc/DEPLOYMENT.md](helpdoc/DEPLOYMENT.md)
+Hintergrund für Entwickler: [Architektur](doc/ARCHITECTURE.md) ·
+Betrieb und CI/CD: [Deployment](doc/DEPLOYMENT.md)
 
 ## Sicherheit
 
@@ -102,7 +100,7 @@ Betriebs-/CI-CD-Doku (Deployments, Workflows, Secrets-Namen):
   `.env` (nie im Repo)
 - Admin-UI nie im Internet exponieren; für öffentliche Deployments wird ein
   Reverse-Proxy mit TLS empfohlen — siehe
-  [helpdoc/INSTALLATION.md](helpdoc/INSTALLATION.md#netzwerk-und-https)
+  [doc/INSTALLATION.md](doc/INSTALLATION.md#netzwerk-und-https)
 
 ## Repository-Struktur
 
@@ -111,7 +109,7 @@ alexa/           Alexa-Skill: Lambda-Adapter (Python/ask-sdk), Interaktionsmodel
 gateway/         Gateway (Node.js 22 + TypeScript): Router, MCP-Clients, LLM-Agent, Admin-API
 gateway/web/     Admin-Weboberfläche (vanilla HTML/CSS/JS)
 packages/        Installationspakete (Registry + Manifeste)
-helpdoc/         Dokumentation (Einstieg, Installation, Rezepte, Referenz, Architektur)
+doc/             Dokumentation (Einstieg, Installation, Rezepte, Referenz, Architektur)
 .github/         CI/CD: Smoke-Tests, Alexa-Modell-/Manifest-Sync, Lambda-Deployment
 ```
 
@@ -127,7 +125,7 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway
 ```
 
 Node.js ≥ 22 erforderlich. Details zur Architektur:
-[helpdoc/ARCHITECTURE.md](helpdoc/ARCHITECTURE.md)
+[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
 
 ## Status
 

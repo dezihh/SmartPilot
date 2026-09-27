@@ -2,6 +2,8 @@
 
 Legt den Registry-Eintrag für den **ha-mcp**-Server, den **Entity-Index** (Standard-Index liest alle HA-States) und die **Schalten-Kaskade** als Agent-Inventory-Prompt an und hakt die HA-Werkzeuge in der Tool-Allowlist an.
 
+> **Antwortweg:** Agent (LLM) — der Agent wählt die Werkzeuge selbst.
+
 ## Was es braucht (Gegenseite)
 
 Home Assistant erreichbar und **ha-mcp** installiert — zwei Methoden:

@@ -4,6 +4,8 @@ Legt den Registry-Eintrag für das **ma-provider-mcp**-Plugin, die
 **Wiedergabe-Kaskade samt ASR-Falscherkennungs-Regel** (Agent-Inventory-Prompt)
 und die Funktion **`ma_players`** (Player-Liste in einem Call) an.
 
+> **Antwortweg:** Agent (LLM) — der Agent wählt die Werkzeuge selbst.
+
 ## Was es braucht (Gegenseite)
 
 1. Music Assistant läuft.

@@ -5,6 +5,8 @@ Legt den Registry-Eintrag für die **Brave-Search**-stdio-Brücke (offizielles
 und die Funktion **`recherche`** an (Websuche + optionaler Feed-Lese in einem
 Call, mit langer Auswertungs-Regel).
 
+> **Antwortweg:** Agent (LLM) — der Agent ruft `fn_recherche` selbst.
+
 ## Was es braucht (Gegenseite)
 
 Einen **Brave-Search-API-Key**: auf
@@ -24,4 +26,4 @@ reicht für den Anfang).
    (Suche + `/rss`-Feed-Lese in einem Call).
 
 Nützlich als **Kaskaden-Zweite Quelle**, wenn die Metasuche (SearXNG) leer
-bleibt — Details in [Praxisrezepte](../../../helpdoc/RECIPES.md).
+bleibt — Details in [Praxisrezepte](../../../doc/RECIPES.md).

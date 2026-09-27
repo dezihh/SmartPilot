@@ -1,8 +1,42 @@
 # Paket-Registry
 
-Fertige Installationspakete für den SmartPilot-Gateway. Die Registry wird vom
-Projekt gepflegt (Autor `dezihh`); das Gateway lädt sie direkt aus diesem
-Repository (kein Nutzerfeld).
+Fertige Installationspakete für den SmartPilot-Gateway: generische
+Praxisrezepte, die überall laufen, wo die genannte Gegenseite vorhanden ist.
+Die Sammlung wird gepflegt und wächst durch Beiträge — eigene generische
+Pakete können per Issue oder Pull Request ins Repository kommen (siehe
+unten).
+
+## Der Gedanke dahinter
+
+Eine Funktion von Hand anzulegen ist schwer zu erklären. Ein fertiges,
+installierbares Beispiel zeigt stattdessen, wie eine Aktion zusammengesetzt
+ist: welche Werkzeuge, welcher Index, welches Template. Daraus folgen drei
+Grundsätze für alle Pakete:
+
+- **Verständnis vor Vollständigkeit.** Ein Paket soll vor allem zeigen, wie
+  etwas funktioniert — es muss nicht jeden Sonderfall abdecken. Nach dem
+  Install ist jedes Artefakt im Editor frei anpassbar.
+- **Generisch statt installationsspezifisch.** Pakete laufen überall, wo die
+  genannte Gegenseite vorhanden ist (z. B. Home Assistant, SearXNG). Feste
+  Hosts, Tokens oder Pfade gehören in Parameter; wo die Funktion aber
+  Beispielwerte braucht, um überhaupt zu laufen, stehen sie klar als
+  Beispiel markiert in der Paket-README (siehe unten).
+- **Mitmachen erwünscht.** Eigene generische Rezepte können per Issue oder
+  Pull Request beigetragen werden; die Basis soll mit den Nutzern wachsen.
+
+## So funktioniert die Parametrierung
+
+Ein Paket kann Eingabefelder definieren (`params`). Beim Install erscheint
+ein Formular; die Werte ersetzen `${key}`-Platzhalter in Server-URLs,
+Templates und Index-Konfiguration. Fehlt für einen Platzhalter der Wert,
+schlägt der Install mit klarer Meldung fehl. Secrets (API-Keys, Token) sind
+als solche markiert, landen nur in der jeweiligen Zielzeile und werden nie
+geloggt.
+
+Was bewusst kein Parameter ist (z. B. die Region im `autobahn`-Paket), wird
+nach dem Install direkt im Editor angepasst — die Paket-README sagt, wo und
+wie. Alternativ kann ein Manifest auch offline importiert werden; Vorschau
+und Bestätigung gelten unverändert.
 
 ## Aufbau (sprachspezifisch)
 
@@ -38,7 +72,11 @@ Umbau ergaenzt werden.
 `write`): schreibende Aufrufe verwerfen den Entity-Index-Cache des Agenten,
 rein lesende (`read`) nicht.
 
-## Vertrauensmodell
+## Manifest und Vertrauen
+
+Die Tabelle oben ist die Feld-Referenz. Warum man einem Paket vertrauen
+kann, ergibt sich aus genau diesen Feldern — plus zwei UI-Mechanismen beim
+Install:
 
 - **Herkunft/Lizenz**: `author`, `homepage`, `license`.
 - **Kompatibilitaet**: `minGatewayVersion` wird beim Installationsversuch
@@ -52,6 +90,27 @@ rein lesende (`read`) nicht.
 - **Updates**: „Neu installieren" ist ein Upsert. Lokal geaenderte Zeilen
   werden erkannt und pro Element zum Entscheiden angezeigt
   („Paket-Version uebernehmen" / „lokale Aenderung behalten" / abbrechen).
+
+## Eigene Pakete beitragen
+
+Neue Pakete folgen demselben Muster wie die bestehenden — am besten vor dem
+eigenen Paket eines davon nebenbei lesen: `autobahn` als schlankes Beispiel
+(Funktion + Parameter + Anpasshinweis), `home-assistant` als vollständigstes
+(Server + Index + Allowlist).
+
+- **Generisch halten, Beispiele erlauben**: Installations-spezifische Werte
+  (Hosts, Tokens, Pfade) gehoeren in Parameter (`params` + `${key}`). Wo
+  die Funktion aber Beispielwerte braucht, um ueberhaupt zu laufen (etwa
+  die Referenz-Region im Autobahn-Paket), duerfen sie drinstehen — dann
+  aber klar als Beispiel markiert („bitte anpassen!") und mit
+  Anpasshinweis in der Paket-README.
+- **README-Struktur**: „Was es braucht (Gegenseite)“ → „Parameter beim
+  Install“ → „Nach der Installation“ (mit Pruefschritt).
+- **Meta pflegen**: `author`, `license`, `changelog`; bei Shell- oder
+  HTTP-Nutzung ist das ohnehin Teil des Vertrauensmodells.
+
+Beitrag per Issue oder Pull Request gegen `packages/de/<id>/` — inklusive
+Eintrag in `packages/de/index.json`.
 
 Signaturen oder eine gesonderte, geprüfte Registry sind als spaeterer
 Ausbau vorgesehen.

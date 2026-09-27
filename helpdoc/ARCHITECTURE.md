@@ -10,7 +10,7 @@
 > OpenAI-kompatiblen Client angebunden (kein litellm), und die frühere
 > Gateway-Route `/alexa` samt Alexa-Signaturprüfung wurde entfernt (Alexa
 > läuft jetzt über AWS Lambda und `POST /api/query`). Bei Widersprüchen
-> gilt der Code und die Nutzer-Doku in `helpdoc/`.
+> gilt der Code und die Nutzer-Doku in `doc/`.
 
 ## Zentrale Architekturregel: Adapter-Muster
 
