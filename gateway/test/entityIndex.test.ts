@@ -11,6 +11,7 @@ import {
   listIndexKeys,
   getIndexSnapshot,
   invalidateIndex,
+  staleFallbackLimitMs,
   type IndexEntry,
 } from '../src/core/entityIndex.js';
 import { tmpDb } from './_tmpdb.js';
@@ -167,6 +168,13 @@ test('getIndexSnapshot mit konfiguriertem Tool, aber ohne MCP-Server -> klarer F
   );
   deleteSetting('entity_index');
   invalidateIndex();
+});
+
+// ---- F-38: Altersgrenze fuer Stale-while-error ----
+// Dokumentiert die bewusste Entscheidung: 10x TTL, aber mindestens 5 Minuten.
+test('staleFallbackLimitMs: 10x TTL, mindestens 5 Minuten (F-38)', () => {
+  assert.equal(staleFallbackLimitMs(60_000), 600_000);
+  assert.equal(staleFallbackLimitMs(1_000), 300_000);
 });
 
 // MCP-Antwort fuer den Tool-Katalog (tools/list).

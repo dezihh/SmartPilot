@@ -227,6 +227,13 @@ async function fetchSnapshot(settingName: string, cfg: IndexConfig): Promise<Ind
   return entries;
 }
 
+// F-38: Wie alt darf ein veralteter Index nach einem Fehler noch sein, bevor
+// der Fehler durchgereicht wird? Mindestens 5 Minuten, sonst das Zehnfache der
+// TTL. Reine Funktion -> deterministisch testbar (ohne Zeit-Injektion).
+export function staleFallbackLimitMs(ttlMs: number): number {
+  return Math.max(ttlMs * 10, 5 * 60_000);
+}
+
 export async function getIndexSnapshot(indexKey = '', force = false): Promise<IndexEntry[]> {
   const settingName = settingNameFor(indexKey);
   const cfg = loadConfig(indexKey);
@@ -245,8 +252,7 @@ export async function getIndexSnapshot(indexKey = '', force = false): Promise<In
     // Stale-while-error: letzten bekannten Stand liefern, statt hart zu werfen.
     // Nur innerhalb einer Altersgrenze und mit Warnung (F-38), damit still
     // veraltete Daten nicht beliebig alt werden.
-    const staleLimit = Math.max(cfg.ttlMs * 10, 5 * 60_000);
-    if (cached && Date.now() - cached.ts <= staleLimit) {
+    if (cached && Date.now() - cached.ts <= staleFallbackLimitMs(cfg.ttlMs)) {
       console.warn(
         `entity_index ${settingName}: liefere veralteten Stand (Alter ${Math.round((Date.now() - cached.ts) / 1000)}s) nach Fehler:`,
         e

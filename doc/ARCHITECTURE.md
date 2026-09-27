@@ -159,6 +159,11 @@ ein `{"speech": …}`-Objekt, setzt er `ssml: true` bzw. übernimmt Display-Date
 
 - **Generisch und systemneutral**: pro Index wird **ein** parametrierter
   MCP-Call je TTL-Fenster ausgeführt (Default 60 s) und lokal interpretiert.
+- **Robustheit** (`getIndexSnapshot`): parallele Kaltabrufe desselben Index
+  teilen sich **einen** Tool-Call (Single-Flight). Schlägt ein Abruf fehl,
+  dient der letzte bekannte Stand weiter („stale-while-error") — aber nur
+  innerhalb einer Altersgrenze `max(10 × ttlMs, 5 min)`; danach wird der Fehler
+  durchgereicht. Der Rückgriff wird geloggt (F-38).
 - **Datenvertrag** pro Zeile: `id|area|state|unit|name|key=value;key=value…`.
 - **Configuration statt Code**: Setting `entity_index` (Default-Index) bzw.
   `entity_index_<key>` (Multi-Index, z. B. `ma`) enthält `tool`, `args`,
