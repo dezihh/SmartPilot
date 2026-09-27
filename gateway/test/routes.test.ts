@@ -1,7 +1,7 @@
 // Route-Tests fuer die Express-App (Empfehlung 4). Baut die App ueber
 // createApp() ohne listen und spricht sie ueber node:http an, damit
 // globalThis.fetch fuer MCP-Stubs frei bleibt.
-import { test, before, after } from 'node:test';
+import { test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { request, type IncomingHttpHeaders } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -16,6 +16,9 @@ const { tmpDb } = await import('./_tmpdb.js');
 const { initDb, closeDb, getDb } = await import('../src/db/schema.js');
 const { createApp } = await import('../src/app.js');
 const { resetRateLimitsForTests } = await import('../src/rateLimit.js');
+const { createMcpServer } = await import('../src/db/mcpServers.js');
+const { getSetting, deleteSetting, setSetting } = await import('../src/db/settings.js');
+const { invalidateMcpCache } = await import('../src/mcp/registry.js');
 
 closeDb(); // hermetisch: Container-DB durch Temp-DB ersetzen
 initDb(tmpDb('routes'));
@@ -72,6 +75,46 @@ function call(
 }
 
 let cookie = '';
+
+const originalFetch = globalThis.fetch;
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
+
+function jsonRes(obj: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => obj,
+    text: async () => JSON.stringify(obj),
+    headers: { get: () => null },
+  } as unknown as Response;
+}
+
+const PKG_MANIFEST = {
+  id: 'test-package',
+  version: '1.0.0',
+  name: 'Test-Paket',
+  summary: 'Kurz',
+  description: 'Lang',
+  params: [{ key: 'host', label: 'Host', default: '127.0.0.1', required: true }],
+  servers: [{ name: 'Test MCP', transport: 'http', url: 'http://${host}:8086/mcp' }],
+  functions: [{ name: 'test_fn', template: 'Server ${host}.', parameters: { type: 'object', properties: {} }, budget: 1 }],
+  indexes: [{ key: '', config: { tool: 'x_tool', args: {} } }],
+  allowTools: ['x_tool', 'fn_test_fn'],
+};
+
+// Registry-Fetches (GitHub) stubben: index.json + manifest.json.
+function stubRegistry(): void {
+  globalThis.fetch = (async (url: string | URL) => {
+    const u = String(url);
+    if (u.endsWith('/index.json')) {
+      return jsonRes({ registryVersion: 1, packages: [{ id: 'test-package', name: 'Test-Paket', summary: 'Kurz', version: '1.0.0' }] });
+    }
+    if (u.endsWith('/manifest.json')) return jsonRes(PKG_MANIFEST);
+    return { ok: false, status: 404, json: async () => ({}), text: async () => '' } as unknown as Response;
+  }) as typeof fetch;
+}
 
 before(async () => {
   const r = await call('POST', '/admin/login', { body: { token: 'test-secret' } });
@@ -237,4 +280,152 @@ test('query: fehlender text 400, ohne Session 401', async () => {
   assert.equal(bad.status, 400);
   const noAuth = await call('POST', '/admin/api/query', { body: { text: 'hallo' } });
   assert.equal(noAuth.status, 401);
+});
+
+test('indexes: PUT/DELETE inkl. Validierung', async () => {
+  const ok = await call('PUT', '/admin/api/indexes/ma', {
+    cookie,
+    body: { config: JSON.stringify({ tool: 'x_tool', args: {} }) },
+  });
+  assert.equal(ok.status, 200);
+  const list = await call('GET', '/admin/api/indexes', { cookie });
+  assert.ok((list.json as { indexes: { key: string }[] }).indexes.some((i) => i.key === 'ma'));
+  assert.equal((await call('PUT', '/admin/api/indexes/ma', { cookie, body: { config: '{kaputt' } })).status, 400);
+  assert.equal((await call('PUT', '/admin/api/indexes/ma', { cookie, body: { config: '{}' } })).status, 400);
+  assert.equal((await call('PUT', '/admin/api/indexes/BAD!', { cookie, body: { config: '{"tool":"x"}' } })).status, 400);
+  assert.equal((await call('DELETE', '/admin/api/indexes/ma', { cookie })).status, 200);
+  assert.equal((await call('DELETE', '/admin/api/indexes/BAD!', { cookie })).status, 400);
+});
+
+test('functions/preview rendert Template mit args', async () => {
+  const r = await call('POST', '/admin/api/functions/preview', {
+    cookie,
+    body: { template: 'Hallo {{ args.name }}', args: { name: 'Welt' } },
+  });
+  assert.equal(r.status, 200);
+  assert.equal((r.json as { rendered: { speech: string } }).rendered.speech, 'Hallo Welt');
+});
+
+test('packages: registry und manifest (Fetch gestubbt)', async () => {
+  stubRegistry();
+  const reg = await call('GET', '/admin/api/packages/registry', { cookie });
+  assert.equal(reg.status, 200);
+  assert.ok(Array.isArray((reg.json as { packages: unknown[] }).packages));
+  const man = await call('GET', '/admin/api/packages/manifest/test-package', { cookie });
+  assert.equal(man.status, 200);
+  assert.equal((man.json as { manifest: { id: string } }).manifest.id, 'test-package');
+});
+
+test('packages: preview, install (dryRun), conflicts, Liste, backup/restore', async () => {
+  const prev = await call('POST', '/admin/api/packages/preview', { cookie, body: { manifest: PKG_MANIFEST } });
+  assert.equal(prev.status, 200);
+  assert.ok(Array.isArray((prev.json as { requiredParams: unknown[] }).requiredParams));
+
+  const install = await call('POST', '/admin/api/packages/test-package/install', {
+    cookie,
+    body: { manifest: PKG_MANIFEST, params: { host: '127.0.0.1' }, dryRun: true },
+  });
+  assert.equal(install.status, 200);
+  assert.ok((install.json as { report: unknown }).report);
+
+  const conflicts = await call('GET', '/admin/api/packages/test-package/conflicts', { cookie });
+  assert.equal(conflicts.status, 200);
+
+  stubRegistry();
+  const list = await call('GET', '/admin/api/packages', { cookie });
+  assert.equal(list.status, 200);
+
+  const backup = await call('GET', '/admin/api/backup', { cookie });
+  assert.equal(backup.status, 200);
+  assert.ok(Array.isArray((backup.json as { servers: unknown[] }).servers));
+
+  assert.equal((await call('POST', '/admin/api/backup/restore', { cookie, body: {} })).status, 400);
+  const restore = await call('POST', '/admin/api/backup/restore', {
+    cookie,
+    body: { confirm: true, backup: { kind: 'smartpilot-config-backup', settings: { test_restore_key: 'v' } } },
+  });
+  assert.equal(restore.status, 200);
+  assert.equal((restore.json as { ok: boolean }).ok, true);
+});
+
+test('index/assist + index/apply (LLM und MCP gestubbt)', async () => {
+  createMcpServer({
+    name: 'assist-idx',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  invalidateMcpCache();
+  const draft = { tool: 'ha_eval_template', args: { template: 'x' }, sampleQueries: ['licht'] };
+  const pipe =
+    'light.1|Wohnzimmer|on||Licht|\nlight.2|Kueche|off||Lampe|\nlight.3|Bad|on||Spiegel|\nlight.4|Flur|on||Strahler|\nlight.5|Keller|off||Birne|';
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    const u = String(url);
+    if (u.includes('/chat/completions')) {
+      return jsonRes({ choices: [{ message: { role: 'assistant', content: JSON.stringify(draft) } }] });
+    }
+    const body = JSON.parse(String(init?.body ?? '{}')) as { method?: string };
+    if (body.method === 'tools/list') return jsonRes({ jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'ha_eval_template', description: '' }] } });
+    if (body.method === 'tools/call') return jsonRes({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: pipe }] } });
+    return jsonRes({ jsonrpc: '2.0', id: 1, result: {} });
+  }) as typeof fetch;
+  try {
+    const assist = await call('POST', '/admin/api/index/assist', { cookie, body: { goal: 'Test', indexKey: 'itest' } });
+    assert.equal(assist.status, 200);
+    const res = assist.json as { draft: { tool: string } | null; validation: { ok: boolean } | null };
+    assert.equal(res.draft?.tool, 'ha_eval_template');
+    assert.equal(res.validation?.ok, true);
+
+    const apply = await call('POST', '/admin/api/index/apply', { cookie, body: { draft, indexKey: 'itest' } });
+    assert.equal(apply.status, 200);
+    assert.equal((apply.json as { ok: boolean }).ok, true);
+    assert.ok(getSetting('entity_index_itest'));
+  } finally {
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'assist-idx'").run();
+    deleteSetting('entity_index_itest');
+  }
+});
+
+test('admin: Fehlerpfade (400/404)', async () => {
+  const fnList = await call('GET', '/admin/api/functions', { cookie });
+  const anyId = (fnList.json as { functions: { id: number }[] }).functions[0]?.id ?? 999999;
+  // PUT mit ungueltigem Namen -> normalize wirft -> 400.
+  assert.equal((await call('PUT', `/admin/api/functions/${anyId}`, { cookie, body: { name: 'X', template: '' } })).status, 400);
+  // PUT einer nicht vorhandenen Action -> 404.
+  assert.equal((await call('PUT', '/admin/api/actions/999999', { cookie, body: { name: 'a', mode: 'llm' } })).status, 404);
+  // DELETE einer nicht vorhandenen Function -> 200 ok.
+  assert.equal((await call('DELETE', '/admin/api/functions/999999', { cookie })).status, 200);
+});
+
+test('packages: Fehlerpfade (400/502)', async () => {
+  // Leeres Manifest -> 400.
+  assert.equal((await call('POST', '/admin/api/packages/preview', { cookie, body: { manifest: { id: '' } } })).status, 400);
+  // minGatewayVersion zu hoch -> 400.
+  const tooNew = { ...PKG_MANIFEST, minGatewayVersion: '999.0.0' };
+  assert.equal(
+    (await call('POST', '/admin/api/packages/test-package/install', { cookie, body: { manifest: tooNew, dryRun: true } })).status,
+    400
+  );
+  // restore mit falscher kind -> 400.
+  assert.equal(
+    (await call('POST', '/admin/api/backup/restore', { cookie, body: { confirm: true, backup: { kind: 'nope' } } })).status,
+    400
+  );
+  // Uninstall eines nicht installierten Pakets -> 200 oder 400 (Fehlerpfad).
+  assert.ok([200, 400].includes((await call('POST', '/admin/api/packages/test-package/uninstall', { cookie, body: {} })).status));
+
+  // Registry nicht erreichbar: sprachwechsel erzwingt Neuladen des Caches.
+  setSetting('registry_language', 'fr');
+  globalThis.fetch = (async () => ({ ok: false, status: 500, json: async () => ({}), text: async () => '' }) as unknown as Response) as typeof fetch;
+  assert.equal((await call('GET', '/admin/api/packages/manifest/test-package', { cookie })).status, 502);
+  const list = await call('GET', '/admin/api/packages', { cookie });
+  assert.equal(list.status, 200);
+  assert.equal((list.json as { registry: unknown }).registry, null);
+  deleteSetting('registry_language');
 });
