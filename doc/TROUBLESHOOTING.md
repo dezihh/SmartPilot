@@ -117,6 +117,40 @@ In Docker liest `/proc/uptime` möglicherweise die Container- statt der
 Host-Laufzeit. Für Hostdaten ist eine ausdrücklich freigegebene externe Quelle
 nötig.
 
+## Wartung und Pakete
+
+### Paketliste bleibt leer
+
+Das Gateway lädt die Registry über `raw.githubusercontent.com`
+(`packages/<lang>/…`) und braucht dafür Internetzugang.
+
+1. Prüfe das Setting `registry_language` (Default `de`); ein ungültiger Wert
+   fällt auf `de` zurück.
+2. „Aktualisieren" nutzt bis 60 Sekunden den Registry-Cache; ein Neustart leert
+   ihn.
+3. Ohne Internet das Manifest **offline importieren** (Vorschau →
+   installieren).
+
+### Installation wird abgelehnt
+
+1. „benötigt Gateway >= x.y.z" — `minGatewayVersion` des Pakets ist höher als
+   die installierte Version; Gateway aktualisieren.
+2. „Parameter … ist erforderlich" — Pflichtwert im Formular fehlt.
+3. „Platzhalter … hat keinen Wert" — das Manifest nutzt `${…}`, das nicht in
+   den Parametern steht.
+4. Ungültiges Manifest — der Validator nennt die betroffenen Felder im
+   Klartext.
+5. Pakete mit `shell()` verlangen eine ausdrückliche Bestätigung
+   (`dangerousAck`).
+
+### Nach der Installation greift nichts
+
+1. Registry-Änderungen verwerfen MCP-Katalog und Index-Cache; prüfe
+   **Tools abfragen** und die Index-**Probe** neu.
+2. HTTP-Server: URL und Token prüfen; stdio: Befehl und Paket im Container.
+3. Ein erneutes Installieren zeigt lokal geänderte Zeilen als Konflikt zur
+   Entscheidung.
+
 ## Alexa
 
 ### Monitor funktioniert, Alexa nicht
