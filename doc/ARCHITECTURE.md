@@ -1,9 +1,5 @@
 # Architektur
 
-Stand: aus dem Code abgeleitet (Gateway `0.1.0`, Node 22 / TypeScript ESM).
-Dieses Dokument beschreibt den **aktuellen** Aufbau. Bei Widersprüchen gilt der
-Code; Nutzer-Doku steht in den übrigen Dateien unter `doc/`.
-
 ## Zentrale Architekturregel: Lieferanten-Muster (Adapter)
 
 Der Core kennt **kein Alexa** und generell **keinen Sprachclient**. Alles
@@ -52,7 +48,7 @@ austauschbar:
 
 Voraussetzung dafür ist, dass weder Core noch MCP-/Template-Schicht
 Client-Wissen enthalten. Deshalb existiert im Gateway keine Alexa-Route und
-keine Alexa-Signaturprüfung mehr; diese Verantwortung liegt vollständig beim
+keine Alexa-Signaturprüfung; diese Verantwortung liegt vollständig beim
 Adapter.
 
 ## Komponenten und Repo-Layout
@@ -106,7 +102,7 @@ EngineResult { response, route, actionId?, score?, durationMs, trace }
 ## Agent-Tool-Loop und LLM
 
 - **LLM-Client** (`llm/client.ts`): eigener OpenAI-kompatibler Client gegen
-  `POST {LLM_BASE_URL}/chat/completions` (mit Tool-Calling) — **kein litellm**.
+  `POST {LLM_BASE_URL}/chat/completions` (mit Tool-Calling).
   Modell/Token/Reasoning stammen aus Env bzw. überschreibenden DB-Settings
   (`llm_model`, `llm_max_tokens`, `llm_reasoning_effort`). Tool-Runden können
   ein eigenes, schnelles Modell nutzen (`tool_model`).
