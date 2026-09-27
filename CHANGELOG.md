@@ -21,6 +21,56 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.1] – 2026-09-27
+
+Nachbesserungen aus dem Sicherheits-/Qualitäts-Audit. Kein neues
+Funktionsverhalten, aber mehrere Sicherheits- und Robustheitskorrekturen.
+
+### Behoben — Sicherheit
+
+- SSRF-Härtung: `isPrivateHost` erkennt Dezimal-/Hex-/IPv6-Schreibweisen
+  privater Adressen; dynamische `http(...)`-URLs werden vorab aufgelöst,
+  private Ziele blockiert und die geprüfte IP im Request **gepinnt**
+  (Schutz vor DNS-Rebinding, F-07)
+- Der Template-`preheat` führt `shell()`/`mcp.call()` nicht mehr aus
+  Jinja-Kontrollblöcken (`if`/`for`/`macro`/`call`, `raw`/`verbatim`) aus;
+  gerenderte Blöcke (`filter`/`autoescape`/`block`) bleiben erhalten
+  (F-01/F-36)
+- Admin-API maskiert `auth_token` **und** `env` der MCP-Server; der
+  Backup-Export liefert Secrets nur mit `?tokens=1` (F-09/F-29/F-34)
+- `/admin/login` gibt die Session-ID nicht mehr im Antwort-Body zurück
+- stdio-MCP gibt den Kindprozess nach stdin-`EPIPE` frei (kein Prozess-Leck,
+  F-37)
+
+### Behoben — Robustheit
+
+- LLM-Aufrufe haben ein Default-Timeout (9 s, F-08); der MCP-Kontext wird
+  nur im MCP-Zweig geladen (F-11)
+- Entity-Index: Single-Flight bei parallelen Kaltabrufen und
+  Stale-while-error mit Altersgrenze `max(10 × ttl, 5 min)` (F-15/F-38)
+- MCP-Registry: Kaltstart-Guard gegen doppelte Initialisierung (F-32);
+  stdio-`stdin`-Fehler und übergroße HTTP-Antworten werden sauber
+  abgefangen (F-16/F-14)
+- `isError`-Ergebnisse aus `tools/call` werden als Fehler behandelt (F-13);
+  SSML-Entities werden dekodiert (F-06/F-25); `fuzzy_threshold` wird auf
+  `(0,1]` begrenzt (F-03)
+- `/api/lambda-trace` loggt nur noch eine Feld-Whitelist statt des ganzen
+  Bodys (F-30)
+
+### Geändert
+
+- `createApp()` aus `server.ts` extrahiert — die Routen sind ohne
+  Serverstart testbar
+- Runtime-Container läuft als non-root (Nutzer `node` via `gosu`)
+- `undici` als direkte Abhängigkeit auf Major 6 (wie Node 22) konsolidiert
+
+### Tests / CI
+
+- Testdateien werden unter strikter TypeScript-Konfiguration geprüft
+  (`npm run typecheck:tests`); CI-Workflow für Typecheck + Tests
+- Neue Proben: Audit-Findings, Routen (Auth/Admin/MCP/Query),
+  Index-Assistent, Entity-Index-Robustheit, stdio-Regressionen
+
 ## [0.1.0] – 2026-09-27
 
 Erste dokumentierte Fassung. Der lokale Weg (Gateway + Testmonitor + Pakete)
@@ -107,5 +157,6 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.0
