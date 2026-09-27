@@ -141,7 +141,8 @@ SmartPilot/
 ├── doc/                Dokumentation (Einstieg, Installation, Rezepte,
 │                       Referenz, Architektur)
 └── .github/            CI/CD: Smoke-Tests, Alexa-Modell-/Manifest-Sync,
-                        Lambda-Deployment
+    │                   Lambda-Deployment
+    └── ISSUE_TEMPLATE/ Issue-Vorlagen: bug_report, feature_request
 ```
 
 ## Dokumentation
@@ -168,6 +169,7 @@ Darüber hinaus:
   Vertrauensmodell der Installationspakete
 - [Beitragen](CONTRIBUTING.md) — Fehler melden, Pakete beisteuern, Code
   beitragen
+- [Changelog](CHANGELOG.md) — Versionshistorie und geplante Ausbauten
 
 ## Status
 
