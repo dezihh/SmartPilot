@@ -70,7 +70,7 @@ Ohne diese beiden Secrets laufen `sync-manifest.yml`, `sync-model.yml` und
 
 Die Deploy- und Sync-Workflows startest du manuell über `workflow_dispatch`
 (Actions → Workflow → **Run workflow**); `lambda-zip.yml` läuft zusätzlich
-automatisch bei Änderungen unter `alexa/lambda/**`.
+automatisch bei Änderungen unter `alexa/lambda/**` (oder am Workflow selbst).
 
 | Workflow | Zweck |
 |---|---|
@@ -93,8 +93,10 @@ Baut bei jeder Änderung unter `alexa/lambda/**` zwei Zips:
 - `smartpilot-alexa-lambda.zip` – Funktion + Abhängigkeiten (aus
   `alexa/lambda/requirements.txt`), für die eigene AWS-Lambda.
 - `smartpilot-alexa-hosted.zip` – `lambda/`-Struktur (`lambda_function.py`,
-  `requirements.txt`) für den Import in einen Alexa-hosted Skill. Enthält
-  bewusst **kein `config.json`** (öffentliches Asset).
+  `requirements.txt`, `config.json.example`) für den Import in einen
+  Alexa-hosted Skill. Enthält bewusst **kein `config.json`** (öffentliches
+  Asset) — die Vorlage `config.json.example` wird nach dem Import als
+  `config.json` mit Token angelegt.
 
 Ergebnis: Actions-Artifacts für den CI-Weg, ein rollendes Release `latest`
 (stabile Links `releases/download/latest/…`) und bei Tag `v*` ein versioniertes
