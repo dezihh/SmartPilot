@@ -32,7 +32,10 @@ app.post('/admin/login', (req, res) => {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
-  res.setHeader('Set-Cookie', cookieFor(sessionId));
+  // Secure-Flag nur hinter TLS (Reverse-Proxy meldet X-Forwarded-Proto).
+  // Direkter LAN-Zugriff ueber HTTP braucht das Cookie ohne Secure.
+  const secure = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]!.trim() === 'https';
+  res.setHeader('Set-Cookie', cookieFor(sessionId, secure));
   res.json({ ok: true, token: sessionId });
 });
 

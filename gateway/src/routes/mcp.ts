@@ -63,7 +63,7 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
     env,
     inventory_prompt: body.inventory_prompt == null ? null : String(body.inventory_prompt).trim() || null,
     side_effect: body.side_effect === 'read' ? 'read' : 'write',
-    enabled: body.enabled === false ? 0 : 1,
+    enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,
   };
 }
 
@@ -84,20 +84,28 @@ mcpRoutes.get('/admin/api/tools', requireAuth, async (req, res) => {
 });
 
 mcpRoutes.post('/admin/api/mcp-servers', requireAuth, (req, res) => {
-  const server = createMcpServer(normalizeServerInput(req.body as Record<string, unknown>));
-  invalidateMcpCache();
-  res.json({ server });
+  try {
+    const server = createMcpServer(normalizeServerInput(req.body as Record<string, unknown>));
+    invalidateMcpCache();
+    res.json({ server });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
 });
 
 mcpRoutes.put('/admin/api/mcp-servers/:id', requireAuth, (req, res) => {
   const id = Number(req.params.id);
-  const updated = updateMcpServer(id, normalizeServerInput(req.body as Record<string, unknown>));
-  invalidateMcpCache();
-  if (!updated) {
-    res.status(404).json({ error: 'nicht gefunden' });
-    return;
+  try {
+    const updated = updateMcpServer(id, normalizeServerInput(req.body as Record<string, unknown>));
+    invalidateMcpCache();
+    if (!updated) {
+      res.status(404).json({ error: 'nicht gefunden' });
+      return;
+    }
+    res.json({ server: updated });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
   }
-  res.json({ server: updated });
 });
 
 mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAuth, (req, res) => {
@@ -141,5 +149,3 @@ mcpRoutes.get('/admin/api/logs', requireAuth, (req, res) => {
 mcpRoutes.get('/admin/api/usage', requireAuth, (_req, res) => {
   res.json({ usage: summarizeUsage() });
 });
-
-// Admin-UI-Login: Token pruefen, Session-Cookie setzen

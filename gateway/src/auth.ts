@@ -21,10 +21,24 @@ function tokenValid(token: string): boolean {
 }
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const MAX_SESSIONS = 1000;
 const sessions = new Map<string, number>();
+
+// Abgelaufene Sessions entfernen; zusaetzlich eine Obergrenze halten, damit
+// die In-Memory-Map nicht unbegrenzt waechst (Sliding-TTL laesst aktive
+// Sessions sonst nie ablaufen).
+function pruneSessions(now: number): void {
+  for (const [id, exp] of sessions) if (exp < now) sessions.delete(id);
+}
 
 export function createSession(token: string): string | null {
   if (!tokenValid(token)) return null;
+  pruneSessions(Date.now());
+  while (sessions.size >= MAX_SESSIONS) {
+    const oldest = sessions.keys().next().value;
+    if (oldest === undefined) break;
+    sessions.delete(oldest);
+  }
   const id = randomBytes(32).toString('hex');
   sessions.set(id, Date.now() + SESSION_TTL_MS);
   return id;
@@ -46,6 +60,9 @@ export function sessionValid(req: Request): boolean {
   return true;
 }
 
-export function cookieFor(sessionId: string): string {
-  return `va_session=${sessionId}; HttpOnly; SameSite=Lax; Path=/admin; Max-Age=${SESSION_TTL_MS / 1000}`;
+// secure=true (Default) setzt das Secure-Flag; die Login-Route uebergibt
+// secure=false fuer den direkten LAN-Zugriff ueber HTTP (sonst wuerde der
+// Browser das Cookie dort verwerfen).
+export function cookieFor(sessionId: string, secure = true): string {
+  return `va_session=${sessionId}; HttpOnly; SameSite=Lax; Path=/admin${secure ? '; Secure' : ''}; Max-Age=${SESSION_TTL_MS / 1000}`;
 }

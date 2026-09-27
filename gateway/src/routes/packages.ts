@@ -47,7 +47,7 @@ interface RegistryIndex {
   packages: RegistryEntry[];
 }
 
-let registryCache: { at: number; data: RegistryIndex } | null = null;
+let registryCache: { at: number; lang: string; data: RegistryIndex } | null = null;
 
 function registryLanguage(): string {
   const v = (getSetting('registry_language') ?? 'de').trim().toLowerCase();
@@ -65,12 +65,13 @@ async function fetchJson(url: string): Promise<unknown> {
 }
 
 async function registryEntries(force: boolean): Promise<RegistryEntry[]> {
+  const lang = registryLanguage();
   const base = registryUrl().replace(/\/$/, '');
-  if (!force && registryCache && Date.now() - registryCache.at < REGISTRY_CACHE_MS) {
+  if (!force && registryCache && registryCache.lang === lang && Date.now() - registryCache.at < REGISTRY_CACHE_MS) {
     return registryCache.data.packages ?? [];
   }
   const idx = (await fetchJson(`${base}/index.json`)) as RegistryIndex;
-  registryCache = { at: Date.now(), data: idx };
+  registryCache = { at: Date.now(), lang, data: idx };
   return idx.packages ?? [];
 }
 
@@ -210,7 +211,7 @@ packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAuth, (req, res) 
 // --- Sicherung / Rücksicherung (logischer JSON-Export, ohne Logs) ---
 
 packagesRoutes.get('/admin/api/backup', requireAuth, (req, res) => {
-  const includeTokens = String(req.query.tokens ?? '1') !== '0';
+  const includeTokens = String(req.query.tokens ?? '0') === '1';
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="smartpilot-config-${new Date().toISOString().slice(0, 10)}.json"`);
   res.json({
@@ -219,7 +220,7 @@ packagesRoutes.get('/admin/api/backup', requireAuth, (req, res) => {
     includeTokens,
     settings: getSettings(),
     prompts: listPrompts(),
-    servers: listMcpServers(false).map((s) => ({ ...s, auth_token: includeTokens ? s.auth_token : null })),
+    servers: listMcpServers(false, true).map((s) => ({ ...s, auth_token: includeTokens ? s.auth_token : null })),
     functions: listFunctions(false).map((f) => ({ ...f, enabled: f.enabled ? 1 : 0, parameters: f.parameters ? JSON.stringify(f.parameters) : null })),
     actions: listActions(false),
     packages: listInstalledPackages(),

@@ -196,7 +196,11 @@ adminRoutes.post('/admin/api/index/apply', requireAuth, async (req, res) => {
 });
 
 adminRoutes.post('/admin/api/actions', requireAuth, (req, res) => {
-  res.json({ action: createAction(normalizeActionInput(req.body as Record<string, unknown>)) });
+  try {
+    res.json({ action: createAction(normalizeActionInput(req.body as Record<string, unknown>)) });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
 });
 
 adminRoutes.put('/admin/api/actions/:id', requireAuth, (req, res) => {
@@ -206,8 +210,12 @@ adminRoutes.put('/admin/api/actions/:id', requireAuth, (req, res) => {
     res.status(404).json({ error: 'nicht gefunden' });
     return;
   }
-  const updated = updateAction(id, normalizeActionInput(req.body as Record<string, unknown>));
-  res.json({ action: updated });
+  try {
+    const updated = updateAction(id, normalizeActionInput(req.body as Record<string, unknown>));
+    res.json({ action: updated });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
 });
 
 adminRoutes.delete('/admin/api/actions/:id', requireAuth, (req, res) => {

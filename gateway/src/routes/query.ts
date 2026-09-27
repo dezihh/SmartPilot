@@ -25,12 +25,15 @@ queryRoutes.post('/admin/api/query', requireAuth, handleQuery);
 const handleLambdaTrace = (req: Request, res: Response) => {
   const body = req.body as { sessionId?: string; event?: string; elapsedMs?: number; note?: string };
   if (getSetting('debug_logging') === '1') {
+    // Felder whitelisten und begrenzen: kein kompletter Request-Body (PII).
+    const event = String(body.event ?? '?').slice(0, 40);
+    const note = String(body.note ?? '').slice(0, 200);
     addLog({
-      sessionId: body.sessionId ?? 'lambda',
-      query: JSON.stringify(body),
-      route: `lambda-trace:${body.event ?? '?'}`,
+      sessionId: String(body.sessionId ?? 'lambda').slice(0, 120),
+      query: `event=${event}${note ? ` note=${note}` : ''}`,
+      route: `lambda-trace:${event}`,
       response: '',
-      durationMs: Number(body.elapsedMs ?? 0),
+      durationMs: Number.isFinite(Number(body.elapsedMs)) ? Number(body.elapsedMs) : 0,
       trace: [],
     });
   }
