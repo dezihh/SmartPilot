@@ -183,14 +183,42 @@ separater Schritt (Console oder `deploy-alexa.yml` auf `master`).
 
 Diagnose-Workflows nach Bedarf.
 
-## Lokale Betreiber-Werkzeuge
+## Lokale Entwicklung und Tests
+
+### Gateway im Docker-Dev-Modus (Standard)
+
+Die Entwicklung läuft in Docker: Der Quellcode ist per Bind-Mount eingebunden,
+Änderungen starten den Prozess automatisch neu (`tsx watch` im Container).
+
+```bash
+docker compose -f gateway/docker-compose.yml up --build
+```
+
+- Erreichbar unter `http://localhost:3000/admin` (Host-Port via `GATEWAY_PORT`).
+- Voraussetzung: `gateway/.env` (Vorlage: `gateway/.env.example`).
+- Tests im laufenden Container:
+  `docker compose -f gateway/docker-compose.yml exec gateway npm test`
+
+### Direkt auf dem Host (Alternative)
+
+Node.js ≥ 22 erforderlich:
+
+```bash
+cd gateway
+npm ci
+npm test             # Unit-Tests (node:test)
+npm run typecheck    # Typprüfung (tsc --noEmit)
+npm run dev          # tsx watch für Entwicklung
+npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, AUTH_TOKEN)
+```
+
+### Weitere Werkzeuge
 
 | Werkzeug | Zweck |
 |---|---|
 | `alexa/scripts/sync_skill.py` | Interaction Models aller Locales lokal per SMAPI synchronisieren; rendert Aufrufnamen aus `skill.config.json`; benötigt `alexa/skill.local.json` (nur `skill_id`) und ASK-CLI-Anmeldung |
 | `gateway/scripts/smoke-test.mjs` | End-to-End-Smoke-Tests gegen ein laufendes Gateway |
 | `alexa/lambda/test_lambda_function.py` | Lambda-Tests (stubben das ask-sdk, laufen ohne AWS/Netz) |
-| `gateway` `npm test` / `npm run typecheck` / `npm run build` | Gateway-Tests und Typprüfung |
 
 ## Sicherheit
 
