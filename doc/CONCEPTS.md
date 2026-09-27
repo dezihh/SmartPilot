@@ -41,7 +41,9 @@ id|area|state|unit|name|key=value;...
 ```
 
 Der Index eignet sich zum Lesen und Finden. Er führt keine Aktion aus.
-Schalten und Steuern bleiben Aufgabe eines Werkzeugs.
+Schalten und Steuern bleiben Aufgabe eines Werkzeugs. Der Agent liest den
+Index über die eingebauten Werkzeuge `fn_find_entities` und `fn_get_entity`,
+Funktionen über `index.find(...)`, `index.get(...)` und `index.state(...)`.
 
 Die TTL löst keinen regelmäßigen Abruf aus. Ein neuer Snapshot wird erst beim
 nächsten Zugriff nach Ablauf der TTL geladen. Alle Cachearten und ihre
@@ -79,15 +81,21 @@ Der Gateway-Core liefert einen neutralen Antwortvertrag:
     "display": {
         "title": "SmartPilot",
         "text": "…"
-    }
+    },
+    "followUp": false
 }
 ```
 
 `speech` ist immer vorhanden. `ssml` kennzeichnet bereits formatiertes SSML;
 ohne dieses Kennzeichen wird der Text für den Sprachkanal passend verpackt.
 `display` ist optional und enthält derzeit insbesondere den anzuzeigenden
-Text. Geräte ohne Display-Unterstützung funktionieren weiterhin über den
+Text. `followUp` bittet den Sprachclient, die Sitzung für eine Rückfrage offen
+zu halten. Geräte ohne Display-Unterstützung funktionieren weiterhin über den
 Sprachkanal.
+
+Der Core ist **kanalneutral**: Er kennt nur diesen Antwortvertrag, nicht das
+Zielgerät. Alexa ist heute ein Adapter davor; weitere Sprachdienste wären als
+zusätzliche Adapter denkbar, ohne den Core zu ändern.
 
 Die Darstellung auf Echo-Geräten ist geräteabhängig. Der Antworttext wird auf
 unterstützten Geräten zusätzlich angezeigt, das Scroll-Verhalten ist jedoch
@@ -119,11 +127,14 @@ Die Datenbeschaffung ist fest, die Sprache flexibel.
 ### LLM
 
 ```text
-Frage → Agent → Werkzeuge oder Funktionen → Antwort
+Frage → Vorgang → LLM wählt Werkzeuge/Funktionen → Antwort
 ```
 
-Der Agent entscheidet selbst. Dieser Modus eignet sich für offene,
-kombinierte oder mehrdeutige Fragen.
+Hier entscheidet ein LLM selbst über die nötigen Zugriffe, bleibt aber auf die
+dem Vorgang zugewiesenen Werkzeuge beschränkt. Passt zu keiner Trigger-Phrase
+ein Vorgang, übernimmt der allgemeine **Agent** nach demselben Muster – nur mit
+allen freigegebenen Werkzeugen. Dieser Weg eignet sich für offene, kombinierte
+oder mehrdeutige Fragen.
 
 ## Wo Regeln hingehören
 
