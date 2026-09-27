@@ -97,14 +97,16 @@ Quellen vorgewärmt.
 
 Neue Index-Quellen ohne Handarbeit entwerfen:
 
-- `POST /admin/api/index/assist` `{ "goal": "…" }` — das LLM liest den
-  Tool-Katalog der MCP-Registry und entwirft ein Draft (Tool, Argumente,
-  Aliase, Probefragen). Ein deterministischer Validator führt es probehalber
-  aus (nur erkennbar lesende Tools), prüft den Datenvertrag (mindestens fünf
-  Einträge) und lässt das LLM maximal dreimal nachbessern.
-- `POST /admin/api/index/apply` `{ "draft": … }` — speichert das erneut
-  geprüfte Draft nach Admin-Bestätigung als Index-Setting und verwirft den
-  Cache.
+- `POST /admin/api/index/assist` `{ "goal": "…", "indexKey": "ma"? }` — das LLM
+  liest den Tool-Katalog der MCP-Registry und entwirft ein Draft (Tool,
+  Argumente, optionale Transformation, Aliase, Probefragen). Ein
+  deterministischer Validator führt es probehalber aus (nur erkennbar lesende
+  Tools), prüft den Datenvertrag (mindestens fünf Einträge) und lässt das LLM
+  maximal dreimal nachbessern.
+- `POST /admin/api/index/apply` `{ "draft": …, "indexKey": "ma"? }` — speichert
+  das erneut geprüfte Draft nach Admin-Bestätigung und verwirft den Cache. Ohne
+  `indexKey` landen die Werte im Standard-Index (`entity_index`), mit Key in
+  `entity_index_<key>`.
 
 ## Vorgangsfelder
 
