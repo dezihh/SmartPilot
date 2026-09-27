@@ -62,8 +62,10 @@ Verfügung; der Default `write` ist konservativ.
 Die eingebauten reinen Lesewerkzeuge `fn_find_entities` und `fn_get_entity`
 invalidieren den Index nicht.
 
-Nach einer geänderten Index-Konfiguration ist ein Gateway-Neustart der
-eindeutige Fallback.
+Speichern oder Löschen einer Index-Quelle über den Index-Editor verwirft den
+Cache sofort. Wird die Konfiguration auf anderem Weg geändert, greift sie
+spätestens nach Ablauf von `ttlMs`; ein Gateway-Neustart leert den Cache
+ebenfalls.
 
 ### TTL wählen
 
