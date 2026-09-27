@@ -1,5 +1,6 @@
 import nunjucks from 'nunjucks';
 import { exec } from 'node:child_process';
+import { promises as dns } from 'node:dns';
 import type { McpContext } from '../mcp/registry.js';
 import { getIndexSnapshot, listIndexKeys, type IndexEntry } from './entityIndex.js';
 import { findInSnapshot, getFromSnapshot } from './indexTools.js';
@@ -151,6 +152,17 @@ async function readCapped(res: Response, cap: number): Promise<string> {
   return out.slice(0, cap);
 }
 
+// F-07: loest einen dynamischen Hostnamen auf und meldet, ob eine der
+// Adressen in ein privates Netz zeigt (Schutz vor DNS-Rebinding).
+async function resolvesToPrivate(hostname: string): Promise<boolean> {
+  try {
+    const addrs = await dns.lookup(hostname, { all: true });
+    return addrs.some((a) => isPrivateHost(a.address));
+  } catch {
+    return false;
+  }
+}
+
 async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Promise<unknown | null> {
   const timeoutMs = getSettingNum('http_timeout_ms', HTTP_TIMEOUT_MS);
   const bodyCap = getSettingNum('http_body_cap', HTTP_BODY_CAP);
@@ -164,6 +176,13 @@ async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Pro
       const u = new URL(target);
       if (dynamic && isPrivateHost(u.hostname)) {
         trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
+        return null;
+      }
+      // F-07: DNS-Rebinding - ein oeffentlicher Hostname kann auf eine private
+      // IP zeigen. Best-effort-Aufloesung vorab; scheitert sie (NXDOMAIN/
+      // offline), wird nicht blockiert, da der fetch dann ohnehin fehlschlaegt.
+      if (dynamic && (await resolvesToPrivate(u.hostname))) {
+        trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
         return null;
       }
       const res = await fetch(target, { signal: controller.signal, redirect: dynamic ? 'manual' : 'follow' });

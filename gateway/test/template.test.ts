@@ -1,5 +1,6 @@
-import { test, before, after, afterEach } from 'node:test';
+import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { promises as dns } from 'node:dns';
 import { renderActionTemplate, renderFunction } from '../src/core/template.js';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
@@ -160,6 +161,20 @@ test('http: dynamische Redirect-Kette ins private Netz -> blockiert (SSRF)', asy
   assert.ok(findStep(trace, 'template.http.blocked'));
   assert.ok(fetchCalls.length >= 1);
   assert.ok(fetchCalls.every((u) => !u.includes('169.254')), 'keine private IP gefetcht');
+});
+
+test('http: dynamischer Hostname mit privater DNS-Aufloesung -> blockiert (SSRF, F-07)', async () => {
+  stubFetch();
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '10.0.0.5', family: 4 }]);
+  try {
+    const trace: TraceEvent[] = [];
+    const r = await renderFunction('test_fn_ssrf', mcp, trace, { host: 'evil.example.org' });
+    assert.equal(r.speech, '');
+    assert.equal(fetchCalls.length, 0, 'kein Fetch ins private Netz');
+    assert.ok(findStep(trace, 'template.http.blocked'));
+  } finally {
+    lk.mock.restore();
+  }
 });
 
 test('http: Literale private URL bleibt erlaubt (Admin-Templates sind vertrauenswuerdig)', async () => {
