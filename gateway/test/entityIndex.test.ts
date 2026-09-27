@@ -1,7 +1,9 @@
-import { test, before } from 'node:test';
+import { test, before, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { setSetting, deleteSetting } from '../src/db/settings.js';
+import { createMcpServer } from '../src/db/mcpServers.js';
+import { invalidateMcpCache } from '../src/mcp/registry.js';
 import {
   parseIndexResult,
   fmtEntry,
@@ -14,6 +16,35 @@ import {
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('entityindex');
+
+const originalFetch = globalThis.fetch;
+
+interface FakeResInit {
+  status?: number;
+  headers?: Record<string, string>;
+  json?: unknown;
+}
+
+let handler: (url: string, body: Record<string, unknown>) => FakeResInit = () => ({});
+
+function stubFetch(): void {
+  globalThis.fetch = (async (_url: string | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
+    const h = handler(String(_url), body);
+    const headers = new Map(Object.entries(h.headers ?? {}));
+    return {
+      ok: (h.status ?? 200) >= 200 && (h.status ?? 200) < 300,
+      status: h.status ?? 200,
+      text: async () => JSON.stringify(h.json ?? {}),
+      json: async () => h.json ?? {},
+      headers: { get: (name: string) => headers.get(name.toLowerCase()) ?? null },
+    } as unknown as Response;
+  }) as typeof fetch;
+}
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 before(() => {
   closeDb(); // Import-seitige Runtime-Init (Container-DB) ersetzen
@@ -136,6 +167,94 @@ test('getIndexSnapshot mit konfiguriertem Tool, aber ohne MCP-Server -> klarer F
   );
   deleteSetting('entity_index');
   invalidateIndex();
+});
+
+// MCP-Antwort fuer den Tool-Katalog (tools/list).
+function toolsList(name: string): FakeResInit {
+  return { json: { jsonrpc: '2.0', id: 1, result: { tools: [{ name }] } } };
+}
+
+test('getIndexSnapshot: parallele Abrufe teilen sich einen Tool-Call (F-15)', async () => {
+  stubFetch();
+  let callCount = 0;
+  handler = (_url, body) => {
+    if (body.method === 'initialize') return { headers: { 'mcp-session-id': 's' }, json: { jsonrpc: '2.0', id: 1, result: {} } };
+    if (body.method === 'tools/list') return toolsList('ha_index');
+    if (body.method === 'tools/call') {
+      callCount++;
+      return { json: { jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: 'light.1|Wohnzimmer|on||Licht|' }] } } };
+    }
+    return { status: 202 };
+  };
+  createMcpServer({
+    name: 'audit-idx',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  setSetting('entity_index', JSON.stringify({ tool: 'ha_index' }));
+  invalidateMcpCache();
+  invalidateIndex();
+  try {
+    const [a, b] = await Promise.all([getIndexSnapshot('', true), getIndexSnapshot('', true)]);
+    assert.equal(callCount, 1, 'nur ein Tool-Call trotz paralleler Abrufe');
+    assert.equal(a.length, 1);
+    assert.equal(b.length, 1);
+  } finally {
+    deleteSetting('entity_index');
+    invalidateIndex();
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-idx'").run();
+  }
+});
+
+test('getIndexSnapshot: liefert bei Tool-Fehler den letzten Stand (Stale-while-error, F-15)', async () => {
+  stubFetch();
+  const okHandler = (_url: string, body: Record<string, unknown>): FakeResInit => {
+    if (body.method === 'initialize') return { headers: { 'mcp-session-id': 's' }, json: { jsonrpc: '2.0', id: 1, result: {} } };
+    if (body.method === 'tools/list') return toolsList('ha_index2');
+    if (body.method === 'tools/call') {
+      return { json: { jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: 'light.1|Wohnzimmer|on||Licht|' }] } } };
+    }
+    return { status: 202 };
+  };
+  handler = okHandler;
+  createMcpServer({
+    name: 'audit-idx2',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  setSetting('entity_index_old', JSON.stringify({ tool: 'ha_index2' }));
+  invalidateMcpCache();
+  invalidateIndex();
+  try {
+    const first = await getIndexSnapshot('old', true);
+    assert.equal(first.length, 1);
+    // Tool-Call schlaegt jetzt fehl; der Client bleibt gecacht.
+    handler = (_url, body) => {
+      if (body.method === 'tools/call') return { json: { jsonrpc: '2.0', id: 1, error: { code: -1, message: 'kaputt' } } };
+      return okHandler(_url, body);
+    };
+    const stale = await getIndexSnapshot('old', true);
+    assert.equal(stale.length, 1, 'letzter bekannter Stand trotz Fehler');
+    assert.equal(stale[0]!.id, 'light.1');
+  } finally {
+    deleteSetting('entity_index_old');
+    invalidateIndex();
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-idx2'").run();
+  }
 });
 
 test('db-Reststaende aufgeraeumt', () => {

@@ -1,9 +1,12 @@
 import { test, before, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import type { ChildProcess } from 'node:child_process';
 import { McpClient, MCP_TIMEOUT_MS } from '../src/mcp/client.js';
-import { createClient } from '../src/mcp/registry.js';
+import { createClient, getMcpContext, invalidateMcpCache } from '../src/mcp/registry.js';
 import { McpStdioClient } from '../src/mcp/stdio.js';
-import { initDb, closeDb } from '../src/db/schema.js';
+import { initDb, closeDb, getDb } from '../src/db/schema.js';
+import { createMcpServer } from '../src/db/mcpServers.js';
 import type { ToolDef } from '../src/types.js';
 import { tmpDb } from './_tmpdb.js';
 
@@ -171,4 +174,66 @@ test('rpc: HTTP-Fehler wirft mit Status', async () => {
 test('createClient: stdio/http je nach Transport-Spalte', () => {
   assert.ok(createClient({ transport: 'stdio', url: '', auth_token: null, command: 'python3', args: '["-m","x"]', env: null }) instanceof McpStdioClient);
   assert.ok(createClient({ transport: 'http', url: 'https://x', auth_token: 't', command: null, args: null, env: null }) instanceof McpClient);
+});
+
+// Fake-Child fuer den stdio-Test: erlaubt, stdin-'error' (EPIPE) gezielt
+// auszuloesen, ohne einen echten Prozess zu starten.
+class FakeStream extends EventEmitter {
+  write(): boolean {
+    return true;
+  }
+  setEncoding(): void {}
+}
+
+class FakeChild extends EventEmitter {
+  stdin = new FakeStream();
+  stdout = new FakeStream();
+  stderr = new FakeStream();
+  kill(): boolean {
+    return true;
+  }
+}
+
+test('stdio: stdin-Fehler (EPIPE) lehnt offene Requests ab (F-16)', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.init();
+  child.stdin.emit('error', new Error('EPIPE'));
+  await assert.rejects(p, /stdio stdin: EPIPE/);
+});
+
+test('getMcpContext: parallele Kaltstarts laden einen Server nur einmal (F-32)', async () => {
+  stubFetch();
+  let listCount = 0;
+  handler = (_url, body) => {
+    if (body.method === 'initialize') {
+      return { headers: { 'mcp-session-id': 's' }, json: { jsonrpc: '2.0', id: 1, result: {} } };
+    }
+    if (body.method === 'tools/list') {
+      listCount++;
+      return rpcRes({ tools: [{ name: 'idx', description: '' }] });
+    }
+    return { status: 202 };
+  };
+  createMcpServer({
+    name: 'audit-cold',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  try {
+    invalidateMcpCache();
+    const [a, b] = await Promise.all([getMcpContext(), getMcpContext()]);
+    assert.equal(listCount, 1, 'nur eine Initialisierung trotz paralleler Kaltstarts');
+    assert.equal(a.servers.length, 1);
+    assert.equal(b.servers.length, 1);
+  } finally {
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-cold'").run();
+  }
 });

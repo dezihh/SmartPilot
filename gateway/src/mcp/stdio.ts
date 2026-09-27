@@ -14,6 +14,9 @@ interface PendingRequest {
   timer: NodeJS.Timeout;
 }
 
+// Injizierbar fuer Tests (F-16): im Betrieb node:child_process.spawn.
+type SpawnFn = (command: string, args: string[], options: object) => ChildProcess;
+
 export interface StdioConfig {
   command: string;
   args: string[];
@@ -27,13 +30,16 @@ export class McpStdioClient implements McpTransport {
   private pending = new Map<number, PendingRequest>();
   private exited = false;
 
-  constructor(private readonly config: StdioConfig) {}
+  constructor(
+    private readonly config: StdioConfig,
+    private readonly spawnFn: SpawnFn = spawn as unknown as SpawnFn
+  ) {}
 
   private ensureChild(): ChildProcess {
     if (this.child && !this.exited) return this.child;
     this.exited = false;
     this.buffer = '';
-    this.child = spawn(this.config.command, this.config.args, {
+    this.child = this.spawnFn(this.config.command, this.config.args, {
       cwd: process.cwd(),
       env: {
         PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
