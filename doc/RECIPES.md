@@ -24,6 +24,12 @@ Vertrauensmodell stehen in [`packages/README.md`](../packages/README.md).
 | `autobahn` | `autobahn` (Region anpassen!) | keine (öffentliche API) |
 | `system-info` | `gateway_uptime`, `cpu_type` (gefährlich, `shell()`) | keine |
 
+**Hinweis zu `web_url_read`:** Das Lesen konkreter Seiten/Feeds läuft über das
+MCP-Werkzeug `web_url_read`. Es gehört zur `searxng`-Brücke (`mcp-searxng`) und
+existiert nur, wenn das SearXNG-Paket installiert ist — die Brave-Funktion
+`recherche` nutzt es für das Feed-Lesen, die reine Websuche (`brave_web_search`)
+funktioniert auch ohne.
+
 Vorgehen:
 
 1. **Wartung und Pakete** → Paket wählen → Vorschau prüfen → installieren.
