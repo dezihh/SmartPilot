@@ -11,8 +11,8 @@ Fertige Erweiterungen liegen als **Installationspakete** bereit (Tab
 **Wartung und Pakete** → „Installationspakete"). Ein Paket legt
 Registry-Einträge, Index-Quellen und/oder Funktionen an — teils mit
 Parameterformular (Host/Port/Token) und Vorschau. Die Registry wird aus
-`packages/` im Repository geladen; Aufbau und Vertrauensmodell stehen in
-[`packages/README.md`](../packages/README.md).
+`packages/` im Repository geladen; Grundgedanke, Parametrierung und
+Vertrauensmodell stehen in [`packages/README.md`](../packages/README.md).
 
 | Paket | Liefert | Gegenseite nötig |
 |---|---|---|
@@ -28,7 +28,7 @@ Vorgehen:
 
 1. **Wartung und Pakete** → Paket wählen → Vorschau prüfen → installieren.
    Ein Paket mit `shell()` verlangt eine ausdrückliche Bestätigung.
-2. Die Gegenseiten-Schritte aus `packages/<id>/README.md` ausführen.
+2. Die Gegenseiten-Schritte aus `packages/de/<id>/README.md` ausführen.
 3. Betroffene Artefakte prüfen: **Tool-Registry** → **Tools abfragen**,
    **Index-Quellen** → Probe, **Funktionen** → **Ausführen**.
 4. Erst danach einen **Vorgang** oder Trigger darauf setzen.

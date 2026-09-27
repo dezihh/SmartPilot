@@ -4,6 +4,35 @@
 Sprachassistent: Amazon Echo fragt, dein eigener Server antwortet — schnell,
 wo es zählt, und klug, wo es drauf ankommt.
 
+## Warum es SmartPilot gibt
+
+Zwei Wege führten nach Alexa — jeder mit einem Haken. Die kostenlose
+Alexa-Anbindung von Home Assistant (die kleine Schwester des
+Nabu-Casa-Cloud-Dienstes) ist blitzschnell: „Alexa, schalte das Licht aus" —
+und das Licht ist aus, ohne Skill-Namen, ohne Wartezeit. Aber sie kennt nur
+Befehle. Fragen wie „Ist noch jemand wach?" bleiben offen.
+[HomeAssistantAssistAWS](https://github.com/fabianosan/HomeAssistantAssistAWS)
+ist das Gegenteil: ein Universalschraubenschlüssel, der jede Frage über die
+Assist-Conversation-API und ein LLM beantwortet — dafür mit jeder Antwort
+eine Wartezeit.
+
+SmartPilot ist die Antwort auf die Frage: Warum nicht beides? Ein Router
+entscheidet pro Frage, ob der schnelle feste Weg genügt oder ob der Agent
+mit Werkzeugen ran muss. Und weil ein Zuhause mehr ist als Home Assistant,
+kann SmartPilot alles anzapfen, was MCP, HTTP oder eine Shell anbietet —
+Websuche, Musik, Verkehr, eigene Dienste. Neue Funktionen kommen als
+Installationspakete hinzu: Parameter eingeben, fertig. Kurz: ein
+Universalschlüssel für Alexa — für alles, was eine API, einen MCP-Server
+oder eine Shell hat.
+
+Ein ehrliches Wort: SmartPilot ist ein Custom Skill. Alexa braucht daher den
+Skill-Namen — „Alexa, sage SmartPilot, schalte das Licht aus". Die native
+Anbindung ohne Skill-Namen ist als späterer Ausbau denkbar, bei entsprechendem Wunsch der Community.
+
+Derzeit ist der Skill nur in deutsch ausgeprägt, daher auch bisher auch nur deutsche Dokumentation. Bei entsprechendem Bedarf aus der Community wäre eine Multisprachlösung aber möglich. Gern auch als Pull Request ;-)
+
+## Was SmartPilot ausmacht
+
 - **Schnell, wo es zählt.** Klare, wiederkehrende Fragen — „Hausstatus",
   „Wetter", „Ist jemand zuhause?" — beantwortet ein fester Router
   deterministisch: gleiche Frage, gleiche Antwort, in Sekundenbruchteilen.
