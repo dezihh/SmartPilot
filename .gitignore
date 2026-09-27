@@ -44,6 +44,9 @@ llm_debug.log
 inventory.md
 .inventory.llm.md
 
+# --- Testberichte (nicht versionieren) ---
+test-reports/
+
 # --- voiceassist ---
 gateway/data/
 alexa/.ask/
