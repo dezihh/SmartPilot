@@ -36,7 +36,9 @@ app.post('/admin/login', (req, res) => {
   // Direkter LAN-Zugriff ueber HTTP braucht das Cookie ohne Secure.
   const secure = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]!.trim() === 'https';
   res.setHeader('Set-Cookie', cookieFor(sessionId, secure));
-  res.json({ ok: true, token: sessionId });
+  // Session-ID nicht im Body spiegeln (kein JS-Zugriff noetig; die HttpOnly-
+  // Cookie authentifiziert). Verhindert, dass ein XSS sie auslesen koennte.
+  res.json({ ok: true });
 });
 
 // Login-Seite ist ohne Session erreichbar (legt das Cookie)

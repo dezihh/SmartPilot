@@ -36,20 +36,26 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
           .map((s) => s.trim())
           .filter(Boolean);
     args = JSON.stringify(argsList);
-    const envObj: Record<string, string> = {};
     const envRaw = body.env;
-    const entries: [string, string][] =
-      envRaw && typeof envRaw === 'object' && !Array.isArray(envRaw)
-        ? Object.entries(envRaw as Record<string, unknown>).map(([k, v]) => [k, String(v)])
-        : String(envRaw ?? '')
-            .split('\n')
-            .map((line) => {
-              const i = line.indexOf('=');
-              return i > 0 ? ([line.slice(0, i).trim(), line.slice(i + 1).trim()] as [string, string]) : null;
-            })
-            .filter((e): e is [string, string] => e !== null);
-    for (const [k, v] of entries) if (k) envObj[k] = v;
-    env = JSON.stringify(envObj);
+    if (envRaw === undefined || envRaw === null || envRaw === '') {
+      // Nicht ueberschreiben (COALESCE): die Admin-UI zeigt maskierte env nicht
+      // an, ein leeres Feld darf die bestehenden Secrets nicht wischen (F-34).
+      env = null;
+    } else {
+      const envObj: Record<string, string> = {};
+      const entries: [string, string][] =
+        typeof envRaw === 'object' && !Array.isArray(envRaw)
+          ? Object.entries(envRaw as Record<string, unknown>).map(([k, v]) => [k, String(v)])
+          : String(envRaw)
+              .split('\n')
+              .map((line) => {
+                const i = line.indexOf('=');
+                return i > 0 ? ([line.slice(0, i).trim(), line.slice(i + 1).trim()] as [string, string]) : null;
+              })
+              .filter((e): e is [string, string] => e !== null);
+      for (const [k, v] of entries) if (k) envObj[k] = v;
+      env = JSON.stringify(envObj);
+    }
   } else if (!url || !name) {
     throw new Error('name und url sind erforderlich');
   }

@@ -220,7 +220,11 @@ packagesRoutes.get('/admin/api/backup', requireAuth, (req, res) => {
     includeTokens,
     settings: getSettings(),
     prompts: listPrompts(),
-    servers: listMcpServers(false, true).map((s) => ({ ...s, auth_token: includeTokens ? s.auth_token : null })),
+    servers: listMcpServers(false, true).map((s) => ({
+      ...s,
+      auth_token: includeTokens ? s.auth_token : null,
+      env: includeTokens ? s.env : null,
+    })),
     functions: listFunctions(false).map((f) => ({ ...f, enabled: f.enabled ? 1 : 0, parameters: f.parameters ? JSON.stringify(f.parameters) : null })),
     actions: listActions(false),
     packages: listInstalledPackages(),
