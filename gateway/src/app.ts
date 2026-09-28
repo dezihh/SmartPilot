@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import { join } from 'node:path';
-import { createSession, sessionValid, cookieFor } from './auth.js';
+import { createSession, requestAuthorized, cookieFor } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { queryRoutes } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
@@ -47,9 +47,11 @@ export function createApp(): Express {
     res.sendFile(join(process.cwd(), 'web', 'login.html'));
   });
 
-  // Statische Admin-UI nur mit gueltiger Session (Login-Cookie oder Bearer-Query)
+  // Statische Admin-UI: Bearer-Token ODER Session-Cookie. Ein vorgelagerter
+  // Proxy kann so die UI ohne App-Login bedienen (Issue #10); das Token bleibt
+  // proxy-seitig und gelangt nie in den Browser.
   app.use('/admin', (req, res, next) => {
-    if (!sessionValid(req)) {
+    if (!requestAuthorized(req)) {
       if (req.headers.accept?.includes('text/html')) {
         res.redirect('/admin/login.html');
         return;

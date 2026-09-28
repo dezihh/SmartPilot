@@ -1,6 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { requireAuth, createSession, sessionValid, cookieFor } from '../src/auth.js';
+import { requireAuth, requestAuthorized, createSession, sessionValid, cookieFor } from '../src/auth.js';
 import { config } from '../src/config.js';
 
 interface Captured {
@@ -110,4 +110,12 @@ test('requireAuth akzeptiert gueltigen Session-Cookie ohne Bearer', () => {
   });
   assert.equal(captured.status, undefined);
   assert.equal(captured.nextCalled, true);
+});
+
+test('requestAuthorized: Bearer ODER Session, sonst false (Issue #10)', () => {
+  assert.equal(requestAuthorized(authHeaders(`Bearer ${config.authToken}`) as never), true);
+  const id = createSession(config.authToken)!;
+  assert.equal(requestAuthorized(authHeaders(undefined, `va_session=${id}`) as never), true);
+  assert.equal(requestAuthorized(authHeaders() as never), false);
+  assert.equal(requestAuthorized(authHeaders('Bearer falsch') as never), false);
 });

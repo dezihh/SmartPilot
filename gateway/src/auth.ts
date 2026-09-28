@@ -3,15 +3,23 @@ import type { NextFunction, Request, Response } from 'express';
 import { config } from './config.js';
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const header = req.headers.authorization ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   // Gueltiger Session-Cookie reicht ebenso wie ein Bearer-Token (Admin-UI ohne
   // clientseitig geparktes AUTH_TOKEN).
-  if (tokenValid(token) || sessionValid(req)) {
+  if (requestAuthorized(req)) {
     next();
     return;
   }
   res.status(401).json({ error: 'unauthorized' });
+}
+
+// Gemeinsamer Auth-Helper fuer UI und API: ein gueltiges Bearer-Token ODER ein
+// gueltiger Session-Cookie autorisiert. So kann ein vorgelagerter Reverse-Proxy
+// `Authorization: Bearer <AUTH_TOKEN>` serverseitig injizieren, ohne dass das
+// Token je in den Browser gelangt (kein doppelter App-Login, Issue #10).
+export function requestAuthorized(req: Request): boolean {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  return tokenValid(token) || sessionValid(req);
 }
 
 function tokenValid(token: string): boolean {

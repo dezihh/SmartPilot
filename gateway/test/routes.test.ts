@@ -43,7 +43,7 @@ interface RouteRes {
 function call(
   method: string,
   path: string,
-  opts: { body?: unknown; cookie?: string; token?: string } = {}
+  opts: { body?: unknown; cookie?: string; token?: string; accept?: string } = {}
 ): Promise<RouteRes> {
   return new Promise((resolve, reject) => {
     const data = opts.body === undefined ? undefined : JSON.stringify(opts.body);
@@ -54,6 +54,7 @@ function call(
     }
     if (opts.cookie) headers.cookie = opts.cookie;
     if (opts.token) headers.authorization = `Bearer ${opts.token}`;
+    if (opts.accept) headers.accept = opts.accept;
     const req = request({ host: '127.0.0.1', port: PORT, method, path, headers }, (res) => {
       let body = '';
       res.setEncoding('utf8');
@@ -125,6 +126,28 @@ before(async () => {
 test('ohne Session ist /admin/api/bootstrap 401', async () => {
   const r = await call('GET', '/admin/api/bootstrap');
   assert.equal(r.status, 401);
+});
+
+test('Issue #10: GET /admin/ mit Bearer ohne Cookie -> 200 (UI)', async () => {
+  const r = await call('GET', '/admin/', { token: 'test-secret' });
+  assert.equal(r.status, 200);
+  assert.match(String(r.headers['content-type'] ?? ''), /text\/html/);
+});
+
+test('Issue #10: GET /admin/ ohne Token/Cookie -> 401 (JSON)', async () => {
+  const r = await call('GET', '/admin/');
+  assert.equal(r.status, 401);
+});
+
+test('Issue #10: GET /admin/ ohne Auth, Accept html -> Redirect zum Login', async () => {
+  const r = await call('GET', '/admin/', { accept: 'text/html' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/admin/login.html');
+});
+
+test('Issue #10: GET /admin/login.html bleibt ohne Auth erreichbar', async () => {
+  const r = await call('GET', '/admin/login.html', { accept: 'text/html' });
+  assert.equal(r.status, 200);
 });
 
 test('login: falsches Token 401, richtiges Token setzt va_session-Cookie', async () => {

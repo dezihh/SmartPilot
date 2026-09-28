@@ -66,7 +66,7 @@ dieser Weg ist jedoch nicht getestet.
 ### Hinweis: Konfiguration sichern
 
 Alle Einstellungen, Funktionen, Vorgänge und Index-Quellen liegen in der
-SQLite-Datenbank (`gateway/data/meinhelfer.db`). Zwei Wege, das Setup zu
+SQLite-Datenbank (`gateway/data/smartpilot.db`). Zwei Wege, das Setup zu
 sichern:
 
 - **Backup über die Admin-Oberfläche** (Tab „Wartung und Pakete“): lädt eine
@@ -85,7 +85,7 @@ Diese Variablen liest der Gateway-Code beim Start:
 | `LLM_BASE_URL` | ja | Basis-URL der OpenAI-kompatiblen Schnittstelle |
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
 | `PORT` | nein | Gateway-Port, Standard `3000` |
-| `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/meinhelfer.db` |
+| `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/smartpilot.db` |
 | `LLM_MODEL` | ja | Name des LLM-Modells |
 | `LLM_MAX_TOKENS` | nein | Ausgabe-Budget, Standard `2000` |
 
@@ -206,6 +206,12 @@ Dafür werden benötigt:
 Leite den Gateway-Port `3000` nicht aus dem Internet weiter. Die öffentliche
 Freigabe erfolgt ausschließlich über Port 443 der vorgeschalteten
 TLS-Komponente; andernfalls ließen sich deren URL-Regeln umgehen.
+
+Für den Admin-Zugriff hinter einem Reverse Proxy mit zentraler
+Authentifizierung (z. B. tinyauth/Authelia) kann der Proxy das Bearer-Token
+serverseitig setzen: die statische `/admin`-UI und `/admin/api/*` akzeptieren
+`Authorization: Bearer <AUTH_TOKEN>` auch ohne Session-Cookie. So entfällt der
+doppelte App-Login, und das Token gelangt nie in den Browser.
 
 Das Gateway spricht selbst nur HTTP und kann TLS nicht terminieren. Deshalb ist
 eine vorgelagerte TLS-Terminierung zwingend erforderlich. Das kann ein
