@@ -21,6 +21,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.2] – 2026-09-28
+
 ### Hinzugefügt
 
 - Reverse-Proxy-Betrieb: die statische Admin-UI (`/admin/`) akzeptiert jetzt
@@ -174,6 +176,7 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.2
 [0.1.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.0
