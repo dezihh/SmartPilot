@@ -126,7 +126,7 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | Variable | Standard | Zweck |
 |---|---:|---|
 | `PORT` | `3000` | HTTP-Port |
-| `DB_PATH` | `./data/meinhelfer.db` | SQLite-Datei |
+| `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
 | `LLM_MODEL` | – | Startmodell (Pflicht) |
 | `LLM_MAX_TOKENS` | `2000` | Ausgabe-Budget |
 | `LLM_REASONING_EFFORT` | leer | Reasoning-Stufe, falls das Modell sie unterstützt |

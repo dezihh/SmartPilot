@@ -21,6 +21,23 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+### Hinzugefügt
+
+- Reverse-Proxy-Betrieb: die statische Admin-UI (`/admin/`) akzeptiert jetzt
+  auch das Bearer-Token, nicht nur den Session-Cookie. Ein vorgelagerter Proxy
+  (z. B. tinyauth/Authelia) kann `Authorization: Bearer <AUTH_TOKEN>` setzen und
+  den App-Login überspringen; das Token bleibt proxy-seitig und gelangt nie in
+  den Browser (Issue #10)
+
+### Behoben
+
+- Hilfe nennt nur noch tatsächlich eingerichtete Fähigkeiten: bei leerem
+  Nachschlagewerk wird kein roher Marker mehr an das LLM gegeben (kein Erfinden
+  von Fähigkeiten); der Hilfe-Vorgang beschreibt jetzt alle eingerichteten
+  Funktionen und Systeme und führt sonst nur die Grundfunktionen auf
+- Standard-Datenbankpfad von „meinhelfer.db" auf „smartpilot.db" umgestellt
+  (`config.ts`, `.env.example`, Doku)
+
 ## [0.1.1] – 2026-09-27
 
 Nachbesserungen aus dem Sicherheits-/Qualitäts-Audit. Kein neues

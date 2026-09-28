@@ -9,7 +9,7 @@ function req(name: string): string {
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   authToken: req('AUTH_TOKEN'),
-  dbPath: process.env.DB_PATH ?? './data/meinhelfer.db',
+  dbPath: process.env.DB_PATH ?? './data/smartpilot.db',
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),

@@ -8,7 +8,7 @@ import { addLog, listLogs, recentAgentTurns, summarizeUsage } from '../src/db/lo
 import Database from 'better-sqlite3';
 import { tmpDb } from './_tmpdb.js';
 
-const DB_PATH = tmpDb('meinhelfer');
+const DB_PATH = tmpDb('smartpilot');
 
 before(() => {
   closeDb(); // hermetisch: Container-DB durch Temp-DB ersetzen
