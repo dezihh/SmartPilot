@@ -85,6 +85,11 @@ export function renderHelpCatalog(filter: CatalogFilter = {}): string {
 
 // Deterministischer Text fuer den Leer-Fall und als Notnagel, wenn das LLM
 // nicht antwortet: nennt jede Faehigkeit generisch (eine Zeile) + Grundfunktionen.
+//
+// Bewusst doppelt gehalten (keine gemeinsame Quelle): Die Grundfunktionen-Formulierung
+// steht auch im Seed-Prompt (db/seeds.ts, SEED_HELP_PROMPT) - dort als
+// LLM-Anweisung, hier als Sprechtext ohne LLM. Keine Zusammenfuehrung, weil der
+// Seed-Prompt nutzereditierbar ist; bei Aenderung beide Stellen pflegen.
 export function renderHelpFallback(filter: CatalogFilter = {}): string {
   const name = getSetting('assistant_name') ?? 'Dein SmartPilot';
   const { tools, systems } = capabilityCatalog(filter);

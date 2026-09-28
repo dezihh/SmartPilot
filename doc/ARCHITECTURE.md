@@ -191,6 +191,15 @@ ein `{"speech": …}`-Objekt, setzt er `ssml: true` bzw. übernimmt Display-Date
   Der Assistenten-Name kommt aus dem Setting `assistant_name` (Platzhalter
   `{assistant_name}`). Seed-Texte für frische Installationen:
   `db/seeds.ts`.
+- **Hilfe** (`core/help.ts`): Die geseedete Hilfe (`hilfe`, Marker
+  „Hilfe-Anfrage") bekommt statt des Inventars einen vollständigen Katalog der
+  für den Agenten freigegebenen Funktionen (Beschreibung + Parameter) und
+  Systeme; das LLM formuliert daraus je Tool eine verständliche Zeile mit
+  Nutzung. `renderHelpFallback` liefert den deterministischen Text für den
+  Leer-Fall bzw. bei LLM-Fehler. Die Formulierung der Grundfunktionen steht
+  bewusst doppelt — hier als Sprechtext und als LLM-Anweisung im Seed-Prompt
+  (`db/seeds.ts`) — weil der Seed-Prompt nutzereditierbar ist und nicht an den
+  Code gekoppelt werden darf; bei Änderungen beide Stellen pflegen.
 
 ## SSML, Display und Response-Nachbearbeitung
 

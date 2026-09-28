@@ -29,6 +29,13 @@ export const SEED_AGENT_INVENTORY = String.raw`Nimm dieses Nachschlagewerk als P
 // Hilfe-Action: generisch - leitet die Faehigkeitsgruppen aus dem Tool-Inventory
 // ab (keine festen Domaenen, keine Tool-Aufrufe). Gehoert zur Grundausstattung
 // jeder Installation, deshalb Teil des Referenz-Seeds.
+//
+// Bewusst doppelt gehalten (keine gemeinsame Quelle): Die Nennung der Grundfunktionen
+// (Identitaet, freie Frage, Chat-Modus) steht sowohl hier als LLM-Anweisung als
+// auch als Sprechtext im deterministischen Fallback (core/help.ts,
+// renderHelpFallback). Sie werden NICHT zusammengefuehrt, weil dieser Seed-Prompt
+// nutzereditierbar ist und nicht an den Code gekoppelt werden darf. Bei Aenderung
+// der Grundfunktionen beide Stellen anpassen.
 export const SEED_HELP_TRIGGERS = JSON.stringify([
   'hilfe',
   'was kannst du',
