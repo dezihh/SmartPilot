@@ -87,3 +87,28 @@ test('restoreDefaultSettings: Settings auf Defaults, entity_index unangetastet',
   assert.equal(idx?.value, 'KEEP-INDEX', 'Index-Konfiguration bleibt');
   closeDb();
 });
+
+test('Hilfe-Migration haertet die alte Seed-Formulierung, ohne den Rest zu verwerfen (F-D2)', () => {
+  freshInit();
+  const oldSeed =
+    'Hilfe-Anfrage: Beantworte das NUR aus dem Tool-Inventory (Nachschlagewerk unten) - KEINE Tool-Aufrufe. Eigener Zusatz. {agent_inventory}';
+  getDb().prepare("UPDATE actions SET system_prompt = ? WHERE name = 'hilfe'").run(oldSeed);
+  closeDb();
+  initDb(FRESH_DB, true);
+  const sp = (getDb().prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt: string }).system_prompt;
+  assert.match(sp, /Erfinde NIE Faehigkeiten/, 'Hauptsatz gehaertet');
+  assert.match(sp, /Eigener Zusatz\./, 'uebriger Nutzertext bleibt erhalten');
+  assert.doesNotMatch(sp, /Tool-Inventory/, 'alte Formulierung ersetzt');
+  closeDb();
+});
+
+test('Hilfe-Migration laesst Nutzer-Edit mit Seed-Marker unangetastet (F-D2)', () => {
+  freshInit();
+  const edited = 'Hilfe-Anfrage: eigene Fassung. Chat-Modus: starte chat modus / beenden. {agent_inventory}';
+  getDb().prepare("UPDATE actions SET system_prompt = ? WHERE name = 'hilfe'").run(edited);
+  closeDb();
+  initDb(FRESH_DB, true);
+  const sp = (getDb().prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt: string }).system_prompt;
+  assert.equal(sp, edited, 'marker-beibehaltender Edit bleibt unangetastet');
+  closeDb();
+});

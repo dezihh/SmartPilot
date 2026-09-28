@@ -422,14 +422,16 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
     db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(neu);
   }
 }
-// Bestands-DBs: Hilfe-Prompt auf die Fassung mit Leer-Fallback heben (nennt
-// keine Faehigkeiten, wenn das Nachschlagewerk leer ist). Nur echte Seed-Prompts
-// (Marker "Hilfe-Anfrage"); eigene Nutzer-Texte bleiben unangetastet.
+// Bestands-DBs: den Hilfe-Hauptsatz haerten (kein Erfinden von Faehigkeiten).
+// Nur die alte Seed-Formulierung ersetzen - Nutzer-Anpassungen bleiben erhalten
+// (F-D2; kein Voll-Ersetzen des Prompts).
 {
   const row = db.prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt?: string } | undefined;
   const sp = row?.system_prompt;
-  if (sp && sp.includes('Hilfe-Anfrage') && !sp.includes('noch keine Faehigkeiten eingerichtet')) {
-    db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(SEED_HELP_PROMPT);
+  const alt = 'Beantworte das NUR aus dem Tool-Inventory (Nachschlagewerk unten) - KEINE Tool-Aufrufe.';
+  const neu = 'Beantworte das NUR aus dem Nachschlagewerk unten - KEINE Tool-Aufrufe. Erfinde NIE Faehigkeiten, die dort nicht stehen.';
+  if (sp && sp.includes(alt)) {
+    db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(sp.replace(alt, neu));
   }
 }
 // (Die Referenz-Defaults der Settings werden weiter unten ueber SEED_SETTINGS

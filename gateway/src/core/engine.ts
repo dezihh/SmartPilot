@@ -271,12 +271,12 @@ async function executeAction(
   trace: TraceEvent[]
 ): Promise<AssistantResponse> {
   if (action.mode === 'llm') {
-    // Ein Vorgang mit leerer Tool-Liste (z. B. die Hilfe) beschreibt ALLE
-    // eingerichteten Faehigkeiten (Funktionen + aktive Systeme) - sonst waere
-    // das Nachschlagewerk leer und das LLM erfindet Faehigkeiten.
-    const inventoryScope = action.toolList && action.toolList.length > 0
-      ? activeServerNames(mcp, action.toolList)
-      : null;
+    // Das Inventory wird nur in Prompts eingefuegt, die den Marker tragen. Ein
+    // solcher Vorgang OHNE eigene Tools (Hilfe) beschreibt ALLE eingerichteten
+    // Systeme; ein Vorgang mit Tool-Liste bleibt darauf gescopt (F-D1).
+    const showsCatalog = action.system_prompt?.includes('{agent_inventory}') ?? false;
+    const noTools = !action.toolList || action.toolList.length === 0;
+    const inventoryScope = showsCatalog && noTools ? null : activeServerNames(mcp, action.toolList);
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? agentSystemPrompt(mcp, action.toolList))
       .replace('{agent_inventory}', buildInventoryPrompt(inventoryScope));
     return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList);
