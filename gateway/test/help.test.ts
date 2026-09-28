@@ -93,6 +93,26 @@ test('Katalog ist groessenbegrenzt (SSML-/Antwortlimit)', () => {
   assert.ok(renderHelpCatalog().length <= 6002);
 });
 
+test('Katalog folgt agent_tools (Allowlist)', () => {
+  fn('wetter', 'Wetter und Vorhersage');
+  fn('autobahn', 'Verkehr');
+  assert.equal(capabilityCatalog({ allow: [] }).tools.length, 0);
+  assert.deepEqual(
+    capabilityCatalog({ allow: ['fn_wetter'] }).tools.map((t) => t.name),
+    ['wetter']
+  );
+});
+
+test('Katalog: Systeme nur soweit nutzbar (servers-Filter)', () => {
+  server('a', 'System A');
+  server('b', 'System B');
+  assert.equal(capabilityCatalog({ servers: [] }).systems.length, 0);
+  assert.deepEqual(
+    capabilityCatalog({ servers: ['a'] }).systems.map((s) => s.name),
+    ['a']
+  );
+});
+
 test('installierte Pakete erweitern den Katalog (Funktion und System)', () => {
   const weather: PackageManifest = {
     id: 'wetter-paket', version: '1.0.0', name: 'Wetter', summary: 's', description: 'd',

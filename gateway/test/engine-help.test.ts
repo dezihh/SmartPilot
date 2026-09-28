@@ -13,6 +13,7 @@ const { tmpDb } = await import('./_tmpdb.js');
 const { initDb, closeDb, getDb } = await import('../src/db/schema.js');
 const { createAction } = await import('../src/db/actions.js');
 const { createFunction } = await import('../src/db/functions.js');
+const { setSetting, deleteSetting } = await import('../src/db/settings.js');
 const { processQuery } = await import('../src/core/engine.js');
 
 let llmCalls = 0;
@@ -66,6 +67,7 @@ beforeEach(() => {
   failLlm = false;
   lastMessages = [];
   stubFetch();
+  deleteSetting('agent_tools');
   getDb().exec('DELETE FROM tpl_functions;');
 });
 
@@ -85,6 +87,15 @@ test('Hilfe mit Tool: LLM bekommt den vollstaendigen Katalog', async () => {
 
 test('Hilfe ohne Tools: deterministischer Fallback, kein LLM', async () => {
   const r = await processQuery({ text: 'hilfe', sessionId: 'help-empty' });
+  assert.equal(r.route, 'action');
+  assert.match(r.response.speech, /keine Fähigkeiten eingerichtet/);
+  assert.equal(llmCalls, 0);
+});
+
+test('Hilfe respektiert agent_tools: ausgeschlossenes Tool fehlt (Fallback)', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  setSetting('agent_tools', 'keine');
+  const r = await processQuery({ text: 'hilfe', sessionId: 'help-allow' });
   assert.equal(r.route, 'action');
   assert.match(r.response.speech, /keine Fähigkeiten eingerichtet/);
   assert.equal(llmCalls, 0);
@@ -117,20 +128,13 @@ test('eigener llm-Vorgang (ohne Seed-Marker) bleibt beim LLM', async () => {
   assert.equal(llmCalls, 1);
 });
 
-test('Hilfe-Katalog ignoriert die agent_tools-Allowlist (bewusst vollstaendig)', async () => {
-  // Dokumentiert gewolltes Verhalten: die Hilfe nennt jede aktive Faehigkeit,
-  // auch wenn sie ueber agent_tools vom Agenten ausgeschlossen ist. Wird die
-  // Ausschluss-Semantik je auf die Hilfe ausgedehnt, muss dieser Test angepasst
-  // werden.
-  const db = getDb();
-  db.prepare("INSERT INTO settings (key, value) VALUES ('agent_tools', 'keine') ON CONFLICT(key) DO UPDATE SET value = 'keine'").run();
-  try {
-    fn('geheim', 'Nur fuer den Admin gedacht');
-    const r = await processQuery({ text: 'hilfe', sessionId: 'help-allowlist' });
-    assert.equal(r.route, 'action');
-    assert.equal(llmCalls, 1);
-    assert.match(systemMessage(), /- geheim: Nur fuer den Admin gedacht/);
-  } finally {
-    db.prepare("DELETE FROM settings WHERE key = 'agent_tools'").run();
-  }
+test('Hilfe folgt der agent_tools-Allowlist: ausgeschlossenes Tool fehlt', async () => {
+  fn('erlaubt', 'Freigegebenes Tool');
+  fn('geheim', 'Nur fuer den Admin gedacht');
+  setSetting('agent_tools', 'fn_erlaubt');
+  const r = await processQuery({ text: 'hilfe', sessionId: 'help-allowlist' });
+  assert.equal(r.route, 'action');
+  assert.equal(llmCalls, 1);
+  assert.match(systemMessage(), /- erlaubt: Freigegebenes Tool/);
+  assert.doesNotMatch(systemMessage(), /geheim/, 'ausgeschlossenes Tool darf im Katalog fehlen');
 });

@@ -30,12 +30,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
-- Die Hilfe nennt jetzt zuverlässig alle eingerichteten Fähigkeiten: Der
-  Hilfe-Prompt bekommt den vollständigen Katalog (jede aktive Funktion mit
-  Beschreibung und Parametern, jeder Server) statt eines über `agent_tools`
-  gefilterten und um Tools ohne `inventory_prompt` erleichterten Inventars. Das
-  Modell formuliert daraus je Tool eine verständliche Zeile mit Nutzung. Ohne
-  Fähigkeiten oder bei LLM-Fehler greift ein deterministischer Fallback.
+- Die Hilfe nennt jetzt zuverlässig die nutzbaren Fähigkeiten: Der Hilfe-Prompt
+  bekommt einen vollständigen Katalog der für den Agenten freigegebenen
+  Funktionen (mit Beschreibung und Parametern) und Systeme — auch von Tools
+  ohne `inventory_prompt` — statt eines Inventars, das solche Tools ausließ.
+  Das Modell formuliert daraus je Tool eine verständliche Zeile mit Nutzung.
+  Ohne Fähigkeiten oder bei LLM-Fehler greift ein deterministischer Fallback.
 - Der Admin-Redirect `/admin` → `/admin/` erhält jetzt den Query-String und
   läuft erst nach der Authentifizierung.
 

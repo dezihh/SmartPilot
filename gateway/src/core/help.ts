@@ -30,9 +30,29 @@ function functionEntry(f: ParsedFunction): HelpEntry {
   return { name: f.name, text: bits.join(' ') };
 }
 
-export function capabilityCatalog(): { tools: HelpEntry[]; systems: HelpEntry[] } {
-  const tools = listFunctions(true).map(functionEntry);
-  const systems = listMcpServers(true).map((s) => ({ name: s.name, text: (s.inventory_prompt ?? '').trim() }));
+export interface CatalogFilter {
+  /** Freigegebene Funktions-/Toolnamen (agent_tools-Semantik): null/undefined = alle, [] = keine. */
+  allow?: string[] | null;
+  /** Systemnamen, deren Tools der Agent nutzen darf: null/undefined = alle, [] = keine. */
+  servers?: string[] | null;
+}
+
+// Gleiche Allowlist-Semantik wie das Inventory (Fn-Name oder fn_-Praefix).
+function allowedFunction(name: string, allow: string[] | null): boolean {
+  if (allow === null) return true;
+  return allow.includes(name) || allow.includes(`fn_${name}`);
+}
+
+// Katalog der tatsaechlich nutzbaren Faehigkeiten (agent_tools beruecksichtigt).
+export function capabilityCatalog(filter: CatalogFilter = {}): { tools: HelpEntry[]; systems: HelpEntry[] } {
+  const allow = filter.allow ?? null;
+  const tools = listFunctions(true)
+    .filter((f) => allowedFunction(f.name, allow))
+    .map(functionEntry);
+  const servers = filter.servers;
+  const systems = listMcpServers(true)
+    .filter((s) => servers === undefined || servers === null || servers.includes(s.name))
+    .map((s) => ({ name: s.name, text: (s.inventory_prompt ?? '').trim() }));
   return { tools, systems };
 }
 
@@ -51,8 +71,8 @@ function bullet(name: string, text: string, empty = ''): string {
 }
 
 // Katalog als Prompt-Block (groessenbegrenzt). '' wenn nichts eingerichtet ist.
-export function renderHelpCatalog(): string {
-  const { tools, systems } = capabilityCatalog();
+export function renderHelpCatalog(filter: CatalogFilter = {}): string {
+  const { tools, systems } = capabilityCatalog(filter);
   const blocks: string[] = [];
   if (tools.length > 0) {
     blocks.push(`## Werkzeuge\n${tools.map((t) => bullet(t.name, t.text, '(ohne Beschreibung)')).join('\n')}`);
@@ -65,9 +85,9 @@ export function renderHelpCatalog(): string {
 
 // Deterministischer Text fuer den Leer-Fall und als Notnagel, wenn das LLM
 // nicht antwortet: nennt jede Faehigkeit generisch (eine Zeile) + Grundfunktionen.
-export function renderHelpFallback(): string {
+export function renderHelpFallback(filter: CatalogFilter = {}): string {
   const name = getSetting('assistant_name') ?? 'Dein SmartPilot';
-  const { tools, systems } = capabilityCatalog();
+  const { tools, systems } = capabilityCatalog(filter);
   const head: string[] = [];
   if (tools.length === 0 && systems.length === 0) {
     head.push(

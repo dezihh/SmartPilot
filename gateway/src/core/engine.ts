@@ -14,7 +14,7 @@ import { getMcpContext, type McpContext } from '../mcp/registry.js';
 import { routeAction, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
-import { buildInventoryPrompt } from './inventory.js';
+import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
 import { renderHelpCatalog, renderHelpFallback } from './help.js';
 import { escapeXml, stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
 import { buildTools, type ToolRoute } from './tools.js';
@@ -275,15 +275,18 @@ async function executeAction(
   mcp: McpContext,
   trace: TraceEvent[]
 ): Promise<AssistantResponse> {
-  // Die geseedete Hilfe bekommt den VOLLSTAENDIGEN Faehigkeiten-Katalog (jede
-  // aktive Funktion mit Beschreibung/Parametern, jeder Server) statt des ueber
-  // agent_tools gefilterten Inventars - so nennt das LLM zuverlaessig alle Tools
-  // und deren Nutzung in einfacher Sprache. Kein MCP, keine Tool-Aufrufe.
+  // Die geseedete Hilfe bekommt einen vollstaendigen Katalog der TATSAECHLICH
+  // nutzbaren Faehigkeiten (jede fuer den Agenten freigegebene Funktion mit
+  // Beschreibung/Parametern, Systeme soweit nutzbar) - auch von Tools ohne
+  // inventory_prompt. So nennt das LLM zuverlaessig alle Tools und deren Nutzung
+  // in einfacher Sprache. Keine Tool-Aufrufe.
   if (isSeededHelp(action)) {
-    const catalog = renderHelpCatalog();
+    const allow = agentFnAllowlist();
+    const filter = { allow, servers: activeServerNames(mcp, allow) };
+    const catalog = renderHelpCatalog(filter);
     if (!catalog) {
       trace.push({ ts: Date.now(), step: 'help.empty', detail: { action: action.name } });
-      return { speech: renderHelpFallback(), followUp: true, followupPrompt: 'Was interessiert dich?' };
+      return { speech: renderHelpFallback(filter), followUp: true, followupPrompt: 'Was interessiert dich?' };
     }
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? '').replace(
       '{agent_inventory}',
@@ -306,7 +309,7 @@ async function executeAction(
     } catch (e) {
       trace.push({ ts: Date.now(), step: 'help.error', detail: String(e) });
     }
-    return { speech: renderHelpFallback(), followUp: true, followupPrompt: 'Was interessiert dich?' };
+    return { speech: renderHelpFallback(filter), followUp: true, followupPrompt: 'Was interessiert dich?' };
   }
   if (action.mode === 'llm') {
     // Das Inventory wird nur in Prompts eingefuegt, die den Marker tragen. Ein
@@ -350,9 +353,8 @@ function isSeededHelp(action: ParsedAction): boolean {
 // MCP-Kontext nur laden, wenn der Weg ihn tatsaechlich braucht: der Agent und
 // LLM-Vorgaenge immer, deterministische/hybride Vorgaenge nur, wenn ihre
 // Funktion MCP/index/fn nutzt (reine http-/shell-Funktionen sparen den
-// Kaltstart; F-11). Die deterministische Hilfe braucht kein MCP.
+// Kaltstart; F-11). Die Hilfe braucht ihn fuer den nutzbaren System-Filter.
 function actionNeedsMcp(action: ParsedAction): boolean {
-  if (isSeededHelp(action)) return false;
   if (action.mode === 'llm') return true;
   const fn = action.function_ref ? getFunctionByName(action.function_ref) : null;
   const lit = extractLiterals(fn?.template ?? '');
