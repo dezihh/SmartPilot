@@ -274,6 +274,41 @@ Proxy (`limit_req` im Beispiel unten).
 Testmonitor, WebUI, Admin-Oberfläche und Admin-API bleiben ausschließlich im
 internen Netz.
 
+### Einfacher Aufbau: TLS-Proxy für das gesamte Gateway
+
+Die einfachste Variante stellt den kompletten Gateway-Port über einen TLS-Proxy
+bereit — ohne zentrale Authentifizierung und ohne `BASE_PATH`. Die Admin-UI
+erreichst du dann unter `https://<host>/admin/` und meldest dich dort mit
+`AUTH_TOKEN` an (App-Login):
+
+```nginx
+server {
+	listen 443 ssl;
+	http2 on;
+	server_name <gateway-host>;
+
+	ssl_certificate     /etc/letsencrypt/live/<gateway-host>/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/<gateway-host>/privkey.pem;
+	ssl_protocols TLSv1.2 TLSv1.3;
+
+	location / {
+		proxy_pass http://<gateway-intern>:3000;   # ohne Slash/Pfad
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+	}
+}
+```
+
+> **Sicherheit:** Damit ist auch die komplette Admin-UI öffentlich erreichbar.
+> Schütze sie mindestens durch den App-Login (`AUTH_TOKEN`) und möglichst eine
+> IP-Einschränkung (z. B. `allow <heimnetz-ip>; deny all;` im `location /`).
+> Soll die Admin-UI intern bleiben, veröffentliche nur `/api/query`
+> (→ Referenzaufbau unten); eine zentrale Anmeldung zeigt das kombinierte
+> Beispiel.
+
 ### Referenzaufbau mit nginx
 
 Der öffentliche nginx-VHost beendet TLS und leitet nur die benötigten URLs an
