@@ -28,6 +28,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `/smartpilot/admin/api/*`), ohne Pfad-Rewrites im vorgelagerten Proxy. Die
   öffentliche Adapter-API bleibt unter `/api/…` (Ausbaustufe zu Issue #10)
 
+### Behoben
+
+- Die Hilfe nennt jetzt deterministisch genau die eingerichteten Fähigkeiten
+  (je Funktion und je System eine generische Zeile) statt sie vom Modell
+  ableiten zu lassen. Dadurch wächst sie zuverlässig mit installierten Paketen
+  und lässt keine Tools mehr aus.
+
 ## [0.1.3] – 2026-09-28
 
 Findings aus dem Diff-Review zu v0.1.2.

@@ -15,6 +15,7 @@ import { routeAction, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt } from './inventory.js';
+import { buildHelpSpeech } from './help.js';
 import { escapeXml, stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
 import { buildTools, type ToolRoute } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
@@ -270,6 +271,14 @@ async function executeAction(
   mcp: McpContext,
   trace: TraceEvent[]
 ): Promise<AssistantResponse> {
+  // Die geseedete Hilfe beantwortet der Code direkt (deterministisch): so
+  // spiegelt sie zuverlaessig genau die eingerichteten Faehigkeiten - ohne
+  // LLM, ohne Erfindungen. Eigene Hilfe-Prompts (ohne Seed-Marker) bleiben
+  // beim LLM.
+  if (isSeededHelp(action)) {
+    trace.push({ ts: Date.now(), step: 'help.generated', detail: { action: action.name } });
+    return { speech: buildHelpSpeech(), followUp: true, followupPrompt: 'Was interessiert dich?' };
+  }
   if (action.mode === 'llm') {
     // Das Inventory wird nur in Prompts eingefuegt, die den Marker tragen. Ein
     // solcher Vorgang OHNE eigene Tools (Hilfe) beschreibt ALLE eingerichteten
@@ -303,11 +312,18 @@ async function executeAction(
   return parseAgentAnswer(result.message.content ?? '', trace);
 }
 
+// Die geseedete Hilfe (Name 'hilfe' + Referenz-Marker "Hilfe-Anfrage") wird
+// deterministisch beantwortet; eigene Hilfe-Texte bleiben beim LLM.
+function isSeededHelp(action: ParsedAction): boolean {
+  return action.name === 'hilfe' && (action.system_prompt?.includes('Hilfe-Anfrage') ?? false);
+}
+
 // MCP-Kontext nur laden, wenn der Weg ihn tatsaechlich braucht: der Agent und
 // LLM-Vorgaenge immer, deterministische/hybride Vorgaenge nur, wenn ihre
 // Funktion MCP/index/fn nutzt (reine http-/shell-Funktionen sparen den
-// Kaltstart; F-11).
+// Kaltstart; F-11). Die deterministische Hilfe braucht kein MCP.
 function actionNeedsMcp(action: ParsedAction): boolean {
+  if (isSeededHelp(action)) return false;
   if (action.mode === 'llm') return true;
   const fn = action.function_ref ? getFunctionByName(action.function_ref) : null;
   const lit = extractLiterals(fn?.template ?? '');
