@@ -9,7 +9,7 @@ process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
 
-const { resolveDbPath } = await import('../src/config.js');
+const { resolveDbPath, normalizeBasePath } = await import('../src/config.js');
 
 test('resolveDbPath: explizites DB_PATH hat Vorrang', () => {
   assert.equal(resolveDbPath('/x/custom.db', () => true), '/x/custom.db');
@@ -23,4 +23,14 @@ test('resolveDbPath: vorhandene Legacy-Datei wird ohne DB_PATH weiterverwendet (
 test('resolveDbPath: sonst smartpilot.db (Default, auch wenn Datei existiert)', () => {
   assert.equal(resolveDbPath(undefined, () => false), './data/smartpilot.db');
   assert.equal(resolveDbPath(undefined, () => true), './data/smartpilot.db');
+});
+
+test('normalizeBasePath: Wurzel und Trailing-Slash normalisieren', () => {
+  assert.equal(normalizeBasePath(undefined), '');
+  assert.equal(normalizeBasePath(''), '');
+  assert.equal(normalizeBasePath('/'), '');
+  assert.equal(normalizeBasePath('///'), '');
+  assert.equal(normalizeBasePath('smartpilot'), '/smartpilot');
+  assert.equal(normalizeBasePath('/smartpilot/'), '/smartpilot');
+  assert.equal(normalizeBasePath('/a/b//'), '/a/b');
 });

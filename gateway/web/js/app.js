@@ -1,4 +1,9 @@
-const API = '/admin/api';
+// API-Basis relativ zur Admin-Seite: funktioniert auch unter einem Pfad-Prefix
+// (BASE_PATH), z. B. /smartpilot/admin/.
+const API = (() => {
+  const src = document.currentScript && document.currentScript.src;
+  return src ? new URL('../api', src).pathname : '/admin/api';
+})();
 let bootstrap = { settings: {}, actions: [], functions: [], servers: [], prompts: [] };
 
 function token() {
@@ -1112,7 +1117,7 @@ $('pkg-import-preview').onclick = async () => {
 };
 $('backup-download').onclick = async () => {
   const tokens = $('backup-with-tokens').checked ? '1' : '0';
-  const res = await fetch(`/admin/api/backup?tokens=${tokens}`, { headers: { Authorization: `Bearer ${$('token').value.trim()}` } });
+  const res = await fetch(`${API}/backup?tokens=${tokens}`, { headers: { Authorization: `Bearer ${$('token').value.trim()}` } });
   if (!res.ok) { alert(`Sicherung fehlgeschlagen (HTTP ${res.status})`); return; }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

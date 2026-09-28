@@ -76,5 +76,5 @@ export function sessionValid(req: Request): boolean {
 // secure=false fuer den direkten LAN-Zugriff ueber HTTP (sonst wuerde der
 // Browser das Cookie dort verwerfen).
 export function cookieFor(sessionId: string, secure = true): string {
-  return `va_session=${sessionId}; HttpOnly; SameSite=Lax; Path=/admin${secure ? '; Secure' : ''}; Max-Age=${SESSION_TTL_MS / 1000}`;
+  return `va_session=${sessionId}; HttpOnly; SameSite=Lax; Path=${config.basePath}/admin${secure ? '; Secure' : ''}; Max-Age=${SESSION_TTL_MS / 1000}`;
 }

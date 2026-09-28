@@ -13,6 +13,15 @@ export function resolveDbPath(envPath: string | undefined, exists: (p: string) =
   return CURRENT_DB_PATH;
 }
 
+// Admin-Pfad-Prefix (Issue #10 Ausbaustufe): '' (Wurzel) oder '/prefix' ohne
+// Trailing-Slash. Betrifft nur die Admin-UI; die oeffentliche API bleibt unter
+// '/api/...'. Reine Funktion fuer Tests.
+export function normalizeBasePath(raw: string | undefined): string {
+  const p = (raw ?? '').trim();
+  if (!p || p === '/') return '';
+  return ('/' + p.replace(/^\/+/, '')).replace(/\/+$/, '');
+}
+
 function req(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Fehlende Umgebungsvariable: ${name}`);
@@ -23,6 +32,7 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   authToken: req('AUTH_TOKEN'),
   dbPath: resolveDbPath(process.env.DB_PATH, existsSync),
+  basePath: normalizeBasePath(process.env.BASE_PATH),
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),
