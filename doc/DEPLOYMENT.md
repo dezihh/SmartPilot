@@ -66,6 +66,16 @@ base64 -w0 ~/.ask/cli_config  # -> Secret ASK_CLI_CONFIG
 Ohne diese beiden Secrets laufen `sync-manifest.yml`, `sync-model.yml` und
 `deploy-alexa.yml` nicht.
 
+## CI
+
+- `gateway-ci.yml` — Typecheck (Quellcode **und** Tests) und Tests des
+  Gateways; läuft bei Änderungen unter `gateway/**` (Push auf `main`,
+  Pull Requests) und manuell.
+- `lambda-ci.yml` — Tests der Alexa-Lambda
+  (`alexa/lambda/test_lambda_function.py`; stubbt ask-sdk/requests, es wird
+  nichts installiert); läuft bei Änderungen unter `alexa/lambda/**` und
+  manuell.
+
 ## Workflows
 
 Die Deploy- und Sync-Workflows startest du manuell über `workflow_dispatch`

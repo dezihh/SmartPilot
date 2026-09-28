@@ -1,0 +1,36 @@
+name: Lambda CI
+
+# Tests fuer die Alexa-Lambda. Laeuft nur bei Aenderungen unter alexa/.
+# Der Test (alexa/lambda/test_lambda_function.py) stubbt ask-sdk und requests
+# per sys.modules - es wird bewusst nichts installiert.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'alexa/lambda/**'
+      - '.github/workflows/lambda-ci.yml'
+  pull_request:
+    paths:
+      - 'alexa/lambda/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: alexa/lambda
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Tests
+        run: python3 test_lambda_function.py
