@@ -21,6 +21,29 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.3] – 2026-09-28
+
+Findings aus dem Diff-Review zu v0.1.2.
+
+### Geändert
+
+- `lambda-zip.yml`: die Dispatch-Version wird über `env` übergeben (keine
+  Shell-Interpolation, F-D3); versionierte Releases tragen den „Latest"-Badge,
+  das rollende `latest` ist ein reiner Alias (F-D7)
+- `.gitignore`: `/AGENTS.md` nur im Repo-Root verankert statt in jedem
+  Verzeichnis (F-D5)
+
+### Behoben
+
+- Hilfe-Inventory: nur ein Vorgang mit Nachschlagewerk-Marker und ohne eigene
+  Tools (Hilfe) zeigt alle Systeme; andere Vorgänge bleiben auf ihre Tool-Liste
+  begrenzt (F-D1)
+- Hilfe-Prompt-Migration ersetzt nur die alte Seed-Formulierung und lässt
+  Nutzer-Anpassungen unangetastet (F-D2)
+- Bearer-Parsing zentral in `auth.ts` (`bearerToken`) statt dupliziert (F-D4)
+- Ohne `DB_PATH` wird eine vorhandene `meinhelfer.db` weiterverwendet, statt eine
+  leere `smartpilot.db` anzulegen (F-D6)
+
 ## [0.1.2] – 2026-09-28
 
 ### Hinzugefügt
@@ -39,18 +62,6 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Funktionen und Systeme und führt sonst nur die Grundfunktionen auf
 - Standard-Datenbankpfad von „meinhelfer.db" auf „smartpilot.db" umgestellt
   (`config.ts`, `.env.example`, Doku)
-- Hilfe-Inventory: nur ein Vorgang mit Nachschlagewerk-Marker und ohne eigene
-  Tools (Hilfe) zeigt alle Systeme; andere Vorgänge bleiben auf ihre Tool-Liste
-  begrenzt (F-D1)
-- Hilfe-Prompt-Migration ersetzt nur die alte Seed-Formulierung und lässt
-  Nutzer-Anpassungen unangetastet (F-D2)
-- `lambda-zip.yml`: Dispatch-Version über `env` statt Shell-Interpolation (F-D3);
-  versionierte Releases tragen den „Latest"-Badge, das rollende `latest` ist ein
-  reiner Alias (F-D7)
-- Bearer-Parsing zentral in `auth.ts` (`bearerToken`) statt dupliziert (F-D4)
-- `.gitignore`: `/AGENTS.md` nur im Repo-Root verankert (F-D5)
-- Ohne `DB_PATH` wird eine vorhandene `meinhelfer.db` weiterverwendet, statt eine
-  leere `smartpilot.db` anzulegen (F-D6)
 
 ## [0.1.1] – 2026-09-27
 
@@ -188,7 +199,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.3
 [0.1.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.2
 [0.1.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.1
 [0.1.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.0
