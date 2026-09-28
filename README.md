@@ -95,6 +95,10 @@ GATEWAY_PORT=3000 docker compose up -d --build
 Danach: `http://<host>:3000/admin` öffnen, mit `AUTH_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.
 
+> Mit `BASE_PATH` (Sub-URL hinter einem Reverse Proxy) liegt die Admin-UI
+> stattdessen unter `http://<host>:3000/<BASE_PATH>/admin/` — Details in
+> [doc/INSTALLATION.md](doc/INSTALLATION.md).
+
 Die vollständige Anleitung mit allen Etappen, Prüfungen und der
 Alexa-Anbindung: [doc/INSTALLATION.md](doc/INSTALLATION.md)
 

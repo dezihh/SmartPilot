@@ -210,17 +210,30 @@ TLS-Komponente; andernfalls ließen sich deren URL-Regeln umgehen.
 
 Für den Admin-Zugriff hinter einem Reverse Proxy mit zentraler
 Authentifizierung (z. B. tinyauth/Authelia) kann der Proxy das Bearer-Token
-serverseitig setzen: die statische `/admin`-UI und `/admin/api/*` akzeptieren
-`Authorization: Bearer <AUTH_TOKEN>` auch ohne Session-Cookie. So entfällt der
-doppelte App-Login, und das Token gelangt nie in den Browser.
+serverseitig setzen: die statische `<BASE_PATH>/admin`-UI und
+`<BASE_PATH>/admin/api/*` (ohne `BASE_PATH` schlicht `/admin` bzw.
+`/admin/api/*`) akzeptieren `Authorization: Bearer <AUTH_TOKEN>` auch ohne
+Session-Cookie. So entfällt der doppelte App-Login, und das Token gelangt nie in
+den Browser. Eine konkrete Zeile in der Proxy-Konfiguration (der Wert steht in
+`gateway/.env`, identisch mit dem Token der Lambda):
+
+```nginx
+proxy_set_header Authorization "Bearer <AUTH_TOKEN>";
+```
 
 Mit `BASE_PATH=/smartpilot` liegt die Admin-UI unter `/smartpilot/admin/` (die
 UI-API unter `/smartpilot/admin/api/*`); die öffentliche Adapter-API bleibt unter
-`/api/…`. Der Proxy braucht dann **keine** Pfad-Rewrites:
+`/api/…`. Aufrufen kannst du sie dann unter
+`https://<host>/smartpilot/admin/` (ohne `BASE_PATH`: `https://<host>/admin/`) –
+nicht unter `/smartpilot/` allein, das ergibt 404. Der Proxy braucht **keine**
+Pfad-Rewrites:
 
 ```nginx
-location /smartpilot/ { proxy_pass http://<gateway>:3000; }
-location /api/        { proxy_pass http://<gateway>:3000; }
+# WICHTIG: proxy_pass OHNE abschliessenden Slash/Pfad angeben. Mit einem URI
+# (z. B. http://<gateway>:3000/) ersetzt nginx das passende Prefix und schneidet
+# den Gateway-Pfad ab -> 404.
+location /smartpilot/  { proxy_pass http://<gateway>:3000; }
+location = /api/query  { proxy_pass http://<gateway>:3000; }
 ```
 
 Das Gateway spricht selbst nur HTTP und kann TLS nicht terminieren. Deshalb ist
@@ -313,6 +326,80 @@ Hinweise:
    jeweiligen API-Pfad.
 - Der interne Zugriff auf `/admin` erfolgt nicht über diesen öffentlichen
    VHost, sondern direkt im LAN oder über einen getrennten internen VHost.
+
+### Kombiniertes Beispiel: TLS + zentrale Auth + BASE_PATH
+
+Der folgende VHost verbindet TLS, die zentrale Anmeldung (`auth_request`, hier
+gegen tinyauth/Authelia) und das serverseitig gesetzte Bearer-Token mit
+`BASE_PATH=/smartpilot`: Die Admin-UI liegt unter `/smartpilot/admin/` hinter
+der zentralen Anmeldung, der Nutzer sieht den Gateway-Token nie; `/api/query`
+bleibt zusätzlich für die Lambda erreichbar.
+
+```nginx
+# Im http-Block, ausserhalb des server-Blocks
+limit_req_zone $binary_remote_addr zone=gateway_api:10m rate=5r/s;
+
+server {
+	listen 443 ssl;
+	http2 on;
+	server_name <gateway-host>;
+
+	ssl_certificate     /etc/letsencrypt/live/<gateway-host>/fullchain.pem;
+	ssl_certificate_key /etc/letsencrypt/live/<gateway-host>/privkey.pem;
+	ssl_protocols TLSv1.2 TLSv1.3;
+
+	# Oeffentlich: nur der Aufruf der AWS-Lambda
+	location = /api/query {
+		limit_req zone=gateway_api burst=20 nodelay;
+		client_max_body_size 1m;
+		proxy_pass http://<gateway-intern>:3000;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+		proxy_connect_timeout 5s;
+		proxy_read_timeout 35s;
+	}
+
+	# Admin-UI unter dem Prefix, hinter zentraler Anmeldung
+	location /smartpilot/ {
+		auth_request /auth;
+
+		# Bearer-Token serverseitig setzen - Wert aus gateway/.env (AUTH_TOKEN)
+		proxy_set_header Authorization "Bearer <AUTH_TOKEN>";
+
+		# WICHTIG: ohne Slash/Pfad, sonst wird das Prefix abgeschnitten -> 404
+		proxy_pass http://<gateway-intern>:3000;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-Proto $scheme;
+	}
+
+	# Zentrale Anmeldung als Unteranfrage (Beispiel; Endpoint je Dienst anpassen)
+	location = /auth {
+		internal;
+		proxy_pass http://<tinyauth>:3000/api/auth/traefik;
+		proxy_pass_request_body off;
+		proxy_set_header Content-Length "";
+		proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
+	}
+
+	# Alle uebrigen Routen bleiben intern
+	location / { return 404; }
+}
+```
+
+Hinweise:
+
+- Der Unteranfrage-Pfad `/auth` ist ein Beispiel und hängt vom Dienst ab
+  (tinyauth/Authelia). Ohne zentrale Authentifizierung genügt für die Admin-UI
+  der normale App-Login unter `https://<host>/smartpilot/admin/login.html`.
+- Das `Authorization`-Header wird nur serverseitig gesetzt; es darf nicht aus
+  der Anfrage durchgereicht werden (`proxy_set_header` überschreibt es).
+- `<AUTH_TOKEN>` ist derselbe Wert wie in `gateway/.env` und in der Lambda.
+- Das Gateway leitet `<BASE_PATH>/admin` automatisch auf `<BASE_PATH>/admin/`
+  um (Trailing Slash); `/smartpilot/` allein ergibt 404.
 
 ### Sicherheitsziel
 
