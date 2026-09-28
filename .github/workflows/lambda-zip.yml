@@ -86,8 +86,10 @@ jobs:
 
       - name: Version ermitteln
         id: ver
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="${INPUT_VERSION}"
           if [ -z "${VERSION}" ]; then
             VERSION=$(jq -r .version gateway/package.json)
           fi
@@ -103,7 +105,8 @@ jobs:
           tag_name: latest
           name: Latest build
           prerelease: false
-          make_latest: true
+          # Alias-Release; den "Latest"-Badge traegt die versionierte Freigabe (F-D7).
+          make_latest: false
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
@@ -112,6 +115,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          make_latest: true
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
@@ -123,6 +127,7 @@ jobs:
           tag_name: v${{ steps.ver.outputs.version }}
           name: v${{ steps.ver.outputs.version }}
           prerelease: false
+          make_latest: true
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip

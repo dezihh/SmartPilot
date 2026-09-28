@@ -54,4 +54,4 @@ alexa/lambda/config.json
 .ask/
 
 # --- Agent-Hinweise (nicht ins Repo) ---
-AGENTS.md
+/AGENTS.md
