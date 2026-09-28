@@ -51,10 +51,13 @@ Features = MINOR, Fixes = PATCH, Breaking Changes vermeiden.
    Der Tag `v*` löst `.github/workflows/lambda-zip.yml` aus, das automatisch
    ein **versioniertes GitHub-Release** mit den Lambda-Zips baut (neben dem
    rollenden Release `latest`).
+   - Alternativ genügt der manuelle Start von `lambda-zip.yml`
+     (Actions → **Build Lambda Zip** → Run workflow): er liest die Version aus
+     `gateway/package.json` (Input `version` überschreibt sie) und baut dasselbe
+     versionierte Release `v<version>` — plus das rollende `latest`.
    - Hinweis: Der Workflow hat unter `push` einen `paths`-Filter
      (`alexa/lambda/**`). Triggert ein Tag-Push deshalb nicht, den Workflow
-     manuell per `workflow_dispatch` starten — das erzeugt allerdings nur das
-     rollende `latest`, kein versioniertes Release.
+     manuell starten (siehe oben).
 
 ## Release (Paket) — separat
 

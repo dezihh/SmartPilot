@@ -74,7 +74,7 @@ automatisch bei Änderungen unter `alexa/lambda/**` (oder am Workflow selbst).
 
 | Workflow | Zweck |
 |---|---|
-| `lambda-zip.yml` | Baut bei Änderungen unter `alexa/lambda/**` zwei Zips: `smartpilot-alexa-lambda.zip` (eigene AWS-Lambda) und `smartpilot-alexa-hosted.zip` (`lambda/`-Struktur für den Alexa-hosted-Import); Artifacts + rollendes `latest`-Release, bei Tag `v*` ein versioniertes Release |
+| `lambda-zip.yml` | Baut bei Änderungen unter `alexa/lambda/**` zwei Zips: `smartpilot-alexa-lambda.zip` (eigene AWS-Lambda) und `smartpilot-alexa-hosted.zip` (`lambda/`-Struktur für den Alexa-hosted-Import); Artifacts + rollendes `latest`-Release, bei Tag `v*` oder manuellem Start (`workflow_dispatch`) zusätzlich ein versioniertes Release `v<version>` (Version aus `gateway/package.json`) |
 | `deploy-aws-lambda.yml` | Nutzt den zentralen Build (`lambda-zip.yml`) und deployt das Artifact: legt Funktion + Ausführungsrolle an/aktualisiert sie, setzt Env-Variablen und den Alexa-Invoke-Trigger |
 | `sync-manifest.yml` | Read-modify-write des Skill-Manifests: Endpoint auf Lambda-ARN (Top-Level und `regions.*`), ergänzt APL-Interface + Viewports; Inputs `endpoint_arn`, `add_apl`, `dry_run` |
 | `sync-model.yml` | Rendert die Aufrufnamen aus `skill.config.json` und lädt die Interaction Models aller eingetragenen Locales in den development-Stage; pollt den Build-Status |
@@ -99,8 +99,12 @@ Baut bei jeder Änderung unter `alexa/lambda/**` zwei Zips:
   `config.json` mit Token angelegt.
 
 Ergebnis: Actions-Artifacts für den CI-Weg, ein rollendes Release `latest`
-(stabile Links `releases/download/latest/…`) und bei Tag `v*` ein versioniertes
-Release.
+(stabile Links `releases/download/latest/…`) und **zusätzlich ein versioniertes
+Release `v<version>`** — bei Tag `v*` (Tag-Name) sowie bei manuellem Start
+(`workflow_dispatch`). Die Version liest der Workflow aus
+`gateway/package.json`; der optionale Input `version` überschreibt sie. Ein per
+`workflow_call` gestarteter Build (aus `deploy-aws-lambda.yml`) veröffentlicht
+kein Release.
 
 ### `deploy-aws-lambda.yml`
 
