@@ -93,6 +93,64 @@ test('Katalog ist groessenbegrenzt (SSML-/Antwortlimit)', () => {
   assert.ok(renderHelpCatalog().length <= 6002);
 });
 
+test('Kappung schneidet keinen ganzen Abschnitt ab (Systeme bleiben)', () => {
+  for (let i = 0; i < 200; i++) fn(`f${i}`, 'x'.repeat(80));
+  server('sys', 'System-Notiz');
+  const out = renderHelpCatalog();
+  assert.ok(out.length <= 6002);
+  assert.match(out, /## Systeme\n- sys: System-Notiz/);
+});
+
+test('Katalog-Kappung: schneidet an der Wortgrenze und markiert die Kuerzung', () => {
+  // Ein einziges ueberlanges Wort: die Kappung darf kein angeschnittenes Token
+  // stehen lassen, sondern entfernt es ganz und setzt das Kuerzungszeichen.
+  fn('lang', 'a'.repeat(7000));
+  const out = renderHelpCatalog();
+  assert.ok(out.length <= 6002, `Laenge ${out.length} ueberschreitet das Limit`);
+  assert.ok(out.endsWith(' …'), 'Kuerzung wird markiert');
+  assert.doesNotMatch(out, /a{2,}/, 'angeschnittenes Wort darf nicht im Katalog stehen');
+});
+
+test('Katalog-Kappung: kleiner Katalog bleibt unveraendert (ohne Kuerzungszeichen)', () => {
+  fn('kurz', 'Kurzbeschreibung');
+  assert.equal(renderHelpCatalog(), '## Werkzeuge\n- kurz: Kurzbeschreibung');
+});
+
+test('Katalog-Kappung: exakt an der Grenze ungekappt, ein Zeichen darueber kappt', () => {
+  // Kopf '## Werkzeuge\n' (13) + '- x: ' (5) = 18 Zeichen vor der Beschreibung.
+  fn('x', 'b'.repeat(5982));
+  const exact = renderHelpCatalog();
+  assert.equal(exact.length, 6000, 'genau an der Grenze bleibt unveraendert');
+  assert.ok(!exact.endsWith(' …'));
+
+  getDb().exec('DELETE FROM tpl_functions;');
+  fn('x', 'b'.repeat(5983));
+  const over = renderHelpCatalog();
+  assert.ok(over.endsWith(' …'), 'ein Zeichen ueber der Grenze wird gekappt');
+  assert.ok(over.length <= 6002, `Laenge ${over.length}`);
+});
+
+test('Katalog-Allowlist: blanker Funktionsname und Default (alle)', () => {
+  fn('a', 'A');
+  fn('b', 'B');
+  assert.deepEqual(
+    capabilityCatalog({ allow: ['a'] }).tools.map((t) => t.name),
+    ['a']
+  );
+  assert.equal(capabilityCatalog().tools.length, 2, 'ohne Filter alle Faehigkeiten');
+  assert.equal(capabilityCatalog({ allow: null }).tools.length, 2, 'null = alle');
+});
+
+test('Allowlist-Filter greift identisch in Katalog und gesprochenem Fallback', () => {
+  fn('erlaubt', 'Freigegeben');
+  fn('geheim', 'Verborgen');
+  const filter = { allow: ['fn_erlaubt'] };
+  assert.match(renderHelpCatalog(filter), /- erlaubt: Freigegeben/);
+  assert.doesNotMatch(renderHelpCatalog(filter), /geheim/);
+  assert.match(renderHelpFallback(filter), /erlaubt/);
+  assert.doesNotMatch(renderHelpFallback(filter), /geheim/);
+});
+
 test('Katalog folgt agent_tools (Allowlist)', () => {
   fn('wetter', 'Wetter und Vorhersage');
   fn('autobahn', 'Verkehr');

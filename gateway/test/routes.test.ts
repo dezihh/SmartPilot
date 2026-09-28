@@ -145,6 +145,31 @@ test('Issue #10: GET /admin/ ohne Auth, Accept html -> Redirect zum Login', asyn
   assert.equal(String(r.headers['location'] ?? ''), '/admin/login.html');
 });
 
+test('Wurzel: GET /admin mit Bearer -> 302 auf /admin/ (Trailing-Slash)', async () => {
+  const r = await call('GET', '/admin', { token: 'test-secret' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/admin/');
+});
+
+test('Wurzel: GET /admin?x=1 mit Bearer erhaelt den Query-String', async () => {
+  const r = await call('GET', '/admin?x=1', { token: 'test-secret' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/admin/?x=1');
+});
+
+test('Wurzel: Bare-/admin mit HTML laeuft zuerst in die Auth-Umleitung', async () => {
+  // Der Slash-Redirect laeuft erst nach Auth; ohne Session gewinnt die
+  // Login-Umleitung (sonst wuerde der Query-String an /admin/ gehaengt).
+  const r = await call('GET', '/admin?x=1', { accept: 'text/html' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/admin/login.html');
+});
+
+test('Wurzel: Bare-/admin ohne Auth und ohne HTML -> 401', async () => {
+  const r = await call('GET', '/admin');
+  assert.equal(r.status, 401);
+});
+
 test('Issue #10: GET /admin/login.html bleibt ohne Auth erreichbar', async () => {
   const r = await call('GET', '/admin/login.html', { accept: 'text/html' });
   assert.equal(r.status, 200);

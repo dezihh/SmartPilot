@@ -273,7 +273,8 @@ async function executeAction(
   action: ParsedAction,
   query: VoiceQuery,
   mcp: McpContext,
-  trace: TraceEvent[]
+  trace: TraceEvent[],
+  helpAllow?: string[] | null
 ): Promise<AssistantResponse> {
   // Die geseedete Hilfe bekommt einen vollstaendigen Katalog der TATSAECHLICH
   // nutzbaren Faehigkeiten (jede fuer den Agenten freigegebene Funktion mit
@@ -281,7 +282,7 @@ async function executeAction(
   // inventory_prompt. So nennt das LLM zuverlaessig alle Tools und deren Nutzung
   // in einfacher Sprache. Keine Tool-Aufrufe.
   if (isSeededHelp(action)) {
-    const allow = agentFnAllowlist();
+    const allow = helpAllow === undefined ? agentFnAllowlist() : helpAllow;
     const filter = { allow, servers: activeServerNames(mcp, allow) };
     const catalog = renderHelpCatalog(filter);
     if (!catalog) {
@@ -353,8 +354,10 @@ function isSeededHelp(action: ParsedAction): boolean {
 // MCP-Kontext nur laden, wenn der Weg ihn tatsaechlich braucht: der Agent und
 // LLM-Vorgaenge immer, deterministische/hybride Vorgaenge nur, wenn ihre
 // Funktion MCP/index/fn nutzt (reine http-/shell-Funktionen sparen den
-// Kaltstart; F-11). Die Hilfe braucht ihn fuer den nutzbaren System-Filter.
-function actionNeedsMcp(action: ParsedAction): boolean {
+// Kaltstart; F-11). Die Hilfe braucht ihn nur bei eingeschraenkter Allowlist
+// (System-Filter); bei "alle"/"keine" spart sie den Kaltstart (F-D13).
+function actionNeedsMcp(action: ParsedAction, helpAllow?: string[] | null): boolean {
+  if (isSeededHelp(action)) return helpAllow != null && helpAllow.length > 0;
   if (action.mode === 'llm') return true;
   const fn = action.function_ref ? getFunctionByName(action.function_ref) : null;
   const lit = extractLiterals(fn?.template ?? '');
@@ -403,7 +406,10 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
   const actions = listActions(true);
   const fuzzyGlobal = getSetting('fuzzy_global') !== '0';
   const match: RouteMatch | null = routeAction(query.text, actions, fuzzyGlobal);
-  const needsMcp = !match || actionNeedsMcp(match.action);
+  // Hilfe: Allowlist einmal auswerten - sie entscheidet auch ueber den MCP-Bedarf
+  // (nur bei eingeschraenkter Liste; sonst MCP-Kaltstart sparen, F-D13).
+  const helpAllow = match && isSeededHelp(match.action) ? agentFnAllowlist() : undefined;
+  const needsMcp = !match || actionNeedsMcp(match.action, helpAllow);
   const mcp = needsMcp
     ? await getMcpContext().catch((e: unknown) => {
         trace.push({ ts: Date.now(), step: 'mcp.error', detail: String(e) });
@@ -421,7 +427,7 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
       detail: { action: match.action.name, score: match.score, phrase: match.phrase },
     });
     try {
-      response = await executeAction(match.action, query, mcp, trace);
+      response = await executeAction(match.action, query, mcp, trace, helpAllow);
       rememberTurn(query.sessionId, query.text, response.speech);
     } catch (e) {
       trace.push({ ts: Date.now(), step: 'action.error', detail: String(e) });

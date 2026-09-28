@@ -195,7 +195,9 @@ ein `{"speech": …}`-Objekt, setzt er `ssml: true` bzw. übernimmt Display-Date
   „Hilfe-Anfrage") bekommt statt des Inventars einen vollständigen Katalog der
   für den Agenten freigegebenen Funktionen (Beschreibung + Parameter) und
   Systeme; das LLM formuliert daraus je Tool eine verständliche Zeile mit
-  Nutzung. `renderHelpFallback` liefert den deterministischen Text für den
+  Nutzung. Den MCP-Kontext lädt die Hilfe nur bei eingeschränkter Allowlist
+  (sonst spart sie den Kaltstart). `renderHelpFallback` liefert den
+  deterministischen Text für den
   Leer-Fall bzw. bei LLM-Fehler. Die Formulierung der Grundfunktionen steht
   bewusst doppelt — hier als Sprechtext und als LLM-Anweisung im Seed-Prompt
   (`db/seeds.ts`) — weil der Seed-Prompt nutzereditierbar ist und nicht an den

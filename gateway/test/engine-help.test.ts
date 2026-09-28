@@ -13,6 +13,7 @@ const { tmpDb } = await import('./_tmpdb.js');
 const { initDb, closeDb, getDb } = await import('../src/db/schema.js');
 const { createAction } = await import('../src/db/actions.js');
 const { createFunction } = await import('../src/db/functions.js');
+const { createMcpServer } = await import('../src/db/mcpServers.js');
 const { setSetting, deleteSetting } = await import('../src/db/settings.js');
 const { processQuery } = await import('../src/core/engine.js');
 
@@ -68,7 +69,7 @@ beforeEach(() => {
   lastMessages = [];
   stubFetch();
   deleteSetting('agent_tools');
-  getDb().exec('DELETE FROM tpl_functions;');
+  getDb().exec('DELETE FROM tpl_functions; DELETE FROM mcp_servers;');
 });
 
 after(() => {
@@ -137,4 +138,26 @@ test('Hilfe folgt der agent_tools-Allowlist: ausgeschlossenes Tool fehlt', async
   assert.equal(llmCalls, 1);
   assert.match(systemMessage(), /- erlaubt: Freigegebenes Tool/);
   assert.doesNotMatch(systemMessage(), /geheim/, 'ausgeschlossenes Tool darf im Katalog fehlen');
+});
+
+test('Hilfe bleibt nutzbar, wenn der MCP-Server nicht erreichbar ist', async () => {
+  // Hilfe listet Systeme bei Default-Allowlist (alle) aus der DB, ohne dass ein
+  // MCP-Kaltstart den Weg scheitern laesst. Der Stub antwortet auf MCP-Aufrufe
+  // mit 204 (kein gueltiges JSON) -> getMcpContext verwirft den Server isoliert.
+  createMcpServer({
+    name: 'toter-server',
+    url: 'https://mcp.invalid/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: 'System X',
+    enabled: 1,
+  });
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  const r = await processQuery({ text: 'hilfe', sessionId: 'help-mcp-down' });
+  assert.equal(r.route, 'action');
+  assert.equal(llmCalls, 1);
+  assert.match(systemMessage(), /- wetter: Wetter und 3-Tage-Vorhersage/);
 });
