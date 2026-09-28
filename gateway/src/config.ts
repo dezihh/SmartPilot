@@ -1,4 +1,17 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
+
+const CURRENT_DB_PATH = './data/smartpilot.db';
+const LEGACY_DB_PATH = './data/meinhelfer.db';
+
+// Upgrade-Kompatibilitaet (F-D6): ohne explizites DB_PATH die bestehende
+// Legacy-Datei weiterverwenden, statt nach dem Default-Wechsel eine leere neue
+// DB anzulegen. Reine Funktion fuer Tests.
+export function resolveDbPath(envPath: string | undefined, exists: (p: string) => boolean): string {
+  if (envPath) return envPath;
+  if (exists(LEGACY_DB_PATH) && !exists(CURRENT_DB_PATH)) return LEGACY_DB_PATH;
+  return CURRENT_DB_PATH;
+}
 
 function req(name: string): string {
   const v = process.env[name];
@@ -9,7 +22,7 @@ function req(name: string): string {
 export const config = {
   port: Number(process.env.PORT ?? 3000),
   authToken: req('AUTH_TOKEN'),
-  dbPath: process.env.DB_PATH ?? './data/smartpilot.db',
+  dbPath: resolveDbPath(process.env.DB_PATH, existsSync),
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),

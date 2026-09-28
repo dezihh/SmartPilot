@@ -1,6 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { requireAuth, requestAuthorized, createSession, sessionValid, cookieFor } from '../src/auth.js';
+import { requireAuth, requestAuthorized, bearerToken, createSession, sessionValid, cookieFor } from '../src/auth.js';
 import { config } from '../src/config.js';
 
 interface Captured {
@@ -118,4 +118,10 @@ test('requestAuthorized: Bearer ODER Session, sonst false (Issue #10)', () => {
   assert.equal(requestAuthorized(authHeaders(undefined, `va_session=${id}`) as never), true);
   assert.equal(requestAuthorized(authHeaders() as never), false);
   assert.equal(requestAuthorized(authHeaders('Bearer falsch') as never), false);
+});
+
+test('bearerToken liest nur die Praefix-Form (F-D4)', () => {
+  assert.equal(bearerToken(authHeaders('Bearer abc') as never), 'abc');
+  assert.equal(bearerToken(authHeaders('abc') as never), '');
+  assert.equal(bearerToken(authHeaders() as never), '');
 });

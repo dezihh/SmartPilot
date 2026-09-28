@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import { join } from 'node:path';
-import { createSession, requestAuthorized, cookieFor } from './auth.js';
+import { createSession, requestAuthorized, bearerToken, cookieFor } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { queryRoutes } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
@@ -25,9 +25,7 @@ export function createApp(): Express {
       res.status(429).json({ error: 'zu viele Versuche, spaeter erneut' });
       return;
     }
-    const header = req.headers.authorization ?? '';
-    const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
-    const token = bearer || String((req.body as { token?: unknown })?.token ?? '');
+    const token = bearerToken(req) || String((req.body as { token?: unknown })?.token ?? '');
     const sessionId = createSession(token);
     if (!sessionId) {
       res.status(401).json({ error: 'unauthorized' });
