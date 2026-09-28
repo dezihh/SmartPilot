@@ -21,6 +21,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+### Hinzugefügt
+
+- `BASE_PATH`: Die Admin-UI kann unter einem Pfad-Prefix laufen (z. B.
+  `BASE_PATH=/smartpilot` → UI unter `/smartpilot/admin/`, UI-API unter
+  `/smartpilot/admin/api/*`), ohne Pfad-Rewrites im vorgelagerten Proxy. Die
+  öffentliche Adapter-API bleibt unter `/api/…` (Ausbaustufe zu Issue #10)
+
 ## [0.1.3] – 2026-09-28
 
 Findings aus dem Diff-Review zu v0.1.2.

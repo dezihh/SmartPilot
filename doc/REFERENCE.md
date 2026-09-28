@@ -127,6 +127,7 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 |---|---:|---|
 | `PORT` | `3000` | HTTP-Port |
 | `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
+| `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
 | `LLM_MODEL` | – | Startmodell (Pflicht) |
 | `LLM_MAX_TOKENS` | `2000` | Ausgabe-Budget |
 | `LLM_REASONING_EFFORT` | leer | Reasoning-Stufe, falls das Modell sie unterstützt |

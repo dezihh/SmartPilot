@@ -86,6 +86,7 @@ Diese Variablen liest der Gateway-Code beim Start:
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
 | `PORT` | nein | Gateway-Port, Standard `3000` |
 | `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/smartpilot.db` |
+| `BASE_PATH` | nein | Pfad-Prefix nur für die Admin-UI (leer = `/admin`); z. B. `/smartpilot` |
 | `LLM_MODEL` | ja | Name des LLM-Modells |
 | `LLM_MAX_TOKENS` | nein | Ausgabe-Budget, Standard `2000` |
 
@@ -212,6 +213,15 @@ Authentifizierung (z. B. tinyauth/Authelia) kann der Proxy das Bearer-Token
 serverseitig setzen: die statische `/admin`-UI und `/admin/api/*` akzeptieren
 `Authorization: Bearer <AUTH_TOKEN>` auch ohne Session-Cookie. So entfällt der
 doppelte App-Login, und das Token gelangt nie in den Browser.
+
+Mit `BASE_PATH=/smartpilot` liegt die Admin-UI unter `/smartpilot/admin/` (die
+UI-API unter `/smartpilot/admin/api/*`); die öffentliche Adapter-API bleibt unter
+`/api/…`. Der Proxy braucht dann **keine** Pfad-Rewrites:
+
+```nginx
+location /smartpilot/ { proxy_pass http://<gateway>:3000; }
+location /api/        { proxy_pass http://<gateway>:3000; }
+```
 
 Das Gateway spricht selbst nur HTTP und kann TLS nicht terminieren. Deshalb ist
 eine vorgelagerte TLS-Terminierung zwingend erforderlich. Das kann ein
