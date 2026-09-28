@@ -214,27 +214,19 @@ serverseitig setzen: die statische `<BASE_PATH>/admin`-UI und
 `<BASE_PATH>/admin/api/*` (ohne `BASE_PATH` schlicht `/admin` bzw.
 `/admin/api/*`) akzeptieren `Authorization: Bearer <AUTH_TOKEN>` auch ohne
 Session-Cookie. So entfällt der doppelte App-Login, und das Token gelangt nie in
-den Browser. Eine konkrete Zeile in der Proxy-Konfiguration (der Wert steht in
-`gateway/.env`, identisch mit dem Token der Lambda):
-
-```nginx
-proxy_set_header Authorization "Bearer <AUTH_TOKEN>";
-```
+den Browser. Im Proxy geschieht das mit der Zeile
+`proxy_set_header Authorization "Bearer <AUTH_TOKEN>";` — der Wert steht in
+`gateway/.env` und ist identisch mit dem Token der Lambda.
 
 Mit `BASE_PATH=/smartpilot` liegt die Admin-UI unter `/smartpilot/admin/` (die
 UI-API unter `/smartpilot/admin/api/*`); die öffentliche Adapter-API bleibt unter
 `/api/…`. Aufrufen kannst du sie dann unter
 `https://<host>/smartpilot/admin/` (ohne `BASE_PATH`: `https://<host>/admin/`) –
 nicht unter `/smartpilot/` allein, das ergibt 404. Der Proxy braucht **keine**
-Pfad-Rewrites:
-
-```nginx
-# WICHTIG: proxy_pass OHNE abschliessenden Slash/Pfad angeben. Mit einem URI
-# (z. B. http://<gateway>:3000/) ersetzt nginx das passende Prefix und schneidet
-# den Gateway-Pfad ab -> 404.
-location /smartpilot/  { proxy_pass http://<gateway>:3000; }
-location = /api/query  { proxy_pass http://<gateway>:3000; }
-```
+Pfad-Rewrites; das Admin-Location zeigt direkt auf das Gateway, wobei
+`proxy_pass` **ohne** abschließenden Slash/Pfad stehen muss (mit einem URI wie
+`http://<gateway>:3000/` ersetzt nginx das Prefix und der Gateway-Pfad geht
+verloren → 404).
 
 Das Gateway spricht selbst nur HTTP und kann TLS nicht terminieren. Deshalb ist
 eine vorgelagerte TLS-Terminierung zwingend erforderlich. Das kann ein
@@ -273,41 +265,6 @@ Proxy (`limit_req` im Beispiel unten).
 
 Testmonitor, WebUI, Admin-Oberfläche und Admin-API bleiben ausschließlich im
 internen Netz.
-
-### Einfacher Aufbau: TLS-Proxy für das gesamte Gateway
-
-Die einfachste Variante stellt den kompletten Gateway-Port über einen TLS-Proxy
-bereit — ohne zentrale Authentifizierung und ohne `BASE_PATH`. Die Admin-UI
-erreichst du dann unter `https://<host>/admin/` und meldest dich dort mit
-`AUTH_TOKEN` an (App-Login):
-
-```nginx
-server {
-	listen 443 ssl;
-	http2 on;
-	server_name <gateway-host>;
-
-	ssl_certificate     /etc/letsencrypt/live/<gateway-host>/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/<gateway-host>/privkey.pem;
-	ssl_protocols TLSv1.2 TLSv1.3;
-
-	location / {
-		proxy_pass http://<gateway-intern>:3000;   # ohne Slash/Pfad
-		proxy_http_version 1.1;
-		proxy_set_header Host $host;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto $scheme;
-	}
-}
-```
-
-> **Sicherheit:** Damit ist auch die komplette Admin-UI öffentlich erreichbar.
-> Schütze sie mindestens durch den App-Login (`AUTH_TOKEN`) und möglichst eine
-> IP-Einschränkung (z. B. `allow <heimnetz-ip>; deny all;` im `location /`).
-> Soll die Admin-UI intern bleiben, veröffentliche nur `/api/query`
-> (→ Referenzaufbau unten); eine zentrale Anmeldung zeigt das kombinierte
-> Beispiel.
 
 ### Referenzaufbau mit nginx
 
@@ -362,79 +319,24 @@ Hinweise:
 - Der interne Zugriff auf `/admin` erfolgt nicht über diesen öffentlichen
    VHost, sondern direkt im LAN oder über einen getrennten internen VHost.
 
-### Kombiniertes Beispiel: TLS + zentrale Auth + BASE_PATH
+### Weitere Varianten (nur beschrieben)
 
-Der folgende VHost verbindet TLS, die zentrale Anmeldung (`auth_request`, hier
-gegen tinyauth/Authelia) und das serverseitig gesetzte Bearer-Token mit
-`BASE_PATH=/smartpilot`: Die Admin-UI liegt unter `/smartpilot/admin/` hinter
-der zentralen Anmeldung, der Nutzer sieht den Gateway-Token nie; `/api/query`
-bleibt zusätzlich für die Lambda erreichbar.
+Der Referenzaufbau oben ist die empfohlene Basis: TLS-Terminierung und nur
+`/api/query` öffentlich. Weitere Aufbauten ergänzen ihn, ohne die Grundidee zu
+ändern:
 
-```nginx
-# Im http-Block, ausserhalb des server-Blocks
-limit_req_zone $binary_remote_addr zone=gateway_api:10m rate=5r/s;
-
-server {
-	listen 443 ssl;
-	http2 on;
-	server_name <gateway-host>;
-
-	ssl_certificate     /etc/letsencrypt/live/<gateway-host>/fullchain.pem;
-	ssl_certificate_key /etc/letsencrypt/live/<gateway-host>/privkey.pem;
-	ssl_protocols TLSv1.2 TLSv1.3;
-
-	# Oeffentlich: nur der Aufruf der AWS-Lambda
-	location = /api/query {
-		limit_req zone=gateway_api burst=20 nodelay;
-		client_max_body_size 1m;
-		proxy_pass http://<gateway-intern>:3000;
-		proxy_http_version 1.1;
-		proxy_set_header Host $host;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Forwarded-Proto $scheme;
-		proxy_connect_timeout 5s;
-		proxy_read_timeout 35s;
-	}
-
-	# Admin-UI unter dem Prefix, hinter zentraler Anmeldung
-	location /smartpilot/ {
-		auth_request /auth;
-
-		# Bearer-Token serverseitig setzen - Wert aus gateway/.env (AUTH_TOKEN)
-		proxy_set_header Authorization "Bearer <AUTH_TOKEN>";
-
-		# WICHTIG: ohne Slash/Pfad, sonst wird das Prefix abgeschnitten -> 404
-		proxy_pass http://<gateway-intern>:3000;
-		proxy_http_version 1.1;
-		proxy_set_header Host $host;
-		proxy_set_header X-Forwarded-Proto $scheme;
-	}
-
-	# Zentrale Anmeldung als Unteranfrage (Beispiel; Endpoint je Dienst anpassen)
-	location = /auth {
-		internal;
-		proxy_pass http://<tinyauth>:3000/api/auth/traefik;
-		proxy_pass_request_body off;
-		proxy_set_header Content-Length "";
-		proxy_set_header X-Original-URL $scheme://$http_host$request_uri;
-	}
-
-	# Alle uebrigen Routen bleiben intern
-	location / { return 404; }
-}
-```
-
-Hinweise:
-
-- Der Unteranfrage-Pfad `/auth` ist ein Beispiel und hängt vom Dienst ab
-  (tinyauth/Authelia). Ohne zentrale Authentifizierung genügt für die Admin-UI
-  der normale App-Login unter `https://<host>/smartpilot/admin/login.html`.
-- Das `Authorization`-Header wird nur serverseitig gesetzt; es darf nicht aus
-  der Anfrage durchgereicht werden (`proxy_set_header` überschreibt es).
-- `<AUTH_TOKEN>` ist derselbe Wert wie in `gateway/.env` und in der Lambda.
-- Das Gateway leitet `<BASE_PATH>/admin` automatisch auf `<BASE_PATH>/admin/`
-  um (Trailing Slash); `/smartpilot/` allein ergibt 404.
+- **Ganze Instanz hinter TLS:** ein `location /` auf den Gateway-Port legt die
+  gesamte Oberfläche inklusive `/admin/` offen; angemeldet wird sich dann über
+  den App-Login (`AUTH_TOKEN`). Nur mit einer IP-Einschränkung sinnvoll, weil
+  sonst auch die Admin-UI öffentlich ist.
+- **Zentrale Anmeldung:** ein `auth_request` (z. B. gegen tinyauth/Authelia) vor
+  dem Admin-Location; zusätzlich `proxy_set_header Authorization "Bearer
+  <AUTH_TOKEN>";`. Dann entfällt der App-Login, und der Token bleibt
+  serverseitig. Den Unteranfrage-Pfad des `auth_request` gibt der jeweilige
+  Dienst vor.
+- **Sub-Pfad (`BASE_PATH`):** das Admin-Location lautet dann
+  `<BASE_PATH>/admin/`; `proxy_pass` ohne abschließenden Slash/Pfad, sonst wird
+  das Prefix abgeschnitten (→ 404). Die öffentliche API bleibt `/api/query`.
 
 ### Sicherheitsziel
 
