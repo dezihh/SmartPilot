@@ -37,6 +37,12 @@ export const SEED_HELP_TRIGGERS = JSON.stringify([
   'deine faehigkeiten',
 ]);
 
-export const SEED_HELP_PROMPT = String.raw`Hilfe-Anfrage: Der Nutzer will wissen, was {assistant_name} kann. Beantworte das NUR aus dem Tool-Inventory (Nachschlagewerk unten) - KEINE Tool-Aufrufe. Antworte AUSSCHLIESSLICH als JSON: {"speech": "...", "keep_open": true}. In speech liste die im Nachschlagewerk beschriebenen Faehigkeitsgruppen auf - alle, keine Auslassung, keine Zusammenfassung, je eine Zeile mit einem Beispielkommando in Anfuehrungszeichen. Erwaehne zusaetzlich die freie Unterhaltung: einzelne freie Fragen ohne Kommando ("frage smart pilot warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". Am Ende von speech die Frage: Was interessiert dich?
+export const SEED_HELP_PROMPT = String.raw`Hilfe-Anfrage: Der Nutzer will wissen, was {assistant_name} kann. Beantworte das NUR aus dem Nachschlagewerk unten - KEINE Tool-Aufrufe. Erfinde NIE Faehigkeiten, die dort nicht stehen. Antworte AUSSCHLIESSLICH als JSON: {"speech": "...", "keep_open": true}.
+
+In speech:
+- Nennt das Nachschlagewerk keine Funktionen/Systeme (leer): sage knapp, dass noch keine Faehigkeiten eingerichtet sind (Installationspakete im Admin unter "Pakete" hinzufuegen), und nenne nur die Grundfunktionen.
+- Sonst: liste die im Nachschlagewerk beschriebenen Faehigkeitsgruppen auf - alle, keine Auslassung, keine Zusammenfassung, je eine Zeile mit einem Beispielkommando in Anfuehrungszeichen.
+
+Erwaehne in jedem Fall die Grundfunktionen: die eigene Identitaet ("wie heisst du"), einzelne freie Fragen ohne Kommando ("frage smart pilot warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". Am Ende von speech die Frage: Was interessiert dich?
 
 {agent_inventory}`;

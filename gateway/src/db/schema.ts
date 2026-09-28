@@ -422,6 +422,16 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
     db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(neu);
   }
 }
+// Bestands-DBs: Hilfe-Prompt auf die Fassung mit Leer-Fallback heben (nennt
+// keine Faehigkeiten, wenn das Nachschlagewerk leer ist). Nur echte Seed-Prompts
+// (Marker "Hilfe-Anfrage"); eigene Nutzer-Texte bleiben unangetastet.
+{
+  const row = db.prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt?: string } | undefined;
+  const sp = row?.system_prompt;
+  if (sp && sp.includes('Hilfe-Anfrage') && !sp.includes('noch keine Faehigkeiten eingerichtet')) {
+    db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(SEED_HELP_PROMPT);
+  }
+}
 // (Die Referenz-Defaults der Settings werden weiter unten ueber SEED_SETTINGS
 // gesetzt - einzeln geseedete Settings gab es nur in frueheren Stadien.)
 

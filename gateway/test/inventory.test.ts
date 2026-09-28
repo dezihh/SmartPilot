@@ -167,3 +167,17 @@ test('Markierung {{AGENT_FNS}} wird an Ort und Stelle ersetzt', () => {
     setPrompt('agent_inventory', RULES);
   }
 });
+
+test('Leer-Fallback: ohne Werkzeuge/Systeme kein roher {{AGENT_FNS}}-Marker', () => {
+  setSetting('agent_tools', 'keine');
+  setPrompt('agent_inventory', `Header\n{{AGENT_FNS}}\n\n## Regeln\n- Regel A`);
+  try {
+    const out = buildInventoryPrompt([]);
+    assert.doesNotMatch(out, /AGENT_FNS/);
+    assert.match(out, /keine Funktionen oder Systeme eingerichtet/);
+    assert.match(out, /## Regeln\n- Regel A/);
+  } finally {
+    deleteSetting('agent_tools');
+    setPrompt('agent_inventory', RULES);
+  }
+});

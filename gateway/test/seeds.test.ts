@@ -48,6 +48,7 @@ assert.ok(!sys.content.includes('Home Assistant'), 'Seed ohne Systembezug (syste
   assert.equal(hilfe.tools, '[]', 'Hilfe bewusst ohne Tools');
   assert.ok(hilfe.trigger_phrases.includes('was kannst du'), 'Hilfe-Trigger vorhanden');
   assert.ok(hilfe.system_prompt.includes('{agent_inventory}'), 'Hilfe-Prompt bindet das Nachschlagewerk ein');
+  assert.ok(hilfe.system_prompt.includes('noch keine Faehigkeiten eingerichtet'), 'Hilfe nennt den Leer-Fallback');
   assert.ok(!hilfe.system_prompt.includes('Hausstatus ("'), 'Hilfe-Prompt ohne feste Domaenen');
   assert.equal((db.prepare('SELECT COUNT(*) n FROM actions').get() as { n: number }).n, 1, 'nur die Hilfe-Action');
   const idx = db.prepare("SELECT value FROM settings WHERE key = 'entity_index'").get() as { value: string } | undefined;

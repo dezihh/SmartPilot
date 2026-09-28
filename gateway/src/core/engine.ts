@@ -271,8 +271,14 @@ async function executeAction(
   trace: TraceEvent[]
 ): Promise<AssistantResponse> {
   if (action.mode === 'llm') {
+    // Ein Vorgang mit leerer Tool-Liste (z. B. die Hilfe) beschreibt ALLE
+    // eingerichteten Faehigkeiten (Funktionen + aktive Systeme) - sonst waere
+    // das Nachschlagewerk leer und das LLM erfindet Faehigkeiten.
+    const inventoryScope = action.toolList && action.toolList.length > 0
+      ? activeServerNames(mcp, action.toolList)
+      : null;
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? agentSystemPrompt(mcp, action.toolList))
-      .replace('{agent_inventory}', buildInventoryPrompt(activeServerNames(mcp, action.toolList)));
+      .replace('{agent_inventory}', buildInventoryPrompt(inventoryScope));
     return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList);
   }
   // deterministic/hybrid: Daten kommen ausschliesslich aus einer Funktion

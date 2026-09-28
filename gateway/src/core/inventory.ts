@@ -9,6 +9,9 @@ import { getPrompt, getSetting } from '../db/settings.js';
 import { listMcpServers } from '../db/mcpServers.js';
 
 const FNS_MARKER = '{{AGENT_FNS}}';
+// Klartext, wenn nichts eingerichtet ist - verhindert, dass der rohe Marker im
+// Prompt landet und das LLM Faehigkeiten erfindet (Issue: Hilfe ohne Pakete).
+const EMPTY_INVENTORY_NOTE = 'Zurzeit sind keine Funktionen oder Systeme eingerichtet.';
 
 function toolNameFor(fn: ParsedFunction): string {
   return `fn_${fn.name}`;
@@ -60,9 +63,10 @@ export function buildInventoryPrompt(activeServers?: string[] | null): string {
   if (systems.length > 0) {
     blocks.push(`## Systeme (Kaskaden und Eigenheiten)\n${systems.join('\n')}`);
   }
-  if (blocks.length === 0) return rules;
   if (rules.includes(FNS_MARKER)) {
-    return rules.split(FNS_MARKER).join(blocks.join('\n\n'));
+    const body = blocks.length > 0 ? blocks.join('\n\n') : EMPTY_INVENTORY_NOTE;
+    return rules.split(FNS_MARKER).join(body);
   }
+  if (blocks.length === 0) return rules;
   return `${rules}\n\n${blocks.join('\n\n')}`;
 }
