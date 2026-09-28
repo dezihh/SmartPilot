@@ -39,6 +39,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Funktionen und Systeme und führt sonst nur die Grundfunktionen auf
 - Standard-Datenbankpfad von „meinhelfer.db" auf „smartpilot.db" umgestellt
   (`config.ts`, `.env.example`, Doku)
+- Hilfe-Inventory: nur ein Vorgang mit Nachschlagewerk-Marker und ohne eigene
+  Tools (Hilfe) zeigt alle Systeme; andere Vorgänge bleiben auf ihre Tool-Liste
+  begrenzt (F-D1)
+- Hilfe-Prompt-Migration ersetzt nur die alte Seed-Formulierung und lässt
+  Nutzer-Anpassungen unangetastet (F-D2)
+- `lambda-zip.yml`: Dispatch-Version über `env` statt Shell-Interpolation (F-D3);
+  versionierte Releases tragen den „Latest"-Badge, das rollende `latest` ist ein
+  reiner Alias (F-D7)
+- Bearer-Parsing zentral in `auth.ts` (`bearerToken`) statt dupliziert (F-D4)
+- `.gitignore`: `/AGENTS.md` nur im Repo-Root verankert (F-D5)
+- Ohne `DB_PATH` wird eine vorhandene `meinhelfer.db` weiterverwendet, statt eine
+  leere `smartpilot.db` anzulegen (F-D6)
 
 ## [0.1.1] – 2026-09-27
 
