@@ -21,6 +21,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.4] – 2026-09-28
+
 ### Hinzugefügt
 
 - `BASE_PATH`: Die Admin-UI kann unter einem Pfad-Prefix laufen (z. B.
@@ -217,7 +219,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.4
 [0.1.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.3
 [0.1.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.2
 [0.1.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.1
