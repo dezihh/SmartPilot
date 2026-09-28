@@ -15,7 +15,7 @@ import { routeAction, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt } from './inventory.js';
-import { buildHelpSpeech } from './help.js';
+import { renderHelpCatalog, renderHelpFallback } from './help.js';
 import { escapeXml, stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
 import { buildTools, type ToolRoute } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
@@ -31,6 +31,10 @@ import type {
 } from '../types.js';
 
 const FallbackError = 'Entschuldigung, da ist etwas schiefgelaufen.';
+
+// Budget fuer die Hilfe-Formulierung: Reasoning-Modelle verbrauchen einen Teil
+// der Tokens fuers Nachdenken - zu knapp bemessen kam sonst leerer content.
+const HELP_MAX_TOKENS = 4000;
 
 // Kontext-Tiefe für Folgefragen (Grundeinstellungen): memory_turns =
 // Wie viele vorangegangene Turns das LLM sieht (In-Memory UND DB-Recall),
@@ -271,13 +275,38 @@ async function executeAction(
   mcp: McpContext,
   trace: TraceEvent[]
 ): Promise<AssistantResponse> {
-  // Die geseedete Hilfe beantwortet der Code direkt (deterministisch): so
-  // spiegelt sie zuverlaessig genau die eingerichteten Faehigkeiten - ohne
-  // LLM, ohne Erfindungen. Eigene Hilfe-Prompts (ohne Seed-Marker) bleiben
-  // beim LLM.
+  // Die geseedete Hilfe bekommt den VOLLSTAENDIGEN Faehigkeiten-Katalog (jede
+  // aktive Funktion mit Beschreibung/Parametern, jeder Server) statt des ueber
+  // agent_tools gefilterten Inventars - so nennt das LLM zuverlaessig alle Tools
+  // und deren Nutzung in einfacher Sprache. Kein MCP, keine Tool-Aufrufe.
   if (isSeededHelp(action)) {
-    trace.push({ ts: Date.now(), step: 'help.generated', detail: { action: action.name } });
-    return { speech: buildHelpSpeech(), followUp: true, followupPrompt: 'Was interessiert dich?' };
+    const catalog = renderHelpCatalog();
+    if (!catalog) {
+      trace.push({ ts: Date.now(), step: 'help.empty', detail: { action: action.name } });
+      return { speech: renderHelpFallback(), followUp: true, followupPrompt: 'Was interessiert dich?' };
+    }
+    const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? '').replace(
+      '{agent_inventory}',
+      catalog
+    );
+    trace.push({ ts: Date.now(), step: 'help.catalog', detail: { action: action.name } });
+    try {
+      const history = query.sessionId ? priorTurns(query.sessionId) : [];
+      const result = await chatCompletion(
+        [{ role: 'system', content: system }, ...history, { role: 'user', content: query.text }],
+        undefined,
+        undefined,
+        undefined,
+        HELP_MAX_TOKENS
+      );
+      traceUsage(trace, config.llm.model, result);
+      const parsed = parseAgentAnswer(result.message.content ?? '', trace);
+      if (parsed.speech?.trim()) return { ...parsed, followUp: true, followupPrompt: 'Was interessiert dich?' };
+      trace.push({ ts: Date.now(), step: 'help.empty_answer' });
+    } catch (e) {
+      trace.push({ ts: Date.now(), step: 'help.error', detail: String(e) });
+    }
+    return { speech: renderHelpFallback(), followUp: true, followupPrompt: 'Was interessiert dich?' };
   }
   if (action.mode === 'llm') {
     // Das Inventory wird nur in Prompts eingefuegt, die den Marker tragen. Ein

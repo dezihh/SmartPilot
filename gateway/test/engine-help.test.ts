@@ -1,5 +1,6 @@
-// Engine: die geseedete Hilfe wird deterministisch beantwortet (kein LLM) und
-// spiegelt die installierten Faehigkeiten. Eigene llm-Vorgaenge bleiben beim LLM.
+// Engine: die geseedete Hilfe laeuft ueber das LLM, bekommt aber den
+// VOLLSTAENDIGEN Faehigkeiten-Katalog (nicht das gefilterte Inventar). Ohne
+// Tools oder bei LLM-Fehler greift der deterministische Fallback.
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -15,16 +16,30 @@ const { createFunction } = await import('../src/db/functions.js');
 const { processQuery } = await import('../src/core/engine.js');
 
 let llmCalls = 0;
+let failLlm = false;
+let lastMessages: { role: string; content: string | null }[] = [];
 
 function stubFetch(): void {
-  globalThis.fetch = (async (url: string | URL) => {
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
     if (String(url).includes('chat/completions')) {
       llmCalls += 1;
-      const data = { choices: [{ message: { role: 'assistant', content: 'LLM-Antwort.' } }] };
+      lastMessages = (JSON.parse(String(init?.body ?? '{}')).messages ?? []) as typeof lastMessages;
+      if (failLlm) {
+        return { ok: false, status: 500, text: async () => 'boom', json: async () => ({}) } as unknown as Response;
+      }
+      const data = { choices: [{ message: { role: 'assistant', content: '{"speech":"Hilfe-Antwort.","keep_open":true}' } }] };
       return { ok: true, status: 200, text: async () => JSON.stringify(data), json: async () => data } as unknown as Response;
     }
     return { ok: true, status: 204, headers: { get: () => null }, text: async () => '', json: async () => ({}) } as unknown as Response;
   }) as typeof fetch;
+}
+
+function systemMessage(): string {
+  return lastMessages.find((m) => m.role === 'system')?.content ?? '';
+}
+
+function fn(name: string, description: string): void {
+  createFunction({ name, description, template: 'x', parameters: null, budget: null, inventory_prompt: null, enabled: 1 });
 }
 
 before(() => {
@@ -48,6 +63,8 @@ before(() => {
 
 beforeEach(() => {
   llmCalls = 0;
+  failLlm = false;
+  lastMessages = [];
   stubFetch();
   getDb().exec('DELETE FROM tpl_functions;');
 });
@@ -56,29 +73,30 @@ after(() => {
   closeDb();
 });
 
-test('Hilfe ohne Tools: deterministisch, kein LLM-Aufruf', async () => {
+test('Hilfe mit Tool: LLM bekommt den vollstaendigen Katalog', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  const r = await processQuery({ text: 'hilfe', sessionId: 'help-tools' });
+  assert.equal(r.route, 'action');
+  assert.equal(r.response.speech, 'Hilfe-Antwort.');
+  assert.equal(llmCalls, 1);
+  assert.match(systemMessage(), /## Werkzeuge/);
+  assert.match(systemMessage(), /- wetter: Wetter und 3-Tage-Vorhersage/);
+});
+
+test('Hilfe ohne Tools: deterministischer Fallback, kein LLM', async () => {
   const r = await processQuery({ text: 'hilfe', sessionId: 'help-empty' });
   assert.equal(r.route, 'action');
   assert.match(r.response.speech, /keine Fähigkeiten eingerichtet/);
-  assert.match(r.response.speech, /wie heisst du/);
-  assert.equal(llmCalls, 0, 'Hilfe darf das LLM nicht bemuehen');
+  assert.equal(llmCalls, 0);
 });
 
-test('Hilfe listet installierte Funktion, weiterhin ohne LLM', async () => {
-  createFunction({
-    name: 'wetter',
-    description: null,
-    template: 'x',
-    parameters: null,
-    budget: null,
-    inventory_prompt: 'Aktuelles Wetter und 3-Tage-Vorhersage',
-    enabled: 1,
-  });
-  const r = await processQuery({ text: 'hilfe', sessionId: 'help-tools' });
+test('LLM-Fehler: Fallback statt Absturz', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  failLlm = true;
+  const r = await processQuery({ text: 'hilfe', sessionId: 'help-fail' });
   assert.equal(r.route, 'action');
   assert.match(r.response.speech, /Das kann ich aktuell:/);
-  assert.match(r.response.speech, /- wetter: Aktuelles Wetter und 3-Tage-Vorhersage/);
-  assert.equal(llmCalls, 0);
+  assert.equal(llmCalls, 1);
 });
 
 test('eigener llm-Vorgang (ohne Seed-Marker) bleibt beim LLM', async () => {

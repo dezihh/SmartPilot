@@ -30,10 +30,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
-- Die Hilfe nennt jetzt deterministisch genau die eingerichteten Fähigkeiten
-  (je Funktion und je System eine generische Zeile) statt sie vom Modell
-  ableiten zu lassen. Dadurch wächst sie zuverlässig mit installierten Paketen
-  und lässt keine Tools mehr aus.
+- Die Hilfe nennt jetzt zuverlässig alle eingerichteten Fähigkeiten: Der
+  Hilfe-Prompt bekommt den vollständigen Katalog (jede aktive Funktion mit
+  Beschreibung und Parametern, jeder Server) statt eines über `agent_tools`
+  gefilterten und um Tools ohne `inventory_prompt` erleichterten Inventars. Das
+  Modell formuliert daraus je Tool eine verständliche Zeile mit Nutzung. Ohne
+  Fähigkeiten oder bei LLM-Fehler greift ein deterministischer Fallback.
 
 ## [0.1.3] – 2026-09-28
 
