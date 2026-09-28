@@ -82,6 +82,12 @@ test('Bare /admin-Prefix leitet auf Trailing-Slash um', async () => {
   assert.equal(String(r.headers['location'] ?? ''), '/smartpilot/admin/');
 });
 
+test('Trailing-Slash-Redirect erhaelt den Query-String', async () => {
+  const r = await call('GET', '/smartpilot/admin?x=1&y=2', { token: 'test-secret' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/smartpilot/admin/?x=1&y=2');
+});
+
 test('Login unter Prefix setzt Cookie-Path=/smartpilot/admin', async () => {
   const r = await call('POST', '/smartpilot/admin/login', { body: { token: 'test-secret' } });
   assert.equal(r.status, 200);
@@ -103,4 +109,35 @@ test('Admin-UI ist auf der Wurzel nicht mehr bedient (/admin/ -> 404)', async ()
 test('Oeffentliche API bleibt auf der Wurzel (/api/query verlangt Auth)', async () => {
   const no = await call('POST', '/api/query', { body: { text: 'hi' } });
   assert.equal(no.status, 401);
+});
+
+test('Oeffentliche API bleibt auf der Wurzel: mit Token und ohne text -> 400 (Route existiert)', async () => {
+  const r = await call('POST', '/api/query', { body: {}, token: 'test-secret' });
+  assert.equal(r.status, 400);
+});
+
+test('Login-Seite unter Prefix ohne Auth -> 200 (HTML)', async () => {
+  const r = await call('GET', '/smartpilot/admin/login.html');
+  assert.equal(r.status, 200);
+  assert.match(String(r.headers['content-type'] ?? ''), /text\/html/);
+});
+
+test('Ungeschuetzte HTML-Anfrage wird prefix-korrekt auf Login umgeleitet', async () => {
+  const r = await call('GET', '/smartpilot/admin/', { accept: 'text/html' });
+  assert.equal(r.status, 302);
+  assert.equal(String(r.headers['location'] ?? ''), '/smartpilot/admin/login.html');
+});
+
+test('Admin-Alias der Query-API unter Prefix: 401 ohne Auth, 400 mit Auth', async () => {
+  const no = await call('POST', '/smartpilot/admin/api/query', { body: {} });
+  assert.equal(no.status, 401);
+  const ok = await call('POST', '/smartpilot/admin/api/query', { body: {}, token: 'test-secret' });
+  assert.equal(ok.status, 400);
+});
+
+test('Admin-Alias lambda-trace unter Prefix: 401 ohne Auth, 204 mit Auth', async () => {
+  const no = await call('POST', '/smartpilot/admin/api/lambda-trace', { body: {} });
+  assert.equal(no.status, 401);
+  const ok = await call('POST', '/smartpilot/admin/api/lambda-trace', { body: {}, token: 'test-secret' });
+  assert.equal(ok.status, 204);
 });

@@ -36,17 +36,31 @@ export function capabilityCatalog(): { tools: HelpEntry[]; systems: HelpEntry[] 
   return { tools, systems };
 }
 
-// Katalog als Prompt-Block. '' wenn nichts eingerichtet ist.
+const MAX_HELP_CHARS = 6000;
+
+// Groessenbegrenzung (Alexa/SSML- und Antwortlimit): harte Kante an Wortgrenze.
+function clip(text: string, max = MAX_HELP_CHARS): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).replace(/\s+\S*$/, '')} …`;
+}
+
+// Eine Zeile je Eintrag - ohne haengenden Doppelpunkt, wenn kein Text vorliegt.
+function bullet(name: string, text: string, empty = ''): string {
+  const body = text.trim() || empty;
+  return body ? `- ${name}: ${body}` : `- ${name}`;
+}
+
+// Katalog als Prompt-Block (groessenbegrenzt). '' wenn nichts eingerichtet ist.
 export function renderHelpCatalog(): string {
   const { tools, systems } = capabilityCatalog();
   const blocks: string[] = [];
   if (tools.length > 0) {
-    blocks.push(`## Werkzeuge\n${tools.map((t) => `- ${t.name}: ${t.text || '(ohne Beschreibung)'}`).join('\n')}`);
+    blocks.push(`## Werkzeuge\n${tools.map((t) => bullet(t.name, t.text, '(ohne Beschreibung)')).join('\n')}`);
   }
   if (systems.length > 0) {
-    blocks.push(`## Systeme\n${systems.map((s) => `- ${s.name}: ${s.text || '(ohne Beschreibung)'}`).join('\n')}`);
+    blocks.push(`## Systeme\n${systems.map((s) => bullet(s.name, s.text, '(ohne Beschreibung)')).join('\n')}`);
   }
-  return blocks.join('\n\n');
+  return clip(blocks.join('\n\n'));
 }
 
 // Deterministischer Text fuer den Leer-Fall und als Notnagel, wenn das LLM
@@ -54,19 +68,19 @@ export function renderHelpCatalog(): string {
 export function renderHelpFallback(): string {
   const name = getSetting('assistant_name') ?? 'Dein SmartPilot';
   const { tools, systems } = capabilityCatalog();
-  const parts: string[] = [];
+  const head: string[] = [];
   if (tools.length === 0 && systems.length === 0) {
-    parts.push(
+    head.push(
       'Zurzeit sind noch keine Fähigkeiten eingerichtet. Du kannst im Admin-Bereich unter "Pakete" Erweiterungen hinzufügen.'
     );
   } else {
-    parts.push('Das kann ich aktuell:');
-    if (tools.length > 0) parts.push(`Werkzeuge:\n${tools.map((t) => `- ${t.name}: ${t.text}`).join('\n')}`);
-    if (systems.length > 0) parts.push(`Systeme:\n${systems.map((s) => `- ${s.name}: ${s.text}`).join('\n')}`);
+    head.push('Das kann ich aktuell:');
+    if (tools.length > 0) head.push(`Werkzeuge:\n${tools.map((t) => bullet(t.name, t.text)).join('\n')}`);
+    if (systems.length > 0) head.push(`Systeme:\n${systems.map((s) => bullet(s.name, s.text)).join('\n')}`);
   }
-  parts.push(
-    `Grundfunktionen habe ich immer: Ich sage dir meinen Namen auf "wie heisst du", beantworte einzelne freie Fragen ohne Kommando (z. B. "frage ${name} warum ist der Himmel blau") und bleibe in einem laufenden Gespräch ("starte chat modus", Ende mit "chat beenden").`
-  );
-  parts.push('Was interessiert dich?');
-  return parts.join('\n\n');
+  return [
+    clip(head.join('\n\n')),
+    `Grundfunktionen habe ich immer: Ich sage dir meinen Namen auf "wie heisst du", beantworte einzelne freie Fragen ohne Kommando (z. B. "frage ${name} warum ist der Himmel blau") und bleibe in einem laufenden Gespräch ("starte chat modus", Ende mit "chat beenden").`,
+    'Was interessiert dich?',
+  ].join('\n\n');
 }

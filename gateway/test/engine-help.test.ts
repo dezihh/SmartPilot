@@ -116,3 +116,21 @@ test('eigener llm-Vorgang (ohne Seed-Marker) bleibt beim LLM', async () => {
   assert.equal(r.route, 'action');
   assert.equal(llmCalls, 1);
 });
+
+test('Hilfe-Katalog ignoriert die agent_tools-Allowlist (bewusst vollstaendig)', async () => {
+  // Dokumentiert gewolltes Verhalten: die Hilfe nennt jede aktive Faehigkeit,
+  // auch wenn sie ueber agent_tools vom Agenten ausgeschlossen ist. Wird die
+  // Ausschluss-Semantik je auf die Hilfe ausgedehnt, muss dieser Test angepasst
+  // werden.
+  const db = getDb();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('agent_tools', 'keine') ON CONFLICT(key) DO UPDATE SET value = 'keine'").run();
+  try {
+    fn('geheim', 'Nur fuer den Admin gedacht');
+    const r = await processQuery({ text: 'hilfe', sessionId: 'help-allowlist' });
+    assert.equal(r.route, 'action');
+    assert.equal(llmCalls, 1);
+    assert.match(systemMessage(), /- geheim: Nur fuer den Admin gedacht/);
+  } finally {
+    db.prepare("DELETE FROM settings WHERE key = 'agent_tools'").run();
+  }
+});

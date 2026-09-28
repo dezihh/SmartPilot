@@ -85,7 +85,12 @@ test('Fallback listet Faehigkeiten generisch (Beschreibung, sonst Name)', () => 
   const speech = renderHelpFallback();
   assert.match(speech, /Das kann ich aktuell:/);
   assert.match(speech, /- info: Kurzbeschreibung/);
-  assert.match(speech, /- stumm/);
+  assert.doesNotMatch(speech, /- stumm:/, 'kein haengender Doppelpunkt ohne Beschreibung');
+});
+
+test('Katalog ist groessenbegrenzt (SSML-/Antwortlimit)', () => {
+  for (let i = 0; i < 200; i++) fn(`f${i}`, 'x'.repeat(80));
+  assert.ok(renderHelpCatalog().length <= 6002);
 });
 
 test('installierte Pakete erweitern den Katalog (Funktion und System)', () => {
@@ -102,4 +107,17 @@ test('installierte Pakete erweitern den Katalog (Funktion und System)', () => {
   const out = renderHelpCatalog();
   assert.match(out, /- wetter: Wetter und Vorhersage/);
   assert.match(out, /- home-assistant: Geräte schalten/);
+});
+
+test('Katalog: parameters ohne properties-Objekt wird ignoriert', () => {
+  // parameters als reiner String -> kein Objekt -> keine Parameterangabe.
+  fn('s', 'Beschreibung', '"nur-string"');
+  const { tools } = capabilityCatalog();
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0]!.text, 'Beschreibung');
+});
+
+test('Katalog: Server ohne inventory_prompt bekommt Platzhalterzeile', () => {
+  server('leer', null);
+  assert.match(renderHelpCatalog(), /## Systeme\n- leer: \(ohne Beschreibung\)/);
 });

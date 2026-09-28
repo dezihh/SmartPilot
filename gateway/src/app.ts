@@ -51,17 +51,6 @@ export function createApp(): Express {
     res.sendFile(join(process.cwd(), 'web', 'login.html'));
   });
 
-  // Trailing-Slash erzwingen: sonst loesen relative Asset-/API-Pfade im Frontend
-  // gegen das falsche Verzeichnis auf. Exakter Pfadvergleich (Express matcht
-  // '/admin' sonst auch auf '/admin/').
-  admin.use((req, res, next) => {
-    if (req.path === '/admin') {
-      res.redirect(`${adminBase}/`);
-      return;
-    }
-    next();
-  });
-
   // Statische Admin-UI: Bearer-Token ODER Session-Cookie. Ein vorgelagerter
   // Proxy kann so die UI ohne App-Login bedienen (Issue #10); das Token bleibt
   // proxy-seitig und gelangt nie in den Browser.
@@ -72,6 +61,21 @@ export function createApp(): Express {
         return;
       }
       res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+    next();
+  });
+
+  // Trailing-Slash erzwingen (erst NACH Auth): sonst loesen relative Asset-/
+  // API-Pfade im Frontend gegen das falsche Verzeichnis auf. Exakter
+  // Pfadvergleich (Express matcht '/admin' sonst auch auf '/admin/'); Query
+  // bleibt erhalten.
+  admin.use((req, res, next) => {
+    if (req.path === '/admin') {
+      const query = req.originalUrl.includes('?')
+        ? req.originalUrl.slice(req.originalUrl.indexOf('?'))
+        : '';
+      res.redirect(`${adminBase}/${query}`);
       return;
     }
     next();

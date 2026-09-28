@@ -34,3 +34,11 @@ test('normalizeBasePath: Wurzel und Trailing-Slash normalisieren', () => {
   assert.equal(normalizeBasePath('/smartpilot/'), '/smartpilot');
   assert.equal(normalizeBasePath('/a/b//'), '/a/b');
 });
+
+test('normalizeBasePath: nur Slashes und umgebende Leerzeichen', () => {
+  assert.equal(normalizeBasePath('//'), '');
+  assert.equal(normalizeBasePath('   '), '');
+  assert.equal(normalizeBasePath('  /foo  '), '/foo');
+  assert.equal(normalizeBasePath('foo/'), '/foo');
+  assert.equal(normalizeBasePath('a/b'), '/a/b');
+});

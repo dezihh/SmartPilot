@@ -36,6 +36,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   gefilterten und um Tools ohne `inventory_prompt` erleichterten Inventars. Das
   Modell formuliert daraus je Tool eine verständliche Zeile mit Nutzung. Ohne
   Fähigkeiten oder bei LLM-Fehler greift ein deterministischer Fallback.
+- Der Admin-Redirect `/admin` → `/admin/` erhält jetzt den Query-String und
+  läuft erst nach der Authentifizierung.
 
 ## [0.1.3] – 2026-09-28
 
