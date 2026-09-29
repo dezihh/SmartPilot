@@ -30,6 +30,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Zeilenumbruch; `entityIndex.splitLines` normalisiert solche Folgen zusätzlich
   defensiv.
 
+### Dokumentation
+
+- `doc/INSTALLATION.md`: Reverse-Proxy-/`BASE_PATH`-Anleitung überarbeitet — ein
+  nginx-Referenzaufbau (TLS, nur `/api/query` öffentlich) mit Ziel-URL und
+  Trailing-Slash-Falle; zentrale Auth, `BASE_PATH` und Ganz-Instanz-Betrieb nur
+  beschrieben
+- `README.md`: Hinweis, dass die Admin-UI mit `BASE_PATH` unter
+  `<BASE_PATH>/admin/` liegt
+
 ## [0.1.4] – 2026-09-28
 
 ### Hinzugefügt
@@ -228,7 +237,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.5
 [0.1.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.4
 [0.1.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.3
 [0.1.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.2
