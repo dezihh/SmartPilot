@@ -12,11 +12,15 @@ und die Funktion **`ma_players`** (Player-Liste in einem Call) an.
 2. MA-Einstellungen → **Plugins** → **MCP Server** aktivieren
    ([trudenboy/ma-provider-mcp](https://github.com/trudenboy/ma-provider-mcp)).
    Das Plugin hängt sich in den MA-Webserver (`/mcp/v1`) — kein Extra-Port.
-3. **Token**: im Plugin-Config-Panel auf **Open Connect Wizard** — der Wizard
-   erzeugt ein Client-Token (`MCP — <Client>`), sichtbar und einzeln
-   widerrufbar unter **Profil → Long-lived access tokens**. Alternativ dort
-   selbst minten. Beim Minten ein Profil wählen, das **control** erlaubt
-   (z. B. „Home control“).
+3. **Token**: im Plugin-Config-Panel auf **Open Connect Wizard**. Der Wizard
+   fragt zuerst **Network** oder **Localhost/Loopback** (→ **Network** wählen)
+   und danach den **AI-Client** (Auswahl egal, z. B. **Claude**) — erst dann
+   erzeugt er ein Client-Token (`MCP — <Client>`) und zeigt einen fertigen
+   Snippet (URL + Bearer-Header). Aus dem Snippet **nur den Token** kopieren
+   (den Wert nach `Bearer `) und in SmartPilot als `ma_token` einfügen. Der
+   Token ist einzeln widerrufbar unter **Profil → Long-lived access tokens**;
+   alternativ dort selbst minten (Profil mit **control**-Rechten, z. B.
+   „Home control“).
 
 ## Parameter beim Install
 

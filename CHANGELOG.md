@@ -38,6 +38,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   beschrieben
 - `README.md`: Hinweis, dass die Admin-UI mit `BASE_PATH` unter
   `<BASE_PATH>/admin/` liegt
+- Paket `music-assistant`: Setup-Doku zum Connect-Wizard präzisiert — im Wizard
+  **Network** statt Localhost/Loopback wählen, den AI-Client beliebig (z. B.
+  Claude), dann **nur den Token** aus dem erzeugten Snippet als `ma_token`
+  übernehmen
 
 ## [0.1.4] – 2026-09-28
 
