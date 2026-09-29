@@ -321,8 +321,12 @@ export function parseIndexResult(
   return { entries: splitLines(text), error: null };
 }
 
+// Literale Backslash-n-Folgen defensiv als Zeilenumbruch behandeln: manche
+// Index-Templates (z. B. das HA-Manifest vor 1.0.3) liefern kein echtes Newline,
+// wodurch der ganze Index zu einer Zeile verschmilzt und fast leer bleibt.
 function splitLines(text: string): IndexEntry[] {
   return text
+    .replace(/\\n/g, '\n')
     .split('\n')
     .map((line) => parseLine(line.trim()))
     .filter((e): e is IndexEntry => e !== null);

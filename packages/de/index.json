@@ -5,7 +5,7 @@
       "id": "home-assistant",
       "name": "Home Assistant Anbindung",
       "summary": "MCP-Server (ha-mcp), Entity-Index (alle HA-States) und Schalten-Kaskade",
-      "version": "1.0.2"
+      "version": "1.0.3"
     },
     {
       "id": "music-assistant",

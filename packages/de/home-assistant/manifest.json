@@ -1,6 +1,6 @@
 {
   "id": "home-assistant",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "Home Assistant Anbindung",
   "summary": "MCP-Server (ha-mcp), Entity-Index (alle HA-States) und Schalten-Kaskade.",
   "description": "Legt den Registry-Eintrag fuer den ha-mcp-Server (Streamable HTTP) an, konfiguriert den Entity-Index (Standard-Index liest alle HA-States als Pipe-Zeilen) und haekt die HA-Werkzeuge in der Agent-Tool-Allowlist an. Die Schalten-Kaskade (Name -> entity_id -> Service-Call) kommt als Agent-Inventory-Prompt mit.",
@@ -40,7 +40,7 @@
         "desc": "Entity-Index: alle HA-States als Pipe-Zeilen (entity_id|Raum|State|Einheit|Name|Extra)",
         "tool": "ha_eval_template",
         "args": {
-          "template": "{% for e in states %}{% set area = area_name(e.entity_id) or '' %}{% set nm = e.attributes.get('friendly_name', e.entity_id) %}{% set extra = 'device_class=' ~ (e.attributes.get('device_class','') or '') ~ ';icon=' ~ (e.attributes.get('icon','') or '') ~ ';supported_features=' ~ (e.attributes.get('supported_features','') or '') %}{% if e.entity_id.startswith('climate.') and e.attributes.get('current_temperature') is not none %}{% set extra = extra ~ ';current_temperature=' ~ (e.attributes.get('current_temperature') or '') %}{% endif %}{{e.entity_id}}|{{area}}|{{e.state}}|{{e.attributes.get('unit_of_measurement','') or ''}}|{{nm}}|{{extra}}\\n{% endfor %}",
+          "template": "{% for e in states %}{% set area = area_name(e.entity_id) or '' %}{% set nm = e.attributes.get('friendly_name', e.entity_id) %}{% set extra = 'device_class=' ~ (e.attributes.get('device_class','') or '') ~ ';icon=' ~ (e.attributes.get('icon','') or '') ~ ';supported_features=' ~ (e.attributes.get('supported_features','') or '') %}{% if e.entity_id.startswith('climate.') and e.attributes.get('current_temperature') is not none %}{% set extra = extra ~ ';current_temperature=' ~ (e.attributes.get('current_temperature') or '') %}{% endif %}{{e.entity_id}}|{{area}}|{{e.state}}|{{e.attributes.get('unit_of_measurement','') or ''}}|{{nm}}|{{extra}}\n{% endfor %}",
           "timeout": 15,
           "report_errors": false
         },
@@ -138,5 +138,5 @@
     "web_url_read"
   ],
   "setupDocs": "Server-Seite (Docker, HTTP-Modus):\n\n  ha-mcp:\n    image: ghcr.io/homeassistant-ai/ha-mcp:latest\n    container_name: ha-mcp\n    restart: unless-stopped\n    command: ha-mcp-web\n    ports:\n      - \"8086:8086\"\n    env_file:\n      - ./mcp.env   # enthaelt das Home-Assistant-Long-Lived-Access-Token\n    volumes:\n      - ./data:/home/mcpuser/.ha-mcp\n    environment:\n      - TZ=Europe/Berlin\n\nAlternative (Home Assistant OS/Supervised): HA-MCP Custom Component via HACS - laeuft in-process, ohne Token-Verwaltung. Nur eine Methode gleichzeitig betreiben.\nDetails: https://github.com/homeassistant-ai/ha-mcp",
-  "changelog": "1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax in der Server-URL korrigiert; domainHints in die Index-Konfiguration aufgenommen (der Code-Default ist jetzt systemneutral/leer).\n1.0.0: Erste Fassung (Server, Index, Kaskade, Allowlist)."
+  "changelog": "1.0.3: Entity-Index-Template nutzt einen echten Zeilenumbruch statt einer literalen Backslash-n-Folge; der Index enthaelt dadurch alle HA-States (vorher nur wenige Eintraege).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax in der Server-URL korrigiert; domainHints in die Index-Konfiguration aufgenommen (der Code-Default ist jetzt systemneutral/leer).\n1.0.0: Erste Fassung (Server, Index, Kaskade, Allowlist)."
 }

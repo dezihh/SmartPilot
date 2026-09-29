@@ -21,6 +21,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+### Behoben
+
+- Paket `home-assistant` (1.0.3): Das Index-Template enthielt eine literale
+  Escape-Sequenz (Backslash-n), die Jinja nicht als Zeilenumbruch rendert.
+  Dadurch landeten statt aller HA-States nur wenige Einträge im Entity-Index und
+  die Entity-Suche lief ins Leere. Das Template nutzt jetzt einen echten
+  Zeilenumbruch; `entityIndex.splitLines` normalisiert solche Folgen zusätzlich
+  defensiv.
+
 ## [0.1.4] – 2026-09-28
 
 ### Hinzugefügt

@@ -88,6 +88,16 @@ test('parseIndexResult: Zeilen mit < 5 Feldern fallen weg, leere id verwerfen', 
   assert.equal(r.entries.length, 1);
 });
 
+test('parseIndexResult: literale Backslash-n-Folgen gelten als Zeilenumbruch (HA-Manifest-Bug)', () => {
+  // Vor dem Fix lieferte das HA-Template ein literales \n statt eines echten
+  // Zeilenumbruchs; der Index enthielt dadurch nur wenige statt aller States.
+  const literal = 'light.1|Wohnzimmer|on||Deckenlicht|\\nsensor.2|Kueche|21||Tempsensor|';
+  const r = parseIndexResult(literal);
+  assert.equal(r.error, null);
+  assert.equal(r.entries.length, 2);
+  assert.equal(r.entries[1]!.id, 'sensor.2');
+});
+
 test('parseIndexResult: area "None" wird leer, irrelevante Extras gefiltert', () => {
   const r = parseIndexResult('light.1|None|on||Licht|bogus=1;battery_level=55;unit_of_measurement=%');
   assert.equal(r.entries.length, 1);
