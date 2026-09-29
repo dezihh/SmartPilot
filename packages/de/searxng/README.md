@@ -35,7 +35,13 @@ search:
 
 | Parameter | Bedeutung | Default |
 |---|---|---|
-| `searxng_url` | Vollständige Such-URL inkl. `/search` | — (erforderlich) |
+| `searxng_url` | Basis-URL der Instanz **ohne** `/search` (z. B. `http://<host>:8003`) | — (erforderlich) |
+
+> Die übrigen Registry-Felder setzt das Paket automatisch: Transport `stdio`,
+> Befehl `node_modules/.bin/mcp-searxng`, leere Argumente und `SEARXNG_URL`
+> unter den Umgebungsvariablen. Ändern bei Bedarf im MCP-Server-Editor
+> (Tool-Registry) — dort erscheinen Befehl, Argumente und Umgebungsvariablen,
+> sobald der Transport `stdio` ist.
 
 ## Nach der Installation
 

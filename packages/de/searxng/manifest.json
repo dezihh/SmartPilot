@@ -1,6 +1,6 @@
 {
   "id": "searxng",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "Websuche SearXNG",
   "summary": "Metasuche ueber eine selbst gehostete SearXNG-Instanz (stdio-Bruecke mcp-searxng).",
   "description": "Legt den Registry-Eintrag fuer die mcp-searxng-stdio-Bruecke an (laeuft im Gateway-Container) und hakt die Such-Werkzeuge in der Allowlist an. Die Lese-Regel (nur konkrete Treffer-URLs/Feeds) kommt als Agent-Inventory-Prompt mit.",
@@ -13,8 +13,8 @@
   "params": [
     {
       "key": "searxng_url",
-      "label": "SearXNG-URL (/search)",
-      "placeholder": "http://192.168.1.20:8080/search",
+      "label": "SearXNG-Basis-URL (ohne /search)",
+      "placeholder": "http://<searxng-host>:8003",
       "required": true
     }
   ],
@@ -36,5 +36,5 @@
     "web_url_read"
   ],
   "setupDocs": "Server-Seite (Docker):\n\n  searxng:\n    image: searxng/searxng:latest\n    container_name: searxng\n    restart: unless-stopped\n    ports:\n      - \"8080:8080\"\n    volumes:\n      - ./searxng:/etc/searxng\n\nWICHTIG: in searxng/settings.yml die JSON-API freischalten:\n\n  search:\n    formats:\n      - html\n      - json\n\nDetails: https://docs.searxng.org",
-  "changelog": "1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, Lese-Regel, Allowlist)."
+  "changelog": "1.0.3: Parameter-Label/Placeholder praezisiert (Basis-URL ohne /search; die Bruecke haengt /search selbst an).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, Lese-Regel, Allowlist)."
 }

@@ -19,6 +19,12 @@ reicht für den Anfang).
 |---|---|---|
 | `brave_api_key` | Brave-Search-API-Key | — (erforderlich) |
 
+> Die übrigen Registry-Felder setzt das Paket automatisch: Transport `stdio`,
+> Befehl `npx`, Argumente `-y @brave/brave-search-mcp-server` und
+> `BRAVE_API_KEY` unter den Umgebungsvariablen. Ändern bei Bedarf im
+> MCP-Server-Editor (Tool-Registry) — Befehl, Argumente und
+> Umgebungsvariablen erscheinen beim Transport `stdio`.
+
 ## Nach der Installation
 
 1. Tool-Registry → **Tools abfragen** — `brave_web_search` erscheint.

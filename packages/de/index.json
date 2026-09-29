@@ -17,7 +17,7 @@
       "id": "searxng",
       "name": "Websuche SearXNG",
       "summary": "Metasuche ueber eine selbst gehostete SearXNG-Instanz (stdio-Bruecke)",
-      "version": "1.0.2"
+      "version": "1.0.3"
     },
     {
       "id": "brave-search",
