@@ -21,6 +21,22 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.6] – 2026-09-29
+
+### Dokumentation
+
+- Paket `music-assistant`: Setup-Doku zum Connect-Wizard präzisiert — im Wizard
+  **Network** statt Localhost/Loopback wählen, den AI-Client beliebig (z. B.
+  Claude), dann **nur den Token** aus dem erzeugten Snippet als `ma_token`
+  übernehmen
+- Pakete `searxng` (1.0.3)/`brave-search`: Installationsdoku präzisiert — der
+  Install-Dialog fragt nur die deklarierten Parameter ab, die stdio-Felder
+  (`command`/`args`/`env`) setzt das Paket automatisch (änderbar im
+  MCP-Server-Editor, Transport `stdio`); SearXNG-Parameter korrigiert
+  (**Basis-URL ohne `/search`**)
+
+## [0.1.5] – 2026-09-29
+
 ### Behoben
 
 - Paket `home-assistant` (1.0.3): Das Index-Template enthielt eine literale
@@ -38,10 +54,6 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   beschrieben
 - `README.md`: Hinweis, dass die Admin-UI mit `BASE_PATH` unter
   `<BASE_PATH>/admin/` liegt
-- Paket `music-assistant`: Setup-Doku zum Connect-Wizard präzisiert — im Wizard
-  **Network** statt Localhost/Loopback wählen, den AI-Client beliebig (z. B.
-  Claude), dann **nur den Token** aus dem erzeugten Snippet als `ma_token`
-  übernehmen
 
 ## [0.1.4] – 2026-09-28
 
@@ -241,7 +253,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.6
 [0.1.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.5
 [0.1.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.4
 [0.1.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.3

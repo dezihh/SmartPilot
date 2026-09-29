@@ -1,6 +1,6 @@
 {
   "name": "smartpilot-gateway",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "SmartPilot Gateway: Alexa-Adapter, Action-Routing, LLM- und MCP-Orchestrierung, Admin-UI",
   "type": "module",
