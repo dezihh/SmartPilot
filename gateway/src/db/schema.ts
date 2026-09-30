@@ -452,6 +452,19 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
     );
   }
 }
+// Bestands-DBs: Tool-Ergebnisse als alleinige Faktenquelle verankern. Die alte
+// Prompt-Fassung liess dem Modell zu viel Raum, vorhandene Suchtreffer zu
+// ignorieren und aus Trainingswissen zu antworten.
+{
+  const anchor = 'gehören ins eigene Wissen.';
+  const addition = '\n- Liegen Tool-Ergebnisse vor, sind SIE die einzige Faktenquelle: übernimm Namen, Zahlen und Aussagen daraus wörtlich, auch wenn sie deinem eigenen Wissen widersprechen. Ersetze einen Treffer niemals durch etwas aus dem Gedächtnis.';
+  const row = db.prepare("SELECT content FROM prompts WHERE key = 'agent_system'").get() as { content?: string } | undefined;
+  if (row?.content && row.content.includes(anchor) && !row.content.includes('einzige Faktenquelle')) {
+    db.prepare("UPDATE prompts SET content = ?, updated_at = datetime('now') WHERE key = 'agent_system'").run(
+      row.content.replace(anchor, anchor + addition)
+    );
+  }
+}
 // Bestands-DBs (22.09.): die Hilfe-Action braucht den {agent_inventory}-Marker,
 // sonst wird das Nachschlagewerk nicht in den Prompt eingefuegt und sie kann
 // keine Faehigkeiten auflisten. Marker ergaenzen, falls er fehlt.

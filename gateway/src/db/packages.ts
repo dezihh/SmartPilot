@@ -128,8 +128,9 @@ export function conflictItems(packageId: string): string[] {
 // Install = Upsert (mehrfach installieren ueberschreibt/aktualisiert).
 // Provenienz in packages + package_items. dangerAck: bei shell()-Templates
 // erforderlich. decisions: pro Item 'take' (Paket-Inhalt uebernehmen) oder
-// 'keep' (lokale Aenderung behalten). dryRun: nur Report berechnen, ohne zu
-// schreiben (fuer die Diff-Vorschau vor dem Reinstall).
+// 'keep' (lokale Aenderung behalten). Standard bei lokal geaenderten Zeilen
+// (Konflikt) ist 'keep' - nur ein ausdrueckliches 'take' ueberschreibt sie.
+// dryRun: nur Report berechnen, ohne zu schreiben (fuer die Diff-Vorschau).
 export function installPackage(
   m: PackageManifest,
   opts: {
@@ -148,9 +149,15 @@ export function installPackage(
     throw new Error('Gefaehrliche Aktion: Bestaetigung erforderlich (dangerous_ack)');
   }
   const decisions = opts.decisions ?? {};
-  const keep = (key: string): boolean => decisions[key] === 'keep';
+  // Lokal geaenderte Zeilen (Konflikt) bleiben per Default erhalten; eine
+  // ausdrueckliche 'take'-Entscheidung ueberschreibt sie. Nicht-konfliktende
+  // Zeilen werden weiterhin auf die Paket-Version aktualisiert.
+  const conflicts = conflictItems(m.id);
+  const conflictSet = new Set(conflicts);
+  const keep = (key: string): boolean =>
+    decisions[key] === 'keep' || (decisions[key] !== 'take' && conflictSet.has(key));
   const report: PackageReport = {
-    created: [], updated: [], unchanged: [], kept: [], conflicts: conflictItems(m.id),
+    created: [], updated: [], unchanged: [], kept: [], conflicts,
     dangerous: danger.dangerous, dangerousItems: danger.items, infoItems: danger.info,
   };
 

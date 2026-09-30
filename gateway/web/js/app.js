@@ -1062,11 +1062,11 @@ async function showInstallForm(id, manifestFromImport) {
     const conflictsHtml = conflicts.length ? `
       <div class="pkg-items pkg-conflicts">
         <strong>Lokale Änderungen erkannt:</strong>
-        <p class="field-help">Diese Zeilen hast du nach der Installation bearbeitet. Ohne Entscheidung würde das Paket sie überschreiben.</p>
+        <p class="field-help">Diese Zeilen hast du nach der Installation bearbeitet. Standard ist, deine lokale Version zu behalten; wähle „Paket-Version übernehmen", um sie durch das Paket zu ersetzen.</p>
         <ul>${conflicts.map((c) => `<li>${escHtml(c)}
           <select data-decision="${escHtml(c)}">
-            <option value="take">Paket-Version übernehmen</option>
             <option value="keep">Lokale Änderung behalten</option>
+            <option value="take">Paket-Version übernehmen</option>
           </select></li>`).join('')}</ul>
       </div>` : '';
     $('pkg-install-form').classList.remove('hidden');

@@ -222,10 +222,16 @@ test('Reinstall-Diff: lokal geaenderte Zeile wird gemeldet; Entscheidung take/ke
   db.prepare("UPDATE tpl_functions SET template = 'LOKAL' WHERE name = 'test_fn'").run();
   assert.deepEqual(conflictItems('test-package'), ['function:test_fn']);
 
-  // Reinstall ohne Entscheidung: ueberschreibt, meldet aber den Konflikt
+  // Reinstall ohne Entscheidung: lokal geaenderte Zeile bleibt erhalten (Default keep)
   const r1 = installPackage(OK_MANIFEST as never, opts);
   assert.deepEqual(r1.conflicts, ['function:test_fn']);
+  assert.deepEqual(r1.kept, ['function:test_fn']);
   let fn = db.prepare("SELECT template FROM tpl_functions WHERE name = 'test_fn'").get() as { template: string };
+  assert.equal(fn.template, 'LOKAL');
+
+  // ausdrueckliches 'take' uebernimmt die Paket-Version
+  installPackage(OK_MANIFEST as never, { ...opts, decisions: { 'function:test_fn': 'take' } });
+  fn = db.prepare("SELECT template FROM tpl_functions WHERE name = 'test_fn'").get() as { template: string };
   assert.equal(fn.template, 'Server 10.0.0.5 meldet sich.');
 
   // erneut lokal aendern, diesmal 'keep'

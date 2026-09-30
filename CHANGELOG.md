@@ -33,6 +33,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- Paket-Aktualisierung schützt lokale Anpassungen: lokal geänderte Zeilen
+  (Server/Funktion/Aktion/Index) bleiben standardmäßig erhalten; nur ein
+  ausdrückliches „Paket-Version übernehmen" überschreibt sie (Backend-Default
+  und Dialog-Default angepasst)
+- Agent: Tool-Ergebnisse sind als alleinige Faktenquelle verankert (Prompt-Regel
+  und schärfere Recherche-Auswertung); Bestands-DBs werden migriert — verhindert
+  Antworten aus Trainingswissen trotz vorliegender Treffer
 - Agent antwortet veränderliche Fakten (Personen und Ämter, Orte, Preise,
   Produkte, Rekorde, Ereignisse, Nachrichten) nicht mehr aus Trainingswissen:
   die Agent-Regel wurde geschärft (bei Veränderlichem zuerst per Such-/Recherche-

@@ -1,6 +1,6 @@
 {
   "id": "brave-search",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "name": "Websuche Brave",
   "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion (Suche + Feed-Lese in einem Call).",
   "description": "Legt den Registry-Eintrag fuer die Brave-Search-stdio-Bruecke (offizielles @brave/brave-search-mcp-server-Paket) an, legt die Funktion recherche an (Websuche mit count 5 + optionaler /rss-Feed-Lese mit langer Auswertungs-Regel) und haekt die Werkzeuge in der Allowlist an. Zweck der Funktion: 'aktuelles bei <Quelle>' = Inhalte VON der Quelle, nicht UEBER das Unternehmen.",
@@ -39,7 +39,7 @@
     {
       "name": "recherche",
       "description": "Recherche in einem Aufruf: Websuche (SearXNG primaer, Brave als Ersatz) + optionaler Feed-Lese (wenn url angegeben: https://<url>/rss). Bedeutungslage: 'aktuelles bei <Quelle>' = Inhalte VON der Quelle, nicht UEBER das Unternehmen.",
-      "template": "{%- set s = mcp.call('searxng_web_search', {'query': args.query}, { fallback: 'brave_web_search' }) -%}{{ s }}\n{%- if args.url -%}\n--- FEED-PROBE ---\n{{ mcp.call('web_url_read', {'url': 'https://' ~ args.url ~ '/rss', 'maxLength': 6000}) }}\n{%- endif %}\n[Auswertung: Konkrete Meldungen aus den Treffern oder dem FEED-PROBE-Block (jede <title>-Zeile = eine Meldung) nennen. Sind die Treffer nur Portal-Uebersichten und der FEED-PROBE leer: EIN web_url_read auf die passende Treffer-URL (maxLength 8000); zeigt die Seite nur Navigation: fn_recherche '<quelle> rss feed' und die gefundene Feed-URL lesen (maxLength 5000). Liefert die Quelle nichts Konkretes: das kurz sagen - NIEMALS Inhalte aus Vorwissen erfinden, NIEMALS Meldungen anderer Quellen aus dem Kontext als Antwort nutzen, NIEMALS zurueckfragen.]",
+      "template": "{%- set s = mcp.call('searxng_web_search', {'query': args.query}, { fallback: 'brave_web_search' }) -%}{{ s }}\n{%- if args.url -%}\n--- FEED-PROBE ---\n{{ mcp.call('web_url_read', {'url': 'https://' ~ args.url ~ '/rss', 'maxLength': 6000}) }}\n{%- endif %}\n[Auswertung: Konkrete Meldungen aus den Treffern oder dem FEED-PROBE-Block (jede <title>-Zeile = eine Meldung) nennen. Sind die Treffer nur Portal-Uebersichten und der FEED-PROBE leer: EIN web_url_read auf die passende Treffer-URL (maxLength 8000); zeigt die Seite nur Navigation: fn_recherche '<quelle> rss feed' und die gefundene Feed-URL lesen (maxLength 5000). Liefert die Quelle nichts Konkretes: das kurz sagen - NIEMALS Inhalte aus Vorwissen erfinden, NIEMALS Meldungen anderer Quellen aus dem Kontext als Antwort nutzen, NIEMALS zurueckfragen. Bei Faktenfragen Namen/Zahlen ausschliesslich aus den Treffern uebernehmen (neueste zuerst); widerspricht dein Vorwissen den Treffern, gelten die Treffer.]",
       "parameters": {
         "type": "object",
         "properties": {
@@ -67,5 +67,5 @@
     "fn_recherche"
   ],
   "setupDocs": "Server-Seite:\n\n1. Search-API-Key bei https://brave.com/search/api erzeugen (Free-Tier reicht fuer den Anfang).\n2. Key beim Install eintragen (landet verschluesselt-frei nur in der Registry-Zeile, nicht in Logs).\nDetails: https://github.com/brave/brave-search-mcp-server",
-  "changelog": "1.1.0: recherche nutzt die Kaskade - primaer searxng_web_search, nur bei leerem Ergebnis brave_web_search (Fallback).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, recherche-Funktion, Allowlist)."
+  "changelog": "1.1.1: Auswertungs-Regel geschaerft - Namen/Zahlen nur aus den Treffern, Treffer schlagen Vorwissen.\n1.1.0: recherche nutzt die Kaskade - primaer searxng_web_search, nur bei leerem Ergebnis brave_web_search (Fallback).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, recherche-Funktion, Allowlist)."
 }
