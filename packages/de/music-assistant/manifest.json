@@ -1,9 +1,9 @@
 {
   "id": "music-assistant",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "name": "Music Assistant Anbindung",
-  "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade.",
-  "description": "Legt den Registry-Eintrag fuer das ma-provider-mcp-Plugin (Streamable HTTP unter /mcp/v1) an, bringt die Wiedergabe-Kaskade samt ASR-Falscherkennungs-Regel als Agent-Inventory-Prompt mit und legt die Funktion ma_players an (Player-Liste mit player_id/Status/Lautstaerke in einem Call).",
+  "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
+  "description": "Legt den Registry-Eintrag fuer das ma-provider-mcp-Plugin (Streamable HTTP unter /mcp/v1) an, bringt die Wiedergabe-Kaskade samt ASR-Falscherkennungs-Regel als Agent-Inventory-Prompt mit (generisch: wenn kein Geraet genannt ist, wird der gerade spielende Player gewaehlt - optional per Parameter fest vorgebbar) und legt die Funktion ma_players an (Player-Liste mit player_id/Status/Lautstaerke in einem Call).",
   "author": "dezihh",
   "license": "MIT",
   "language": "de",
@@ -27,6 +27,12 @@
       "label": "MA-Token (Bearer)",
       "secret": true,
       "required": true
+    },
+    {
+      "key": "ma_default_player",
+      "label": "Standard-Player-ID (optional, leer = den gerade spielenden Player verwenden)",
+      "placeholder": "z. B. 2050883107",
+      "default": ""
     }
   ],
   "servers": [
@@ -35,21 +41,21 @@
       "transport": "http",
       "url": "http://${ma_host}:${ma_port}/mcp/v1",
       "auth_token": "${ma_token}",
-      "inventory_prompt": "Musikwiedergabe: \"Spiele Musik von <Kuenstler>\" -> library_search_artists, dann playback_play_media mit dem Artist-URI (MA fuellt 25 Titel). Existiert eine PLAYLIST oder ein ALBUM passend zum Wunsch, diese bevorzugen (wird vollstaendig gespielt). Nach dem letzten Queue-Titel endet die Wiedergabe - Repeat/Queue-Verlaengerung ist ueber MA-MCP nicht moeglich; darauf nur hinweisen, wenn der User fragt.\n\nFalscherkennungen: Alexa hoert Kuenstler-/Titelnamen manchmal falsch; in der Frage steht das WOERTLICH Erkannte. BEVOR du library_search_* aufrufst: (1) Bekannte Verwechslungen pruefen: alles aehnlich klingende wie 'AC DC', 'ACDC', 'Eis kier' hat die Schraegstrich-Variante 'AC/DC' (Band). Weitere Eintraege bei Bedarf ergaenzen. (2) Passt keine Verwechslung: PLAUSIBLE SCHREIBWEISEN derselben Aussprache probieren (Worttrennung auf/ab, Bindestrich statt Leerzeichen, Umlaut statt ae/oe/ue, 2-3 Varianten), bevor du 'nicht gefunden' antwortest. Nenne im Echo die Schreibweise, die zum Treffer fuehrte.\n\nPlayer-Steuerung (pause/weiter/stop/lautstaerke/naechster): IMMER zuerst fn_ma_players - die Steuercalls brauchen die player_id. NIE die HA-media_player-Entities dafuer (die sind nur eine Anzeige-Kopie).",
+      "inventory_prompt": "Musikwiedergabe (Music Assistant):\n- Geraet bestimmen (ohne genanntes Geraet): nimm IMMER den Player, der gerade spielt (fn_ma_players: state=playing). Spielt keiner und gibt es genau EINEN verfuegbaren Player, nimm diesen. Nur wenn mehrere gleichzeitig spielen, nachfragen - sonst NIE nach dem Geraet fragen.\n- Fester Standard (hat Vorrang, wenn nicht leer): \"${ma_default_player}\". Ist dort ein Wert eingetragen, nutze ihn ohne Nachfrage.\n- Doppelte Eintraege: MA listet dasselbe Geraet teils zweimal (numerische id UND media_player.*). Nimm IMMER die MA-native id (nicht media_player.*) - media_player.* sind nur HA-Anzeige-Kopien.\n- Wiedergabe steuern (pause/weiter/stop/vorheriger/naechster): braucht eine queue_id, NICHT player_id. Mit der gewaehlten player_id zuerst queue_get_active_queue(player_id=<player_id>) aufrufen und die gelieferte queue_id nutzen: playback_next_track / playback_previous_track / playback_pause / playback_resume / playback_stop mit queue_id.\n- Lautstaerke / Ein-Aus: brauchen player_id (volume_volume_set/up/down/mute, players_set_power).\n- \"Spiele Musik von <Kuenstler>\": library_search_artists(<Kuenstler>) -> Artist-URI, dann playback_play_media(queue_id=<queue_id>, uri=<Artist-URI>) (MA fuellt 25 Titel). Existiert eine PLAYLIST oder ein ALBUM passend zum Wunsch, diese bevorzugen (wird vollstaendig gespielt).\n- \"Spiele <Titel>\": library_search_tracks -> Titel-URI -> playback_play_media(queue_id=<queue_id>, uri=<Titel-URI>).\n- Nach dem letzten Queue-Titel endet die Wiedergabe; Repeat/Queue-Verlaengerung ist ueber MA-MCP nicht moeglich - nur auf Nachfrage erwaehnen.\n\nFalscherkennungen: Alexa hoert Kuenstler-/Titelnamen manchmal falsch; in der Frage steht das WOERTLICH Erkannte. BEVOR du library_search_* aufrufst: (1) Bekannte Verwechslungen pruefen: alles aehnlich klingende wie 'AC DC', 'ACDC', 'Eis kier' hat die Schraegstrich-Variante 'AC/DC' (Band). Weitere Eintraege bei Bedarf ergaenzen. (2) Passt keine Verwechslung: PLAUSIBLE SCHREIBWEISEN derselben Aussprache probieren (Worttrennung auf/ab, Bindestrich statt Leerzeichen, Umlaut statt ae/oe/ue, 2-3 Varianten), bevor du 'nicht gefunden' antwortest. Nenne im Echo die Schreibweise, die zum Treffer fuehrte.",
       "enabled": true
     }
   ],
   "functions": [
     {
       "name": "ma_players",
-      "description": "Liste der Music-Assistant-Lautsprecher mit player_id, Status und Lautstaerke. Rufe dieses Tool IMMER zuerst bei Musiksteuerung (pause/weiter/stop/lautstaerke/naechster) oder wenn du eine player_id brauchst.",
+      "description": "Liste der Music-Assistant-Player (player_id/State/Lautstaerke). Nutze sie, um den gerade spielenden Player zu ermitteln oder wenn ein Geraet genannt wird.",
       "template": "{%- set raw = mcp.call('players_list_players') -%}\n{%- set parts = raw.split('{\"player_id\":\"') -%}\n{%- for p in parts -%}\n{%- if not loop.first and p.split('\"available\":')[1].split(',')[0] == 'true' -%}\n{{p.split('\"')[0]}} | {{p.split('\"name\":\"')[1].split('\"')[0]}} | {{p.split('\"state\":\"')[1].split('\"')[0]}} | vol={{p.split('\"volume_level\":')[1].split(',')[0]}}\n{% endif -%}\n{%- endfor -%}",
       "parameters": {
         "type": "object",
         "properties": {}
       },
       "budget": 1,
-      "inventory_prompt": "Musik-Player (z. B. Anlage) mit player_id/State/Lautstaerke in einem Call - IMMER erster Schritt fuer Musiksteuerung (Pause/Weiter/Stop/Lautstaerke/Naechster Titel), danach die Steuercalls mit dieser player_id. NIE die HA-media_player-Entities dafuer.",
+      "inventory_prompt": "Player-Liste mit player_id/State. Hier den spielenden Player ermitteln (state=playing); fuer die Standard-Anlage nicht noetig. Danach die queue_id per queue_get_active_queue(player_id=<player_id>) holen.",
       "sideEffect": "read"
     }
   ],
@@ -59,6 +65,6 @@
     "call_tool",
     "fn_ma_players"
   ],
-  "setupDocs": "Server-Seite:\n\n1. Music Assistant laeuft.\n2. MA-Einstellungen -> Plugins -> MCP Server aktivieren (github.com/trudenboy/ma-provider-mcp). Das Plugin haengt sich in den MA-Webserver (/mcp/v1) - kein Extra-Port.\n3. Token: im Config-Panel 'Open Connect Wizard' - Wizard fragt Network oder Localhost (Network waehlen) und den AI-Client (beliebig, z. B. Claude); er erzeugt ein Client-Token (MCP - <Client>) und zeigt einen Snippet (URL + Bearer-Header) - daraus NUR den Token (Wert nach 'Bearer ') kopieren und in SmartPilot als ma_token einfuegen. Widerrufbar unter Profil -> Long-lived access tokens; alternativ dort selbst minten (Profil mit control-Rechten, z. B. 'Home control').\nDetails: https://github.com/trudenboy/ma-provider-mcp",
-  "changelog": "1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (Server, Kaskaden-/Falscherkennungs-Prompt, ma_players, Allowlist)."
+  "setupDocs": "Server-Seite:\n\n1. Music Assistant laeuft.\n2. MA-Einstellungen -> Plugins -> MCP Server aktivieren (github.com/trudenboy/ma-provider-mcp). Das Plugin haengt sich in den MA-Webserver (/mcp/v1) - kein Extra-Port.\n3. Token: im Config-Panel 'Open Connect Wizard' - Wizard fragt Network oder Localhost (Network waehlen) und den AI-Client (beliebig, z. B. Claude); er erzeugt ein Client-Token (MCP - <Client>) und zeigt einen Snippet (URL + Bearer-Header) - daraus NUR den Token (Wert nach 'Bearer ') kopieren und in SmartPilot als ma_token einfuegen. Widerrufbar unter Profil -> Long-lived access tokens; alternativ dort selbst minten (Profil mit control-Rechten, z. B. 'Home control').\n\nOptional: Parameter ma_default_player (z. B. die player_id der Hauptanlage) festlegen - dann steuern Befehle ohne genanntes Geraet immer diesen Player. Bleibt er leer, wird generisch der gerade spielende Player verwendet.\nDetails: https://github.com/trudenboy/ma-provider-mcp",
+  "changelog": "1.0.3: Generische Player-Wahl statt festem Geraet - ohne Geraeteangabe wird der gerade spielende Player verwendet (nur bei mehreren spielenden nachfragen); optionaler Parameter ma_default_player; Steuercalls nutzen queue_id (via queue_get_active_queue), Lautstaerke/Ein-Aus player_id; doppelte MA-Eintraege (media_player.*) werden bevorzugt vermieden.\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (Server, Kaskaden-/Falscherkennungs-Prompt, ma_players, Allowlist)."
 }

@@ -11,7 +11,7 @@
       "id": "music-assistant",
       "name": "Music Assistant Anbindung",
       "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade",
-      "version": "1.0.2"
+      "version": "1.0.3"
     },
     {
       "id": "searxng",

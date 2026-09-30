@@ -29,6 +29,7 @@ und die Funktion **`ma_players`** (Player-Liste in einem Call) an.
 | `ma_host` | Hostname des MA-Servers | — (erforderlich) |
 | `ma_port` | MCP-Port | `8095` |
 | `ma_token` | Bearer-Token aus dem Wizard | — (erforderlich) |
+| `ma_default_player` | player_id, auf die sich Befehle **ohne** genannte Geräte beziehen (optional) | leer → der gerade spielende Player |
 
 Hinter Reverse-Proxy mit TLS: URL nach dem Install im Registry-Eintrag auf
 `https://<ma-host>/mcp/v1` ändern.
@@ -37,5 +38,11 @@ Hinter Reverse-Proxy mit TLS: URL nach dem Install im Registry-Eintrag auf
 
 1. Tool-Registry → **Tools abfragen** — `search_tools`, `get_tool_schema`,
    `call_tool` erscheinen.
-2. Monitor/Test: „spiele Musik von …" — der Agent fragt ggf. zuerst nach dem
-   Player (das ist die gewünschte Kaskade).
+2. Monitor/Test: „spiele Musik von …" bzw. „nächster Titel".
+
+**Player-Wahl (generisch):** Ohne genanntes Gerät verwendet der Agent den
+**gerade spielenden** Player und fragt **nicht** nach. Nur wenn mehrere
+gleichzeitig spielen, fragt er nach. Wer einen festen Standard will, setzt
+`ma_default_player` (z. B. die player_id der Hauptanlage). Wiedergabe-Steuerung
+läuft über die `queue_id` (via `queue_get_active_queue`), Lautstärke/Ein-Aus
+über die `player_id`.

@@ -27,6 +27,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Agent wiederholt nach einer identischen Anfrage keine Rückfrage mehr: gleich-
   lautende frühere Turns werden aus dem Gedächtnis-Kontext gefiltert, damit das
   Modell seine eigene vorige Rückfrage nicht nachahmt
+- Paket `music-assistant` (1.0.3): generische Player-Wahl — ohne genaue
+  Geräteangabe wird der gerade spielende Player verwendet (Rückfrage nur, wenn
+  mehrere spielen); optionaler Parameter `ma_default_player`; Steuercalls nutzen
+  die `queue_id` (via `queue_get_active_queue`), Lautstärke/Ein-Aus die
+  `player_id`; doppelte MA-Einträge (`media_player.*`) werden vermieden
 
 
 ## [0.1.7] – 2026-09-30
