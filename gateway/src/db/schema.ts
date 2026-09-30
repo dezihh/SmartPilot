@@ -438,6 +438,20 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
     );
   }
 }
+// Bestands-DBs: Fakten-Regel schaerfen. Die alte Formulierung liess
+// "Allgemeine Erklaerungsfragen" als Ausnahme zu breit zu, sodass veraenderliche
+// Fakten (z. B. Amtsinhaber) aus Trainingswissen beantwortet wurden. Nur den
+// alten Satz ersetzen, sonst Nutzer-Anpassungen unangetastet lassen.
+{
+  const oldTail = ' Allgemeine Erklärungsfragen (Alltagswissen, das sich nicht ändert): aus eigenem Wissen antworten, ohne Suche.';
+  const newTail = '\n- Auch Fakten, die sich geändert haben können (Personen und Ämter, Orte, Preise, Produkte, Rekorde, Ereignisse, Nachrichten): vorher per Such-/Recherche-Tool prüfen und NIE aus Trainingswissen antworten. Nur zeitlose Erklärungen und Definitionen (z. B. "warum ist der Himmel blau") gehören ins eigene Wissen.';
+  const row = db.prepare("SELECT content FROM prompts WHERE key = 'agent_system'").get() as { content?: string } | undefined;
+  if (row?.content && row.content.includes(oldTail)) {
+    db.prepare("UPDATE prompts SET content = ?, updated_at = datetime('now') WHERE key = 'agent_system'").run(
+      row.content.replace(oldTail, newTail)
+    );
+  }
+}
 // Bestands-DBs (22.09.): die Hilfe-Action braucht den {agent_inventory}-Marker,
 // sonst wird das Nachschlagewerk nicht in den Prompt eingefuegt und sie kann
 // keine Faehigkeiten auflisten. Marker ergaenzen, falls er fehlt.

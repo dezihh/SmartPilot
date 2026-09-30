@@ -33,6 +33,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- Agent antwortet veränderliche Fakten (Personen und Ämter, Orte, Preise,
+  Produkte, Rekorde, Ereignisse, Nachrichten) nicht mehr aus Trainingswissen:
+  die Agent-Regel wurde geschärft (bei Veränderlichem zuerst per Such-/Recherche-
+  Tool prüfen; nur zeitlose Erklärungen/Definitionen aus eigenem Wissen);
+  Bestands-DBs werden per Migration angepasst
 - Agent wiederholt nach einer identischen Anfrage keine Rückfrage mehr: gleich-
   lautende frühere Turns werden aus dem Gedächtnis-Kontext gefiltert, damit das
   Modell seine eigene vorige Rückfrage nicht nachahmt
