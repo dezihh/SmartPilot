@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { getDb } from './schema.js';
-import type { PackageManifest, PackageServer, PackageFunction } from '../core/packages.js';
+import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
 
@@ -16,7 +16,7 @@ export interface InstalledPackageRow {
 
 export interface PackageItemRow {
   package_id: string;
-  kind: string; // server | function | index | allowTools
+  kind: string; // server | function | action | index | allowTools
   name: string;
   row_id: number | null;
   content_hash: string;
@@ -71,6 +71,22 @@ function functionContent(f: PackageFunction): Record<string, unknown> {
   };
 }
 
+function actionContent(a: PackageAction): Record<string, unknown> {
+  return {
+    name: a.name,
+    mode: a.mode,
+    trigger_phrases: a.trigger_phrases === undefined ? null : JSON.stringify(a.trigger_phrases),
+    fuzzy_threshold: a.fuzzy_threshold ?? null,
+    system_prompt: a.system_prompt ?? null,
+    template: a.template ?? null,
+    function_ref: a.function_ref ?? null,
+    function_args:
+      a.function_args === undefined ? null : typeof a.function_args === 'string' ? a.function_args : JSON.stringify(a.function_args),
+    tools: a.tools === undefined ? null : JSON.stringify(a.tools),
+    enabled: a.enabled === false ? 0 : 1,
+  };
+}
+
 export interface PackageReport {
   created: string[];
   updated: string[];
@@ -96,6 +112,7 @@ export function conflictItems(packageId: string): string[] {
     let content: unknown = null;
     if (item.kind === 'server') content = serverRowContent(item.name);
     else if (item.kind === 'function') content = functionRowContent(item.name);
+    else if (item.kind === 'action') content = actionRowContent(item.name);
     else if (item.kind === 'index') {
       const raw = getSetting(item.name);
       if (raw !== undefined) {
@@ -185,6 +202,29 @@ export function installPackage(
       const row = db.prepare('SELECT id FROM tpl_functions WHERE name = ?').get(f.name) as { id: number } | undefined;
       recordItem(m.id, 'function', f.name, row?.id ?? null, hashContent('function', f.name, content));
     }
+    for (const a of applied.actions ?? []) {
+      const content = actionContent(a);
+      const key = `action:${a.name}`;
+      const existing = db.prepare('SELECT id FROM actions WHERE name = ?').get(a.name) as { id: number } | undefined;
+      if (existing && keep(key)) {
+        report.kept.push(key);
+      } else if (existing) {
+        db.prepare(
+          `UPDATE actions SET name = @name, mode = @mode, trigger_phrases = @trigger_phrases, fuzzy_threshold = @fuzzy_threshold,
+           system_prompt = @system_prompt, template = @template, function_ref = @function_ref, function_args = @function_args,
+           tools = @tools, enabled = @enabled, updated_at = datetime('now') WHERE id = @id`
+        ).run({ ...content, id: existing.id });
+        report.updated.push(key);
+      } else {
+        db.prepare(
+          `INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
+           VALUES (@name, @mode, @trigger_phrases, @fuzzy_threshold, @system_prompt, @template, @function_ref, @function_args, @tools, @enabled)`
+        ).run(content);
+        report.created.push(key);
+      }
+      const row = db.prepare('SELECT id FROM actions WHERE name = ?').get(a.name) as { id: number } | undefined;
+      recordItem(m.id, 'action', a.name, row?.id ?? null, hashContent('action', a.name, content));
+    }
     for (const ix of applied.indexes ?? []) {
       const key = ix.key ? `entity_index_${ix.key}` : 'entity_index';
       const itemKey = `index:${key}`;
@@ -253,6 +293,16 @@ function functionRowContent(name: string): Record<string, unknown> | null {
   };
 }
 
+function actionRowContent(name: string): Record<string, unknown> | null {
+  const row = getDb().prepare('SELECT * FROM actions WHERE name = ?').get(name) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    name: row.name, mode: row.mode, trigger_phrases: row.trigger_phrases, fuzzy_threshold: row.fuzzy_threshold,
+    system_prompt: row.system_prompt, template: row.template, function_ref: row.function_ref, function_args: row.function_args,
+    tools: row.tools, enabled: row.enabled,
+  };
+}
+
 export interface UninstallReport {
   removed: string[];
   kept: string[];
@@ -306,15 +356,16 @@ export function uninstallPackage(id: string): { removed: string[]; kept: string[
         }
         continue;
       }
-      const kind = item.kind as 'server' | 'function';
-      const content = kind === 'server' ? serverRowContent(item.name) : functionRowContent(item.name);
+      const kind = item.kind as 'server' | 'function' | 'action';
+      const content = kind === 'server' ? serverRowContent(item.name) : kind === 'function' ? functionRowContent(item.name) : actionRowContent(item.name);
       if (content == null) {
         report.removed.push(`${item.kind}:${item.name}`);
         continue;
       }
       if (hashContent(item.kind, item.name, content) === item.content_hash) {
         if (kind === 'server') db.prepare('DELETE FROM mcp_servers WHERE name = ?').run(item.name);
-        else db.prepare('DELETE FROM tpl_functions WHERE name = ?').run(item.name);
+        else if (kind === 'function') db.prepare('DELETE FROM tpl_functions WHERE name = ?').run(item.name);
+        else db.prepare('DELETE FROM actions WHERE name = ?').run(item.name);
         report.removed.push(`${item.kind}:${item.name}`);
       } else {
         report.kept.push(`${item.kind}:${item.name} (lokal geaendert - nicht geloescht)`);

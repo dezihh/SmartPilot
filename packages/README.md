@@ -65,14 +65,14 @@ Umbau ergaenzt werden.
 | `minGatewayVersion` | optional | getestete Gateway-Mindestversion (wird **erzwungen**) |
 | `changelog` | empfohlen | Versionshistorie und Upgrade-Hinweise |
 | `params` | optional | Eingabefelder (Werte ersetzen `${key}` im Manifest) |
-| `servers` / `functions` / `indexes` | optional | die anzulegenden Artefakte |
+| `servers` / `functions` / `indexes` / `actions` | optional | die anzulegenden Artefakte |
 | `allowTools` | optional | Agent-Tool-Allowlist (wird vereinigt) |
 
 `servers`/`functions` koennen `sideEffect: read|write` setzen (Default
 `write`): schreibende Aufrufe verwerfen den Entity-Index-Cache des Agenten,
 rein lesende (`read`) nicht.
 
-## Artefakt-Felder (servers / functions / indexes)
+## Artefakt-Felder (servers / functions / actions / indexes)
 
 Die Oberfelder stehen oben; die darin enthaltenen Artefakte haben diese
 Felder:
@@ -102,6 +102,21 @@ Felder:
 | `inventory_prompt` | nein | Faehigkeitszeile im Agent-Katalog |
 | `sideEffect` | nein | `read`/`write` (Default `write`) |
 
+**`actions[]`** — Vorgang (Trigger → Antwortweg):
+
+| Feld | Pflicht | Bedeutung |
+| --- | --- | --- |
+| `name` | ja | `a-z`, `0-9`, `_`, `-` |
+| `mode` | ja | `deterministic`, `llm` oder `hybrid` |
+| `trigger_phrases` | nein | String-Array der Auslöser |
+| `fuzzy_threshold` | nein | 0–1 (Ähnlichkeitsschwelle) |
+| `function_ref` | nein | Name einer Funktion (deterministisch/hybrid) |
+| `function_args` | nein | feste Argumente (Objekt oder JSON-String) |
+| `system_prompt` | nein | Prompt für `llm`/`hybrid` |
+| `template` | nein | Inline-Jinja (deterministisch ohne `function_ref`) |
+| `tools` | nein | erlaubte Tools (Array; `[]` = keine) |
+| `enabled` | nein | Default `true` |
+
 **`indexes[]`** — Index-Quelle:
 
 | Feld | Pflicht | Bedeutung |
@@ -116,6 +131,7 @@ Verstoesse im Klartext:
 
 - `id`: `a-z`, `0-9`, `_`, `-` (1–40 Zeichen); `version`: `x.y.z`.
 - Funktionsname: `a-z`, `0-9`, `_` (1–60) — direkt als `fn_<name>` nutzbar.
+- Action-Name: `a-z`, `0-9`, `_`, `-` (1–60); `mode` aus `deterministic`/`llm`/`hybrid`; `fuzzy_threshold` 0–1.
 - Index-Key: `a-z`, `0-9`, `_` (0–30); `config.tool` erforderlich.
 - `allowTools`: Tool-Namen aus `a-z`, `0-9`, `_`, `*`.
 - Param-Key: `a-z`, `0-9`, `_` (1–40) mit `label`.

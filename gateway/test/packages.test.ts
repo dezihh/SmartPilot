@@ -144,6 +144,54 @@ test('Deinstall-Schutz: lokal geaenderte Zeile bleibt', () => {
   assert.equal(pkgs.length, 0);
 });
 
+test('Paket-Actions: Install (Upsert) + Validierung + lokaler Schutz beim Deinstall', () => {
+  const db = getDb();
+  const m = {
+    id: 'action-pack',
+    version: '1.0.0',
+    name: 'Action-Paket',
+    summary: 's',
+    description: 'd',
+    functions: [{ name: 'af_fn', template: 'hallo' }],
+    actions: [
+      { name: 'af_action', mode: 'deterministic', trigger_phrases: ['af test'], fuzzy_threshold: 0.8, function_ref: 'af_fn', tools: [], enabled: true },
+    ],
+  };
+  db.prepare("DELETE FROM packages WHERE id = 'action-pack'").run();
+  db.prepare("DELETE FROM package_items WHERE package_id = 'action-pack'").run();
+  db.prepare("DELETE FROM actions WHERE name = 'af_action'").run();
+  db.prepare("DELETE FROM tpl_functions WHERE name = 'af_fn'").run();
+
+  const r = installPackage(m as never, { source: 'registry' });
+  assert.ok(r.created.includes('action:af_action'));
+  assert.ok(manifestItems(m as never).some((i) => i.kind === 'action' && i.name === 'af_action'));
+  const row = db.prepare("SELECT mode, trigger_phrases, function_ref, enabled FROM actions WHERE name = 'af_action'").get() as {
+    mode: string; trigger_phrases: string; function_ref: string; enabled: number;
+  };
+  assert.equal(row.mode, 'deterministic');
+  assert.equal(row.trigger_phrases, '["af test"]');
+  assert.equal(row.function_ref, 'af_fn');
+  assert.equal(row.enabled, 1);
+
+  // Validierung: unbekannter Modus wird abgelehnt
+  assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'nope' }] }).ok, false);
+
+  // Reinstall: unveraendert -> updated
+  const r2 = installPackage(m as never, { source: 'registry' });
+  assert.ok(r2.updated.includes('action:af_action'));
+
+  // lokal geaendert -> Konflikt, bleibt beim Deinstall erhalten
+  db.prepare("UPDATE actions SET mode = 'llm' WHERE name = 'af_action'").run();
+  assert.deepEqual(conflictItems('action-pack'), ['action:af_action']);
+  const rep = uninstallPackage('action-pack');
+  assert.ok(rep.kept.some((k) => k.startsWith('action:af_action')));
+  assert.equal((db.prepare("SELECT count(*) c FROM actions WHERE name = 'af_action'").get() as { c: number }).c, 1);
+
+  // Zustand aufraeumen
+  db.prepare("DELETE FROM actions WHERE name = 'af_action'").run();
+  db.prepare("DELETE FROM tpl_functions WHERE name = 'af_fn'").run();
+});
+
 test('Backup-Roundtrip (Export -> Restore) ueber Route-Logik simuliert', () => {
   // Minimale Sicherungsstruktur wiederherstellen: settings ersetzt
   const db = getDb();

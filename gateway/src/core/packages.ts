@@ -43,6 +43,19 @@ export interface PackageIndex {
   config: Record<string, unknown>;
 }
 
+export interface PackageAction {
+  name: string;
+  mode: 'deterministic' | 'llm' | 'hybrid';
+  trigger_phrases?: string[];
+  fuzzy_threshold?: number;
+  system_prompt?: string;
+  template?: string;
+  function_ref?: string;
+  function_args?: string | Record<string, unknown>;
+  tools?: string[];
+  enabled?: boolean;
+}
+
 export interface PackageManifest {
   id: string;
   version: string;
@@ -64,6 +77,7 @@ export interface PackageManifest {
   servers?: PackageServer[];
   functions?: PackageFunction[];
   indexes?: PackageIndex[];
+  actions?: PackageAction[];
   allowTools?: string[];
   setupDocs?: string;
   changelog?: string;
@@ -94,6 +108,10 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
   for (const f of m.functions ?? []) {
     if (/\bshell\s*\(/.test(f.template)) items.push(`Funktion "${f.name}" nutzt shell() - fuehrt Befehle im Gateway-Container aus`);
     if (/\bhttp\s*\(/.test(f.template)) info.push(`Funktion "${f.name}" nutzt http() - ruft externe URLs auf`);
+  }
+  for (const a of m.actions ?? []) {
+    if (a.template && /\bshell\s*\(/.test(a.template)) items.push(`Vorgang "${a.name}" nutzt shell() - fuehrt Befehle im Gateway-Container aus`);
+    if (a.template && /\bhttp\s*\(/.test(a.template)) info.push(`Vorgang "${a.name}" nutzt http() - ruft externe URLs auf`);
   }
   return { dangerous: items.length > 0, items, info };
 }
@@ -141,6 +159,18 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
       }
     }
   }
+  if (m.actions !== undefined) {
+    if (!Array.isArray(m.actions)) errors.push('actions muss ein Array sein');
+    else {
+      for (const a of m.actions) {
+        if (!a?.name || !/^[a-z0-9_-]{1,60}$/.test(a.name)) errors.push(`action-Name ungueltig: ${a?.name ?? '(leer)'}`);
+        if (a && a.mode !== 'deterministic' && a.mode !== 'llm' && a.mode !== 'hybrid') errors.push(`action "${a.name}": mode muss deterministic, llm oder hybrid sein`);
+        if (a?.trigger_phrases !== undefined && (!Array.isArray(a.trigger_phrases) || a.trigger_phrases.some((t) => typeof t !== 'string'))) errors.push(`action "${a?.name}": trigger_phrases muss ein String-Array sein`);
+        if (a?.fuzzy_threshold !== undefined && (typeof a.fuzzy_threshold !== 'number' || a.fuzzy_threshold < 0 || a.fuzzy_threshold > 1)) errors.push(`action "${a?.name}": fuzzy_threshold muss zwischen 0 und 1 liegen`);
+        if (a?.function_ref !== undefined && (typeof a.function_ref !== 'string' || !/^[a-z0-9_]{1,60}$/.test(a.function_ref))) errors.push(`action "${a?.name}": function_ref ungueltig`);
+      }
+    }
+  }
   if (m.allowTools !== undefined) {
     if (!Array.isArray(m.allowTools) || m.allowTools.some((t) => !/^[a-z0-9_*]{1,60}$/.test(t))) {
       errors.push('allowTools muss ein Array aus Tool-Namen sein');
@@ -185,7 +215,7 @@ export function requiredParams(m: PackageManifest): string[] {
     } else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === 'object') Object.values(v).forEach(walk);
   };
-  walk({ servers: m.servers, functions: m.functions, indexes: m.indexes });
+  walk({ servers: m.servers, functions: m.functions, indexes: m.indexes, actions: m.actions });
   return [...keys];
 }
 
@@ -207,7 +237,7 @@ export function substituteManifest(m: PackageManifest, values: Record<string, st
     return v;
   };
   const copy = JSON.parse(JSON.stringify(m)) as PackageManifest;
-  const replaced = sub({ servers: copy.servers, functions: copy.functions, indexes: copy.indexes });
+  const replaced = sub({ servers: copy.servers, functions: copy.functions, indexes: copy.indexes, actions: copy.actions });
   return { ...m, ...(replaced as Record<string, unknown>), params: undefined } as PackageManifest;
 }
 
@@ -220,6 +250,7 @@ export function manifestItems(m: PackageManifest): { kind: string; name: string 
   const items: { kind: string; name: string }[] = [];
   for (const s of m.servers ?? []) items.push({ kind: 'server', name: s.name });
   for (const f of m.functions ?? []) items.push({ kind: 'function', name: f.name });
+  for (const a of m.actions ?? []) items.push({ kind: 'action', name: a.name });
   for (const ix of m.indexes ?? []) items.push({ kind: 'index', name: ix.key || '(Standard)' });
   if (m.allowTools?.length) items.push({ kind: 'allowTools', name: m.allowTools.join(',') });
   return items;
