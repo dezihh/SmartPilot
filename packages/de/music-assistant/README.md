@@ -26,13 +26,12 @@ und die Funktion **`ma_players`** (Player-Liste in einem Call) an.
 
 | Parameter | Bedeutung | Default |
 |---|---|---|
-| `ma_host` | Hostname des MA-Servers | — (erforderlich) |
-| `ma_port` | MCP-Port | `8095` |
+| `ma_url` | Vollständige MCP-URL (mit Schema, ggf. Port) | — (erforderlich) |
 | `ma_token` | Bearer-Token aus dem Wizard | — (erforderlich) |
 | `ma_default_player` | player_id, auf die sich Befehle **ohne** genannte Geräte beziehen (optional) | leer → der gerade spielende Player |
 
-Hinter Reverse-Proxy mit TLS: URL nach dem Install im Registry-Eintrag auf
-`https://<ma-host>/mcp/v1` ändern.
+URL direkt am MA-Webserver: `http://<host>:8095/mcp/v1`; hinter Reverse-Proxy mit
+TLS: `https://<host>/mcp/v1`.
 
 ## Nach der Installation
 

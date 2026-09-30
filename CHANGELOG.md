@@ -27,13 +27,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Agent wiederholt nach einer identischen Anfrage keine Rückfrage mehr: gleich-
   lautende frühere Turns werden aus dem Gedächtnis-Kontext gefiltert, damit das
   Modell seine eigene vorige Rückfrage nicht nachahmt
-- Paket `music-assistant` (1.0.4): generische Player-Wahl — ohne genaue
-  Geräteangabe wird der gerade spielende Player verwendet (bei mehreren
-  spielenden bevorzugt mit gesetzter Lautstärke; Rückfrage nur bei echter
-  Mehrdeutigkeit); optionaler Parameter `ma_default_player` (Repo-Default leer);
-  `fn_ma_players` blendet HA-Kopien (`media_player.*`) aus; Steuercalls nutzen
-  die `queue_id` (via `queue_get_active_queue`), Lautstärke/Ein-Aus die
-  `player_id`
+- Paket `music-assistant` (1.1.0): Parameter `ma_url` (vollständige MCP-URL)
+  ersetzt `ma_host`/`ma_port` — update-sicher und für https/Reverse-Proxy
+  geeignet; generische Player-Wahl — ohne genaue Geräteangabe wird der gerade
+  spielende Player verwendet (bei mehreren spielenden bevorzugt mit gesetzter
+  Lautstärke; Rückfrage nur bei echter Mehrdeutigkeit); optionaler Parameter
+  `ma_default_player` (Repo-Default leer); `fn_ma_players` blendet HA-Kopien
+  (`media_player.*`) aus; Steuercalls nutzen die `queue_id` (via
+  `queue_get_active_queue`), Lautstärke/Ein-Aus die `player_id`
 
 
 ## [0.1.7] – 2026-09-30
