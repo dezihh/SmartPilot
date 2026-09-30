@@ -21,6 +21,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+## [0.1.7] – 2026-09-30
+
 ### Hinzugefügt
 
 - Paket-Format: `actions` — Pakete legen jetzt auch **Vorgänge** an
@@ -262,7 +264,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.7
 [0.1.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.6
 [0.1.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.5
 [0.1.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.4
