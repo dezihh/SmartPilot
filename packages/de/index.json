@@ -42,6 +42,24 @@
       "name": "Autobahn-Verkehr",
       "summary": "Baustellen und Verkehrsmeldungen der Autobahnen (oeffentliche API, ohne Key)",
       "version": "1.0.1"
+    },
+    {
+      "id": "beispiel-home-assistant",
+      "name": "Beispiel: Home Assistant",
+      "summary": "Beispiel-Rezept: generischer Hausstatus aus sun.sun und zone.home (deterministisch)",
+      "version": "1.0.0"
+    },
+    {
+      "id": "beispiel-http",
+      "name": "Beispiel: HTTP",
+      "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über http()",
+      "version": "1.0.0"
+    },
+    {
+      "id": "beispiel-llm",
+      "name": "Beispiel: LLM-Vorgang",
+      "summary": "Beispiel-Rezept: reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge)",
+      "version": "1.0.0"
     }
   ]
 }

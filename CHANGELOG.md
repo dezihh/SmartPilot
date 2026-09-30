@@ -21,6 +21,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
   [packages/README.md](packages/README.md))
 
+### Hinzugefügt
+
+- Paket-Format: `actions` — Pakete legen jetzt auch **Vorgänge** an
+  (Trigger → Antwortweg), inkl. Vorschau, Konflikt-/Deinstall-Schutz
+- Beispiel-Pakete als generische Rezept-Vorlagen für alle drei Vorgangs-Modi:
+  `beispiel-home-assistant` (`hausstatus` deterministisch), `beispiel-http`
+  (`meine_ip` deterministisch, `luftqualitaet` hybrid) und `beispiel-llm`
+  (`erklaeren` als reiner LLM-Vorgang)
+
 ## [0.1.6] – 2026-09-29
 
 ### Dokumentation

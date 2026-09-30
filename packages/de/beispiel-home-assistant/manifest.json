@@ -1,0 +1,47 @@
+{
+  "id": "beispiel-home-assistant",
+  "version": "1.0.0",
+  "name": "Beispiel: Home Assistant",
+  "summary": "Beispiel-Rezept: generischer Hausstatus aus sun.sun und zone.home.",
+  "description": "Legt die Beispiel-Funktion hausstatus an: ein fertiger Bericht aus zwei Entities, die in jeder Home-Assistant-Installation existieren (Sonnenstand sun.sun, Anwesenheit zone.home). Zeigt das Muster 'Index-Entities lesen und deterministisch formulieren' und dient als Vorlage fuer eigene Rezepte.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Das Paket 'home-assistant' (Entity-Index) sowie sun.sun und zone.home in Home Assistant.",
+  "minGatewayVersion": "0.1.0",
+  "params": [],
+  "functions": [
+    {
+      "name": "hausstatus",
+      "description": "Generischer Hausstatus: Sonnenstand (sun.sun) und Anwesenheit (zone.home). Keine Argumente.",
+      "template": "{%- set gr = 'Guten Morgen' if (now.hour >= 5 and now.hour < 11) else ('Guten Abend' if now.hour >= 17 else 'Hallo') -%}\n{%- set sun = index.state('sun.sun') -%}\n{%- set n_raw = index.state('zone.home') -%}\n{{ gr }}. Die Sonne ist {{ 'über' if sun == 'above_horizon' else 'unter' }} dem Horizont.{% if n_raw in ['unknown','unavailable',''] %} Die Anwesenheit ist unbekannt.{% else %}{% set n = n_raw | int %}{% if n == 0 %} Niemand ist zuhause.{% elif n == 1 %} Eine Person ist zuhause.{% else %} {{ n }} Personen sind zuhause.{% endif %}{% endif %}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Hausstatus (generisches Beispiel): Sonnenstand und Anwesenheit - fertiger Bericht, keinen eigenen bauen.",
+      "sideEffect": "read"
+    }
+  ],
+  "actions": [
+    {
+      "name": "hausstatus",
+      "mode": "deterministic",
+      "trigger_phrases": [
+        "hausstatus",
+        "wie ist der hausstatus"
+      ],
+      "fuzzy_threshold": 0.8,
+      "function_ref": "hausstatus",
+      "tools": [],
+      "enabled": true
+    }
+  ],
+  "allowTools": [
+    "fn_hausstatus"
+  ],
+  "setupDocs": "Keine Gegenseite - nutzt zwei Entities, die es in jeder Home-Assistant-Installation gibt: sun.sun (above_horizon/below_horizon) und zone.home (Anzahl Personen). Voraussetzung: das Paket 'home-assistant' ist installiert (Entity-Index). Legt Funktion fn_hausstatus und den Vorgang 'hausstatus' an; im Funktionen-Editor anpassbar (z. B. weitere Entities ergaenzen).",
+  "changelog": "1.0.0: Erste Fassung (Beispiel-Funktion hausstatus + Vorgang aus sun.sun + zone.home)."
+}

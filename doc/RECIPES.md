@@ -23,6 +23,9 @@ Vertrauensmodell stehen in [`packages/README.md`](../packages/README.md).
 | `open-meteo-wetter` | `wetter` | keine (öffentliche API) |
 | `autobahn` | `autobahn` (Region anpassen!) | keine (öffentliche API) |
 | `system-info` | `gateway_uptime`, `cpu_type` (gefährlich, `shell()`) | keine |
+| `beispiel-home-assistant` | `hausstatus` (deterministisch, `sun.sun` + `zone.home`) | `home-assistant` |
+| `beispiel-http` | `meine_ip` (deterministisch) + `luftqualitaet` (hybrid, `http()`) | keine (öffentliche API) |
+| `beispiel-llm` | `erklaeren` (reiner LLM-Vorgang, ohne Tools) | keine |
 
 **Hinweis zu `web_url_read`:** Das Lesen konkreter Seiten/Feeds läuft über das
 MCP-Werkzeug `web_url_read`. Es gehört zur `searxng`-Brücke (`mcp-searxng`) und
@@ -68,6 +71,22 @@ Variante „ist jemand zuhause?" über `zone.home`:
 {{ 'Niemand ist zuhause.' if n == 0 else ('Eine Person ist zuhause.' if n == 1 else n ~ ' Personen sind zuhause.') }}
 ```
 
+Beides zusammen (`sun.sun` + `zone.home`) ergibt einen generischen
+**Hausstatus** — beide Entities gibt es in jeder Home-Assistant-Installation.
+
+### HTTP ohne Key: öffentliche IP
+
+Ergebnis: „Wie ist meine IP?" — Abruf über einen öffentlichen Dienst.
+
+Funktion `meine_ip`, Vorgang Modus `deterministic`, Trigger
+`meine ip,öffentliche ip`:
+
+```jinja
+{%- set d = http('https://ifconfig.me/all.json') -%}
+{%- set ip = d.ip_addr if d and d.ip_addr else '' -%}
+{%- if ip -%}Deine öffentliche IP-Adresse ist {{ ip }}.{%- else -%}Die öffentliche IP-Adresse konnte ich gerade nicht ermitteln.{%- endif -%}
+```
+
 ### Hybrid: Daten plus Formulierung
 
 Ergebnis: Die Zahl kommt aus der Funktion, das LLM formuliert die Einordnung.
@@ -82,6 +101,11 @@ Aussentemperatur: {{ mcp.call('ha_eval_template', {'template': "states.weather.h
 Vorgang Modus `hybrid`, Trigger `wie warm draußen,außentemperatur`,
 Funktion `aussen_temperatur`; System-Prompt leer lassen.
 
+> **Hinweis:** `mcp.call`-Argumente müssen ein flaches JSON-Literal in einer
+> Zeile sein (keine verschachtelten `{}`). Also nie ein Jinja-Template mit
+> `{% %}` als Argument übergeben — solche Aufrufe kommen ohne Argument an.
+> Fertige Hybrid-Vorlage: Paket `beispiel-http` (Vorgang `luftqualitaet`).
+
 ### LLM: Der Agent wählt das Werkzeug
 
 Ergebnis: „Wie hell ist es im Wohnzimmer?" — kein Trigger deckt diese
@@ -92,6 +116,18 @@ Nur Werkzeuge und Allowlist nötig; die Basis-Lesetools `fn_find_entities` /
 HA-MCP-Servers (Tab **Tool-Registry**): zuerst `fn_find_entities` mit
 Stichworten, dann sofort aus dem Treffer antworten (höchstens ein Aufruf);
 ohne Treffer ehrlich sagen, nichts erfinden.
+
+### LLM-Vorgang: eigener System-Prompt
+
+Ergebnis: „erklär mir, warum ist der himmel blau" — reine Wissensfrage ohne
+Datenabruf.
+
+Vorgang Modus `llm`, `tools: []`, eigener System-Prompt (knapp, sachlich,
+Allgemeinwissen; keine Quellen erfinden). Fertige Vorlage: Paket
+`beispiel-llm` (Vorgang `erklaeren`). Die drei Modi liefern die Beispiel-Pakete:
+`deterministic` (`beispiel-home-assistant` `hausstatus`, `beispiel-http`
+`meine_ip`), `hybrid` (`beispiel-http` `luftqualitaet`), `llm`
+(`beispiel-llm` `erklaeren`).
 
 ## Bewährte Agent-Regeln
 

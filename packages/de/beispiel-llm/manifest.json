@@ -1,0 +1,32 @@
+{
+  "id": "beispiel-llm",
+  "version": "1.0.0",
+  "name": "Beispiel: LLM-Vorgang",
+  "summary": "Beispiel-Rezept: ein reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge).",
+  "description": "Legt den Vorgang 'erklaeren' an: ein LLM-Vorgang ohne Funktion und ohne Werkzeuge, der Alltagsfragen knapp aus dem Allgemeinwissen beantwortet. Zeigt das Muster 'eigener System-Prompt statt Datenabruf' und dass ein Paket auch nur Vorgaenge mitbringen kann.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Keine Gegenseite - nur das Gateway mit konfiguriertem LLM.",
+  "minGatewayVersion": "0.1.0",
+  "params": [],
+  "actions": [
+    {
+      "name": "erklaeren",
+      "mode": "llm",
+      "trigger_phrases": [
+        "erklaer mir",
+        "erklaere mir",
+        "erklär mir",
+        "erklaerung"
+      ],
+      "fuzzy_threshold": 0.85,
+      "system_prompt": "Du erklaerst Alltagsfragen knapp, sachlich und auf Deutsch aus deinem Allgemeinwissen. Nutze KEINE Werkzeuge und erfinde keine Quellen. Antworte AUSSCHLIESSLICH als JSON: {\"speech\": \"...\", \"keep_open\": false}.",
+      "tools": [],
+      "enabled": true
+    }
+  ],
+  "setupDocs": "Keine Gegenseite - reiner LLM-Vorgang. Trigger z. B. 'erklaer mir warum ist der himmel blau'. Den System-Prompt im Vorgaenge-Editor anpassen.",
+  "changelog": "1.0.0: Erste Fassung (LLM-Vorgang erklaeren ohne Werkzeuge)."
+}

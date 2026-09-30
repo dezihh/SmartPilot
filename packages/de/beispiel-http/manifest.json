@@ -1,0 +1,73 @@
+{
+  "id": "beispiel-http",
+  "version": "1.0.0",
+  "name": "Beispiel: HTTP",
+  "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über öffentliche APIs.",
+  "description": "Legt zwei Beispiel-Funktionen an: meine_ip (oeffentliche IP-Adresse ueber ifconfig.me) und luftqualitaet (europaeischer AQI und PM2,5 ueber die Open-Meteo-Luftqualitaets-API). Zeigt die Muster 'http()-Abruf deterministisch formulieren' und 'Rohwert holen, LLM ordnet ein (hybrid)' und dient als Vorlage fuer eigene Rezepte.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Internetzugang des Gateway-Containers zu oeffentlichen APIs (ifconfig.me, air-quality-api.open-meteo.com; ohne Key).",
+  "minGatewayVersion": "0.1.0",
+  "params": [],
+  "functions": [
+    {
+      "name": "meine_ip",
+      "description": "Öffentliche IP-Adresse über ifconfig.me (all.json). Keine Argumente.",
+      "template": "{%- set d = http('https://ifconfig.me/all.json') -%}\n{%- set ip = d.ip_addr if d and d.ip_addr else '' -%}\n{%- if ip -%}Deine öffentliche IP-Adresse ist {{ ip }}.{%- else -%}Die öffentliche IP-Adresse konnte ich gerade nicht ermitteln.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Öffentliche IP abfragen: fn_meine_ip (fertige Antwort).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "luftqualitaet",
+      "description": "Luftqualität: europäischer AQI und PM2,5 (Open-Meteo Air Quality). Koordinaten im Template anpassen.",
+      "template": "{%- set d = http('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=53.5511&longitude=9.9937&current=european_aqi,pm2_5') -%}\n{%- if d and d.current and d.current.european_aqi is defined -%}Luftqualitaet (europaeischer AQI): {{ d.current.european_aqi }}; PM2,5: {{ d.current.pm2_5 }} µg/m³.{%- else -%}Die Luftqualitaet konnte ich gerade nicht ermitteln.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Luftqualität (hybrides Beispiel): Rohwert kommt aus der Funktion, die Einordnung macht das LLM.",
+      "sideEffect": "read"
+    }
+  ],
+  "actions": [
+    {
+      "name": "meine_ip",
+      "mode": "deterministic",
+      "trigger_phrases": [
+        "meine ip",
+        "wie ist meine ip",
+        "öffentliche ip"
+      ],
+      "function_ref": "meine_ip",
+      "tools": [],
+      "enabled": true
+    },
+    {
+      "name": "luftqualitaet",
+      "mode": "hybrid",
+      "trigger_phrases": [
+        "luftqualitaet",
+        "luftqualität",
+        "wie ist die luft"
+      ],
+      "fuzzy_threshold": 0.82,
+      "function_ref": "luftqualitaet",
+      "tools": [],
+      "enabled": true
+    }
+  ],
+  "allowTools": [
+    "fn_meine_ip",
+    "fn_luftqualitaet"
+  ],
+  "setupDocs": "Keine Gegenseite - beide Dienste sind oeffentlich und ohne Key. Der Gateway-Container braucht Internetzugang. Legt die Funktionen fn_meine_ip und fn_luftqualitaet sowie die Vorgaenge 'meine_ip' (deterministisch) und 'luftqualitaet' (hybrid, LLM ordnet ein) an; Koordinaten fuer die Luftqualitaet im Funktionen-Editor anpassen.",
+  "changelog": "1.0.0: Erste Fassung (Beispiel-Funktionen meine_ip [deterministisch] und luftqualitaet [hybrid])."
+}
