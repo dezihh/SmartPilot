@@ -137,6 +137,33 @@ test('offene Frage -> Agent-Route mit LLM-Antwort', async () => {
   assert.ok(findStep(r.trace, 'llm.usage'));
 });
 
+test('Gedaechtnis: identische Wiederholung wird aus dem Kontext gefiltert', async () => {
+  llmScript = [content('Auf welchem Geraet?')];
+  await q('naechster titel', 'repeat-mem');
+  llmScript = [content('Naechster Titel.')];
+  const r = await q('naechster titel', 'repeat-mem');
+  assert.equal(r.route, 'agent');
+  const body = llmBodies[1]!;
+  const repeats = body.messages.filter((m) => m.role === 'user' && m.content === 'naechster titel').length;
+  assert.equal(repeats, 1, 'nur die aktuelle Anfrage, kein wiederholter Vorlauf');
+  assert.ok(
+    !body.messages.some((m) => m.role === 'assistant' && /Geraet|Gerät/.test(m.content ?? '')),
+    'vorige Rueckfrage nicht im Kontext'
+  );
+});
+
+test('Gedaechtnis: andere Frage behaelt den Verlauf', async () => {
+  llmScript = [content('Antwort eins.')];
+  await q('erzaehl was', 'repeat-keep');
+  llmScript = [content('Antwort zwei.')];
+  await q('und weiter', 'repeat-keep');
+  const body = llmBodies[1]!;
+  assert.ok(
+    body.messages.some((m) => m.role === 'user' && m.content === 'erzaehl was'),
+    'Vorlauf bleibt erhalten'
+  );
+});
+
 test('Agent-Tool-Loop: fn-Tool wird aufgerufen, dann formuliert', async () => {
   llmScript = [
     toolCalls([{ name: 'fn_test_echo', args: '{"x":"wert1"}' }]),

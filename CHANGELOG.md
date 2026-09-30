@@ -19,7 +19,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Weitere Sprachen: `packages/en/`, Interaktionsmodelle weiterer Locales,
   Sprechtexte der Lambda (derzeit nur `de-DE`)
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
+
   [packages/README.md](packages/README.md))
+
+### Behoben
+
+- Agent wiederholt nach einer identischen Anfrage keine Rückfrage mehr: gleich-
+  lautende frühere Turns werden aus dem Gedächtnis-Kontext gefiltert, damit das
+  Modell seine eigene vorige Rückfrage nicht nachahmt
+
 
 ## [0.1.7] – 2026-09-30
 

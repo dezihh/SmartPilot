@@ -11,7 +11,7 @@ import {
 } from '../db.js';
 import { chatCompletion, type ChatCompletionResult, type ChatMessage, type ToolSpec } from '../llm/client.js';
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
-import { routeAction, type RouteMatch } from './router.js';
+import { routeAction, normalize, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
@@ -47,10 +47,10 @@ function memoryMinutes(): number {
   return getSettingNum('memory_minutes', 30);
 }
 
-function priorTurns(sessionId: string): ChatMessage[] {
+function priorTurns(sessionId: string, currentQuery = ''): ChatMessage[] {
   const maxTurns = memoryTurns();
   const inMem = sessionPriorTurns(sessionId, maxTurns * 2);
-  if (inMem.length > 0) return inMem;
+  if (inMem.length > 0) return dropRepeatedTurns(inMem, currentQuery);
   // DB-Recall als ALT markieren: Das LLM weiss, dass die Zeit fortgeschritten
   // ist, und kann selbst entscheiden, ob der Inhalt noch relevant ist.
   const turns = recentAgentTurns(maxTurns, memoryMinutes() * 60_000);
@@ -71,6 +71,26 @@ function priorTurns(sessionId: string): ChatMessage[] {
     // Kontext liefern, nicht den Prompt sprengen (Prompt-Größe = Rundenzeit).
     out.push({ role: 'user', content: t.query.slice(0, 300) });
     out.push({ role: 'assistant', content: stripSsmlTags(t.response).slice(0, 600) });
+  }
+  return dropRepeatedTurns(out, currentQuery);
+}
+
+// Wiederholt der Nutzer EXAKT dieselbe Anfrage (typisch nach einer
+// unpassenden Rueckfrage), sind die gleichlautenden früheren Turns kein
+// hilfreicher Kontext: das Modell ahmt sonst seine eigene vorige Rueckfrage
+// nach und fragt erneut, statt zu handeln. Solche Turn-Paare fliegen raus.
+function dropRepeatedTurns(turns: ChatMessage[], currentQuery: string): ChatMessage[] {
+  const cur = normalize(currentQuery);
+  if (!cur || turns.length === 0) return turns;
+  const out: ChatMessage[] = [];
+  for (let i = 0; i < turns.length; i++) {
+    const turn = turns[i];
+    const next = turns[i + 1];
+    if (turn?.role === 'user' && next?.role === 'assistant' && normalize(turn.content ?? '') === cur) {
+      i++; // zugehoeriges Assistant-Paar ueberspringen
+      continue;
+    }
+    if (turn) out.push(turn);
   }
   return out;
 }
@@ -124,7 +144,7 @@ async function runToolLoop(
   // Tool-Runden mit eigenem (schnellen) Modell: Setting 'tool_model';
   // leer = llm_model wie bisher.
   const roundModel = getSetting('tool_model')?.trim() || undefined;
-  const history = sessionId ? priorTurns(sessionId) : [];
+  const history = sessionId ? priorTurns(sessionId, queryText) : [];
   const messages: ChatMessage[] = [
     { role: 'system', content: system },
     ...history,
@@ -295,7 +315,7 @@ async function executeAction(
     );
     trace.push({ ts: Date.now(), step: 'help.catalog', detail: { action: action.name } });
     try {
-      const history = query.sessionId ? priorTurns(query.sessionId) : [];
+      const history = query.sessionId ? priorTurns(query.sessionId, query.text) : [];
       const result = await chatCompletion(
         [{ role: 'system', content: system }, ...history, { role: 'user', content: query.text }],
         undefined,
