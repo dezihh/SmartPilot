@@ -15,7 +15,7 @@ export function normalize(text: string): string {
 }
 
 // Erkennt Anfragen mit mehreren Themen/Verknuepfungen, die deterministische
-// Einzel-Actions nicht bedienen koennen (z.B. "Benzinpreis und Akkustand").
+// Einzel-Actions nicht bedienen koennen (z.B. "Temperatur und Licht").
 function isCombinedQuery(text: string): boolean {
   const q = normalize(text);
   if (q.includes(' und ') || q.includes(' sowie ') || q.includes(' ausserdem ') || q.includes(' außerdem ')) {
@@ -24,7 +24,7 @@ function isCombinedQuery(text: string): boolean {
   const fragments = q.split(' ').filter((w) => w === 'und' || w === 'sowie' || w === '&').length;
   if (fragments > 1) return true;
   // Kommas im ROHTEXT zaehlen: normalize() entfernt Kommas bereits, bevor
-  // dieser Check laeuft ("hausstatus, benzinpreis").
+  // dieser Check laeuft (z.B. "wetter, temperatur").
   const commaParts = text.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
   return commaParts.length >= 2;
 }

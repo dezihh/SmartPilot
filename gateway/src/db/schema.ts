@@ -259,6 +259,49 @@ if (withReferenceSeed) {
 // ueber die erlaubten Tools je Vorgang).
 db.prepare("DELETE FROM settings WHERE key IN ('warteton', 'fastpath_model', 'fuel_sensor', 'facade_mode', 'tool_budgets')").run();
 
+// Legacy-Aufraeumen: Der kurzlebige Referenz-Seed (SEED_JSON, Commit 23fbce5)
+// hat einen Live-Dump als Funktionen/Vorgaenge in frische Datenbanken
+// geschrieben - inklusive instanzspezifischer Rezepte (Benzinpreis, BMW-Lade-
+// Modi, Boerse). Entfernt wird nur, was noch das alte Muster traegt; selbst
+// angepasste Zeilen bleiben unangetastet.
+{
+  const legacyFns: Array<[string, string]> = [
+    ['benzinpreis', 'nordoel'],
+    ['bmw_netzladung_an', "mcp.call('bmw_netzladung_an')"],
+    ['bmw_netzladung_aus', "mcp.call('bmw_netzladung_aus')"],
+    ['boerse_portfolio', 'gf_holdings'],
+    ['boerse_woche', 'gf_holdings'],
+  ];
+  for (const [name, marker] of legacyFns) {
+    const row = db.prepare('SELECT id, template FROM tpl_functions WHERE name = ?').get(name) as { id: number; template: string } | undefined;
+    if (row && String(row.template).includes(marker)) db.prepare('DELETE FROM tpl_functions WHERE id = ?').run(row.id);
+  }
+  const legacyFnNames = legacyFns.map(([n]) => n);
+  for (const name of ['benzinpreis', 'bmw_netzladung_an', 'bmw_netzladung_aus', 'boerse', 'boerse_woche']) {
+    const row = db.prepare('SELECT function_ref FROM actions WHERE name = ?').get(name) as { function_ref: string | null } | undefined;
+    if (row && (row.function_ref === null || legacyFnNames.includes(row.function_ref))) {
+      db.prepare('DELETE FROM actions WHERE name = ?').run(name);
+    }
+  }
+  // hausstatus_gw war ein instanzspezifischer Bericht (EVCC-Akku, Solar,
+  // Tankstelle): auf die generische Fassung (sun.sun + zone.home) umstellen.
+  const hs = db.prepare("SELECT id, template FROM tpl_functions WHERE name = 'hausstatus_gw'").get() as { id: number; template: string } | undefined;
+  if (hs && (String(hs.template).includes('sensor.evcc') || String(hs.template).includes('nordoel'))) {
+    const tpl = [
+      "{%- set gr = 'Guten Morgen' if (now.hour >= 5 and now.hour < 11) else ('Guten Abend' if now.hour >= 17 else 'Hallo') -%}",
+      "{%- set sun = index.state('sun.sun') -%}",
+      "{%- set n_raw = index.state('zone.home') -%}",
+      "{{ gr }}. Die Sonne ist {{ 'über' if sun == 'above_horizon' else 'unter' }} dem Horizont.{% if n_raw in ['unknown','unavailable',''] %} Die Anwesenheit ist unbekannt.{% else %}{% set n = n_raw | int %}{% if n == 0 %} Niemand ist zuhause.{% elif n == 1 %} Eine Person ist zuhause.{% else %} {{ n }} Personen sind zuhause.{% endif %}{% endif %}",
+    ].join('\n');
+    db.prepare("UPDATE tpl_functions SET description = ?, template = ?, inventory_prompt = ?, updated_at = datetime('now') WHERE id = ?").run(
+      'Generischer Hausstatus: Sonnenstand (sun.sun) und Anwesenheit (zone.home) - in jeder Home-Assistant-Installation vorhanden.',
+      tpl,
+      'Hausstatus (generisch): Sonnenstand und Anwesenheit - fertiger Bericht, keinen eigenen bauen.',
+      hs.id,
+    );
+  }
+}
+
 // Bestands-DBs (22.09.): die frueher im Code hartcodierten HA-Domain-Hints in
 // die entity_index-Konfiguration uebernehmen - der Code-Default ist jetzt
 // systemneutral (kein Tool, keine Domains). Nur wenn eine HA-Index-Konfiguration
@@ -452,8 +495,7 @@ Anreden am Anfang ("{assistant_name}", "Smart Pilot") sind kein Teil der Frage. 
 Tool-Regeln (sparsam: genug gewusst -> sofort antworten):
 - Messwerte/Zustände (Temperatur, Füllstand, Verbrauch, an/aus): NIEMALS aus eigenem Wissen. find_ha_entities mit Stichworten - Treffer enthalten den aktuellen Zustand, daraus sofort antworten (max. 1 Aufruf pro Frage).
 - Schalten (Licht, Schalter, Rolladen, Klima): HassTurnOn / HassTurnOff mit name (z. B. "Stehlampe") oder area. Detail: Helligkeit/Farbtemperatur HassLightSet, Zieltemperatur HassClimateSetTemperature, Rolladenposition HassSetPosition.
-- Hausstatus (Akku, Verbrauch, Solar, Benzin): fn_hausstatus_gw, Bericht sinngemäß wiedergeben.
-- Benzinpreis (OneShot, z. B. "was kostet Super E10"): get_ha_state mit entity_id "sensor.nordoel_sieker_landstrasse_178_super_e10".
+- Hausstatus: fn_hausstatus, Bericht sinngemäß wiedergeben.
 - Nachrichten/Suche: searxng_web_search (language "de", num_results 5; time_range "week" bei Nachrichten; bei konkreter Quelle direkt darauf zielen). web_url_read ausschliesslich wenn der Nutzer eine konkrete Seite/URL nennt.
 - Kombinierte Anfragen (z. B. "Nachrichten und dann der Hausstatus"): DER REIHENFOLGE NACH abarbeiten - fuer den zweiten Teil weitere Tool-Aufrufe erlaubt.
 - Mehrteilige Antworten (Nachrichten, Listen, mehrere Themen): Trenne logische Teile mit Zeilenumbruechen (\\n\\n) zwischen den Teilen.`;
@@ -465,9 +507,7 @@ Tool-Regeln (sparsam: genug gewusst -> sofort antworten):
 
 - Hauswerte lesen (Temperatur, Verbrauch, Füllstand, Status): find_ha_entities mit Stichworten - Treffer enthalten den aktuellen Zustand, sofort antworten. Konkrete entity_id: get_ha_state.
 - Schalten (Licht, Schalter, Rolladen, Klima): HassTurnOn / HassTurnOff mit name (z. B. "Stehlampe") oder area. Detail: HassLightSet (Helligkeit/Farbtemperatur), HassClimateSetTemperature (Thermostat), HassSetPosition (Rolladen).
-- Hausstatus (Akkustand, Verbrauch, Solar, Benzin): fn_hausstatus_gw (fertiger Bericht, keinen eigenen Bericht bauen).
-- Benzinpreis (OneShot, z. B. "was kostet Super E10", "sollte ich jetzt tanken"): get_ha_state auf entity_id "sensor.nordoel_sieker_landstrasse_178_super_e10".
-- Boersen-/Finanznachrichten (onvista, boerse.de, finanzen.net): searxng_web_search gezielt auf die Quelle (z. B. "onvista news").
+- Hausstatus: fn_hausstatus (fertiger Bericht, keinen eigenen Bericht bauen).
 - Allgemeine Nachrichten/Recherche: searxng_web_search (time_range "week"), aus Snippets mit Quelle antworten.
 - Konkrete Seite/URL lesen: web_url_read (nur auf ausdruecklichen Wunsch).
 

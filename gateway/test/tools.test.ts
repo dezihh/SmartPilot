@@ -2,7 +2,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
-import { buildTools, buildMcpTools, sanitizeToolName, LLM_BLOCKED_TOOLS } from '../src/core/tools.js';
+import { setSetting, deleteSetting } from '../src/db/settings.js';
+import { buildTools, buildMcpTools, sanitizeToolName } from '../src/core/tools.js';
 import type { ToolSpec } from '../src/llm/client.js';
 import type { McpContext, McpServerContext } from '../src/mcp/registry.js';
 import type { ToolRoute } from '../src/core/tools.js';
@@ -76,12 +77,17 @@ test('buildMcpTools: alle Tools werden Specs+Routes', () => {
 });
 
 test('buildMcpTools: Blocklist-Tools fehlen komplett', () => {
-  const blocked = [...LLM_BLOCKED_TOOLS][0]!;
-  const routes = new Map<string, ToolRoute>();
-  const specs: ToolSpec[] = [];
-  buildMcpTools(mcpWith([{ name: 'tool_a' }, { name: blocked }]), null, routes, specs);
-  assert.equal(routes.has(blocked), false);
-  assert.equal(specs.length, 1);
+  const blocked = 'tool_blocked_x';
+  setSetting('llm_blocked_tools', blocked);
+  try {
+    const routes = new Map<string, ToolRoute>();
+    const specs: ToolSpec[] = [];
+    buildMcpTools(mcpWith([{ name: 'tool_a' }, { name: blocked }]), null, routes, specs);
+    assert.equal(routes.has(blocked), false);
+    assert.equal(specs.length, 1);
+  } finally {
+    deleteSetting('llm_blocked_tools');
+  }
 });
 
 test('buildMcpTools: Namenskollision -> erster Server behaelt freien Namen, Folgeserver bekommen Praefix', () => {

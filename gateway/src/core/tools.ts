@@ -14,10 +14,11 @@ export type ToolRoute =
 
 export type ToolRouteMap = { specs: ToolSpec[]; routes: Map<string, ToolRoute>; budgets: Map<string, number> };
 
-export const LLM_BLOCKED_TOOLS = new Set(['googe_ai', 'gargedoor_open_script', '_433_gray4_off', '_433_gray4_on', 'XXXXXXXXXXXXXXhausstatus']);
+// Leerer Code-Default: keine instanzspezifischen Tool-Namen im Kern (F-17).
+export const LLM_BLOCKED_TOOLS = new Set<string>();
 
-// Blockliste: Code-Default, per Setting 'llm_blocked_tools' (Komma-Liste)
-// ueberschreibbar. Leerer Wert = nichts blocken (F-17: kein Core-Bezug).
+// Blockliste: per Setting 'llm_blocked_tools' (Komma-Liste) pflegbar.
+// Nicht gesetzt = Code-Default (leer), leerer Wert = nichts blocken.
 function blockedTools(): Set<string> {
   const raw = getSetting('llm_blocked_tools');
   if (raw === undefined) return LLM_BLOCKED_TOOLS;
