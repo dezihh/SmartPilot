@@ -26,14 +26,15 @@ import { invalidateMcpCache } from '../mcp/registry.js';
 import { invalidateIndex } from '../core/entityIndex.js';
 import { meetsMinVersion } from '../core/packages.js';
 import { GATEWAY_VERSION } from '../version.js';
+import { config } from '../config.js';
 
 export const packagesRoutes = Router();
 
-// Registry-URL: hart auf unser Repo (kein Produktkonfigurationsfeld - die
-// Paketquelle ist Teil der Installation, nicht eine Nutzer-Einstellung).
-// Pakete liegen sprachspezifisch unter packages/<lang>/<id>/; die Sprache kommt
-// aus dem Setting registry_language (Default "de").
-const REGISTRY_URL = 'https://raw.githubusercontent.com/dezihh/SmartPilot/main/packages';
+// Registry-URL: Default ist unser Repo (main); per PACKAGES_REGISTRY_URL z. B.
+// auf einen Test-Branch umstellbar (dann kommen die Pakete von dort). Pakete
+// liegen sprachspezifisch unter packages/<lang>/<id>/; die Sprache kommt aus dem
+// Setting registry_language (Default "de").
+const REGISTRY_URL = config.packagesRegistryUrl;
 const REGISTRY_CACHE_MS = 60_000;
 
 interface RegistryEntry {

@@ -43,4 +43,9 @@ export const config = {
   agentClarificationBudget: Number(process.env.AGENT_CLARIFICATION_BUDGET ?? 2),
   maxToolIterations: Number(process.env.MAX_TOOL_ITERATIONS ?? 6),
   toolDeadlineMs: Number(process.env.LLM_TOOL_DEADLINE_MS ?? 9000),
+  // Paket-Registry-Basis (die Sprache wird angehaengt). Default = Haupt-Repo;
+  // per PACKAGES_REGISTRY_URL z. B. auf einen Test-Branch umstellbar.
+  packagesRegistryUrl:
+    process.env.PACKAGES_REGISTRY_URL?.trim().replace(/\/+$/, '') ||
+    'https://raw.githubusercontent.com/dezihh/SmartPilot/main/packages',
 };
