@@ -38,6 +38,22 @@ test('mcp.call mit args ist dynamisch, nicht literal', () => {
   assert.ok(x.mcpCallDyn[0]!.expr.includes('args.url'));
 });
 
+test('mcp.call mit Fallback (Literal-Args)', () => {
+  const tpl = "{{ mcp.call('searxng_web_search', {'query': 'x'}, {fallback: 'brave_web_search'}) }}";
+  const x = extractLiterals(tpl);
+  assert.deepEqual(x.calls, [{ tool: 'searxng_web_search', args: "{'query': 'x'}", fallback: 'brave_web_search' }]);
+  assert.deepEqual(x.mcpCallDyn, []);
+});
+
+test('mcp.call mit Fallback (dynamische Args)', () => {
+  const tpl = "{{ mcp.call('searxng_web_search', {'query': args.q}, { fallback: 'brave_web_search' }) }}";
+  const x = extractLiterals(tpl);
+  assert.deepEqual(x.calls, []);
+  assert.equal(x.mcpCallDyn.length, 1);
+  assert.ok(x.mcpCallDyn[0]!.expr.includes('args.q'));
+  assert.equal(x.mcpCallDyn[0]!.fallback, 'brave_web_search');
+});
+
 test('shell- und fn-Abrufe', () => {
   const x = extractLiterals("{{ shell('uptime') }} {{ fn('find_entities') }}");
   assert.deepEqual(x.shells, ['uptime']);

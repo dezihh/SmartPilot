@@ -66,13 +66,14 @@ function fakeMcp(): McpContext {
     id: 1,
     name: 'test-mcp',
     sideEffect: 'write',
-    tools: [{ name: 'tool_x' }],
+    tools: [{ name: 'tool_x' }, { name: 'empty_tool' }, { name: 'fb_tool' }],
     client: {
       init: async () => {},
       listTools: async () => [{ name: 'tool_x' }],
-      callTool: async (name, args) => ({
-        content: [{ type: 'text', text: JSON.stringify({ tool: name, args }) }],
-      }),
+      callTool: async (name, args) => {
+        if (name === 'empty_tool') return { content: [{ type: 'text', text: '   ' }] };
+        return { content: [{ type: 'text', text: JSON.stringify({ tool: name, args }) }] };
+      },
     },
   };
   return { servers: [server] };
@@ -118,6 +119,31 @@ test('mcp.call: unbekanntes Tool -> null + Fehler-Trace', async () => {
   const r = await renderActionTemplate(`{{ mcp.call('gibtsnicht') }}`, mcp, trace);
   assert.equal(r.speech, '');
   assert.ok(findStep(trace, 'template.mcp.error'));
+});
+
+test('mcp.call: Fallback greift, wenn Primaer leer bleibt', async () => {
+  const trace: TraceEvent[] = [];
+  const r = await renderActionTemplate(`{{ mcp.call('empty_tool', {'q': 'a'}, {fallback: 'fb_tool'}) }}`, mcp, trace);
+  assert.match(r.speech, /fb_tool/);
+  assert.ok(findStep(trace, 'template.mcp.fallback'));
+});
+
+test('mcp.call: kein Fallback, wenn Primaer ein Ergebnis liefert', async () => {
+  const trace: TraceEvent[] = [];
+  const r = await renderActionTemplate(`{{ mcp.call('tool_x', {'q': 'a'}, {fallback: 'fb_tool'}) }}`, mcp, trace);
+  assert.match(r.speech, /tool_x/);
+  assert.equal(findStep(trace, 'template.mcp.fallback'), undefined);
+});
+
+test('mcp.call: Fallback greift bei unbekanntem Primaer-Tool', async () => {
+  const trace: TraceEvent[] = [];
+  const r = await renderActionTemplate(`{{ mcp.call('gibtsnicht', {'q': 'a'}, {fallback: 'fb_tool'}) }}`, mcp, trace);
+  assert.match(r.speech, /fb_tool/);
+});
+
+test('mcp.call: Fallback mit dynamischen Args (args.x)', async () => {
+  const r = await renderFunction('test_fn_dyn_fb', mcp, [], { x: 'leer' });
+  assert.match(r.speech, /fb_tool/);
 });
 
 test('http: Literal-URL wird gefetcht und JSON geparst', async () => {
@@ -253,6 +279,15 @@ before(async () => {
     name: 'test_fn_dyn',
     description: null,
     template: `{{ mcp.call('tool_x', {'q': args.x}) }}`,
+    parameters: null,
+    budget: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  createFunction({
+    name: 'test_fn_dyn_fb',
+    description: null,
+    template: `{{ mcp.call('empty_tool', {'q': args.x}, {fallback: 'fb_tool'}) }}`,
     parameters: null,
     budget: null,
     inventory_prompt: null,

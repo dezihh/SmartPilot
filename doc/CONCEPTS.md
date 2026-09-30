@@ -59,7 +59,7 @@ ist ihr Ergebnis.
 | `index.find(...)` | passende Einträge lokal suchen |
 | `index.state(...)` | Zustand eines Eintrags lesen |
 | `index.get(...)` | Eintrag samt Zusatzdaten lesen |
-| `mcp.call(...)` | ein MCP-Werkzeug aufrufen |
+| `mcp.call(tool, args, { fallback }?)` | ein MCP-Werkzeug aufrufen (optional mit Ersatz-Tool) |
 | `http(...)` | eine HTTP-Quelle lesen |
 | `shell(...)` | kurzen Befehl im Gateway-Container ausführen |
 | `fn(...)` | eine andere Funktion einbetten |

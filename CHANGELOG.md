@@ -12,6 +12,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- Template-Baustein `mcp.call(tool, args, { fallback })`: optionales Ersatz-Tool
+  (Kaskade), das nur bei leerem oder fehlgeschlagenem Primär-Aufruf mit
+  denselben Argumenten greift — z. B. erst SearXNG, sonst Brave
+  (siehe `doc/RECIPES.md`, `doc/REFERENCE.md`)
+- Paket `brave-search` (1.1.0): `recherche` nutzt die Kaskade — primär
+  `searxng_web_search`, nur bei leerem Ergebnis `brave_web_search`
+
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es

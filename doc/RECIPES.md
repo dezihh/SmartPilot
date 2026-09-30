@@ -106,6 +106,23 @@ Funktion `aussen_temperatur`; System-Prompt leer lassen.
 > `{% %}` als Argument übergeben — solche Aufrufe kommen ohne Argument an.
 > Fertige Hybrid-Vorlage: Paket `beispiel-http` (Vorgang `luftqualitaet`).
 
+### Kaskade: Ersatzquelle bei leerem Ergebnis
+
+Ergebnis: primär eine lokale/private Quelle, das Ersatz-Tool nur, wenn die
+nichts liefert — so bleibt z. B. das Brave-Kontingent unangetastet, solange die
+eigene SearXNG-Instanz Treffer liefert.
+
+```jinja
+{%- set s = mcp.call('searxng_web_search', {'query': args.query}, { fallback: 'brave_web_search' }) -%}
+{{ s }}
+```
+
+Ein optionales drittes Argument `{ fallback: 'ersatz_tool' }` am `mcp.call`
+richtet die Kaskade ein: Bleibt der Primär-Aufruf leer (fehlendes Tool, Fehler
+oder leere Ausgabe), wird das Ersatz-Tool automatisch mit denselben Argumenten
+aufgerufen; der Rückgabewert ist dann dessen Ergebnis. Beide Tools müssen über
+die Tool-Registry angebunden sein.
+
 ### LLM: Der Agent wählt das Werkzeug
 
 Ergebnis: „Wie hell ist es im Wohnzimmer?" — kein Trigger deckt diese

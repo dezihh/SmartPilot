@@ -313,6 +313,53 @@ function extractText(result: unknown): string {
   return String(result ?? '');
 }
 
+// Ein mcp.call gilt als "leer", wenn das Tool fehlt/fehlschlaegt (null) oder
+// keine verwertbare Ausgabe liefert -> genau dann greift der optionale Fallback.
+function isBlankMcpResult(text: string | null): boolean {
+  return text === null || text.trim() === '';
+}
+
+async function invokeTool(
+  mcp: McpContext,
+  tool: string,
+  args: Record<string, unknown>,
+  trace: TraceEvent[],
+  step: string
+): Promise<string | null> {
+  const found = findToolExact(mcp, tool);
+  if (!found) throw new Error(`Tool ${tool} auf keinem MCP-Server gefunden`);
+  const result = await found.server.client.callTool(found.toolName, args);
+  trace.push({ ts: Date.now(), step, detail: { tool, server: found.server.name } });
+  return extractText(result);
+}
+
+// mcp.call mit optionaler Kaskade: Primaer-Tool ausfuehren; nur wenn das leer
+// bleibt/fehlschlaegt, wird das Fallback-Tool (gleiche Args) aufgerufen.
+async function invokeWithFallback(
+  mcp: McpContext,
+  tool: string,
+  args: Record<string, unknown>,
+  fallback: string | undefined,
+  trace: TraceEvent[],
+  step: string
+): Promise<string | null> {
+  let text: string | null = null;
+  try {
+    text = await invokeTool(mcp, tool, args, trace, step);
+  } catch (e) {
+    trace.push({ ts: Date.now(), step: 'template.mcp.error', detail: { tool, error: String(e) } });
+  }
+  if (isBlankMcpResult(text) && fallback) {
+    try {
+      const fb = await invokeTool(mcp, fallback, args, trace, 'template.mcp.fallback');
+      if (!isBlankMcpResult(fb)) text = fb;
+    } catch (e) {
+      trace.push({ ts: Date.now(), step: 'template.mcp.error', detail: { tool: fallback, error: String(e) } });
+    }
+  }
+  return text;
+}
+
 interface UnwrappedSpeech {
   text: string;
   ssml: boolean;
@@ -452,16 +499,7 @@ async function preheat(
     const parsedArgs = parseCallArgs(call.args);
     const normKey = `${call.tool}|${parsedArgs ? JSON.stringify(parsedArgs) : ''}`;
     if (callMap.has(normKey)) continue;
-    try {
-      const found = findToolExact(mcp, call.tool);
-      if (!found) throw new Error(`Tool ${call.tool} auf keinem MCP-Server gefunden`);
-      const result = await found.server.client.callTool(found.toolName, parsedArgs ?? {});
-      callMap.set(normKey, extractText(result));
-      trace.push({ ts: Date.now(), step: 'template.mcp', detail: { tool: call.tool, server: found.server.name } });
-    } catch (e) {
-      trace.push({ ts: Date.now(), step: 'template.mcp.error', detail: { tool: call.tool, error: String(e) } });
-      callMap.set(normKey, null);
-    }
+    callMap.set(normKey, await invokeWithFallback(mcp, call.tool, parsedArgs ?? {}, call.fallback, trace, 'template.mcp'));
   }
 
   // Dynamische mcp.call-Args (Finding #1-Parallele fuer mcp): die
@@ -483,16 +521,7 @@ async function preheat(
     if (!parsedArgs) continue;
     const normKey = `${dyn.tool}|${JSON.stringify(parsedArgs)}`;
     if (callMap.has(normKey)) continue;
-    try {
-      const found = findToolExact(mcp, dyn.tool);
-      if (!found) throw new Error(`Tool ${dyn.tool} auf keinem MCP-Server gefunden`);
-      const result = await found.server.client.callTool(found.toolName, parsedArgs);
-      callMap.set(normKey, extractText(result));
-      trace.push({ ts: Date.now(), step: 'template.mcp.dyn', detail: { tool: dyn.tool, server: found.server.name } });
-    } catch (e) {
-      trace.push({ ts: Date.now(), step: 'template.mcp.error', detail: { tool: dyn.tool, error: String(e) } });
-      callMap.set(normKey, null);
-    }
+    callMap.set(normKey, await invokeWithFallback(mcp, dyn.tool, parsedArgs, dyn.fallback, trace, 'template.mcp.dyn'));
   }
 
   for (const { id, key } of states) {

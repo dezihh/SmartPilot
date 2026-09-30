@@ -144,7 +144,9 @@ findet alle datenholenden Aufrufe statisch und führt sie **parallel** vor dem
 Rendern aus:
 
 - `index.find` / `index.state` / `index.get` — lokale, gecachte Lesesicht
-- `mcp.call(tool, args)` — gezielter MCP-Aufruf (auch mit dynamischen Args)
+- `mcp.call(tool, args, { fallback }?)` — gezielter MCP-Aufruf (auch mit
+  dynamischen Args); optionales Ersatz-Tool, das nur bei leerem Primär-Ergebnis
+  greift (Kaskade)
 - `http(url, ttlMs?)` — generischer GET (Timeout + Größen-Cap; **dynamische**
   URLs mit SSRF-Schutz gegen private Netze; TTL-Cache)
 - `shell(command)` — Admin-only, Timeout 5 s + Output-Cap

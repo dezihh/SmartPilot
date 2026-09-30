@@ -23,7 +23,7 @@
       "id": "brave-search",
       "name": "Websuche Brave",
       "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion",
-      "version": "1.0.2"
+      "version": "1.1.0"
     },
     {
       "id": "system-info",

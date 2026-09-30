@@ -10,9 +10,11 @@ export interface LiteralCalls {
   // Index-Key faellt erst zur Renderzeit aus args (index.find(args.q, args.index))
   // => alle konfigurierten Keys vorwaermen
   indexAll: boolean;
-  calls: { tool: string; args: string | null }[];
+  // fallback = optionales Ersatz-Tool (3. Arg: { fallback: 'tool' }), das nur
+  // aufgerufen wird, wenn der Primaer-Aufruf leer bleibt oder fehlschlaegt.
+  calls: { tool: string; args: string | null; fallback?: string }[];
   // mcp.call('tool', {…args.x…}) - Args-Expression wird im preheat evaluiert
-  mcpCallDyn: { tool: string; expr: string }[];
+  mcpCallDyn: { tool: string; expr: string; fallback?: string }[];
   // http('url') bzw. http('url', ttlMs) - ttl > 0 aktiviert den Antwort-Cache
   httpCalls: { url: string; ttl: number }[];
   // http(<nunjucks-Expression>) - URL wird aus args/now berechnet (Finding #1)
@@ -94,12 +96,16 @@ export function extractLiterals(rawTemplate: string): LiteralCalls {
   const httpDyn: { expr: string; ttl: number }[] = [];
   // mcp.call('tool') bzw. mcp.call('tool', {flaches JSON-Literal, eine Zeile});
   // Literal-Args mit args./now. sind NICHT literal (die laufen als dynamisch).
-  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*\)/g)) {
-    calls.push({ tool: m[1] as string, args: (m[2] as string | undefined) ?? null });
+  // Optionales 3. Argument { fallback: 'ersatz_tool' } fuer eine Kaskade.
+  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*(?:,\s*(\{(?![^{}]*\b(?:args|now)\.)[^\n]*?\}))?\s*(?:,\s*\{\s*fallback\s*:\s*["']([^"']+)["']\s*\})?\s*\)/g)) {
+    const fb = m[3] as string | undefined;
+    calls.push({ tool: m[1] as string, args: (m[2] as string | undefined) ?? null, ...(fb ? { fallback: fb } : {}) });
   }
-  // dynamische mcp.call-Args: {…args.x…} (keine verschachtelten Objekte)
-  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*\)/g)) {
-    mcpCallDyn.push({ tool: m[1] as string, expr: `{${m[2] as string}}` });
+  // dynamische mcp.call-Args: {…args.x…} (keine verschachtelten Objekte),
+  // optional + { fallback: 'ersatz_tool' }.
+  for (const m of sideEffectSrc.matchAll(/(?<![\w.])mcp\.call\(\s*["']([^"']+)["']\s*,\s*\{([^{}]*?(?:\bargs\.|\bnow\.)[^{}]*?)\}\s*(?:,\s*\{\s*fallback\s*:\s*["']([^"']+)["']\s*\})?\s*\)/g)) {
+    const fb = m[3] as string | undefined;
+    mcpCallDyn.push({ tool: m[1] as string, expr: `{${m[2] as string}}`, ...(fb ? { fallback: fb } : {}) });
   }
   for (const m of sideEffectSrc.matchAll(/(?<![\w.])shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
   for (const m of template.matchAll(/(?<![\w.])fn\(\s*["']([a-zA-Z0-9_]+)["']\s*\)/g)) fns.push(m[1] as string);

@@ -38,7 +38,7 @@ Argumentierte Funktionen sollten erforderliche Felder in `required` nennen.
 | `index.find(query, key?)` | lokale Fuzzy-Suche, maximal acht Treffer | Snapshot kann bis TTL-Ablauf älter sein |
 | `index.state(id, key?)` | Zustand als Text | nur Daten des Index |
 | `index.get(id, key?)` | Eintrag samt Zusatzdaten | nur Daten des Index |
-| `mcp.call(tool, args)` | MCP-Werkzeug aufrufen | exakter Toolname und gültiges Schema |
+| `mcp.call(tool, args, opts?)` | MCP-Werkzeug aufrufen (optional mit Ersatz-Tool) | exakter Toolname und gültiges Schema |
 | `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen | 5 s, 100 KB Body-Limit |
 | `shell(command)` | Befehl in Gateway-Laufzeit | 5 s, 4000 Zeichen |
 | `fn(name)` | Funktion einbetten | Tiefe 3, Zyklusschutz |
@@ -55,6 +55,16 @@ MCP-Werkzeug.
 Identische vorbereitete Aufrufe werden dedupliziert. Dynamische
 Argumentobjekte von `mcp.call` kennen `args` und `now`, aber keine lokalen
 `set`-Variablen des Templates.
+
+Ein optionales drittes Argument `{ fallback: 'ersatz_tool' }` richtet eine
+**Kaskade** ein: Bleibt der Primär-Aufruf leer — fehlendes Tool, Fehler oder
+leere/whitespace-Ausgabe —, wird automatisch das Ersatz-Tool mit denselben
+Argumenten aufgerufen. Der Rückgabewert des `mcp.call` ist dann das Ergebnis
+des Ersatz-Tools.
+
+```jinja
+{{ mcp.call('searxng_web_search', {'query': args.query}, { fallback: 'brave_web_search' }) }}
+```
 
 Eine vollständige Übersicht über Entity-Index, HTTP-, MCP- und Paketcache
 steht unter [Cache und Aktualität](CACHE.md).
