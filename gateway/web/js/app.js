@@ -474,10 +474,8 @@ function renderFunctions() {
       <td><code title="Einbettung in Templates: {{ fn('${esc(f.name)}') }}">${esc(f.name)}</code></td>
       <td>${esc(f.description)}</td>
       <td>${f.enabled ? '✔' : '✖'}</td>
-      <td class="actions"><button class="btn small" data-test title="Template live rendern">Testen</button><button class="btn small">Bearbeiten</button></td>`;
-    const buttons = tr.querySelectorAll('button');
-    buttons[0].onclick = () => { openFunctionEditor(f.id); previewFunction(); };
-    buttons[1].onclick = () => openFunctionEditor(f.id);
+      <td class="actions"><button class="btn small">Bearbeiten</button></td>`;
+    tr.querySelector('button').onclick = () => openFunctionEditor(f.id);
     tbody.append(tr);
   }
 }
