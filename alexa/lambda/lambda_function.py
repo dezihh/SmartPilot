@@ -288,6 +288,39 @@ def send_progressive(handler_input, request, phrase):
         logger.warning("Progressive Response fehlgeschlagen: %s", e)
 
 
+def gateway_with_watchdog(handler_input, request, query, session_id, user_id, app_id):
+    """Ruft call_gateway in einem Worker-Thread auf und haelt das Alexa-
+    Zeitfenster ein (wie der Query-Pfad): optionale Eingangsbestaetigung, nach
+    watchdog_delay ein Warteton (Progressive Response), sonst Cutoff bei
+    ALEXA_WINDOW. Rueckgabe: (value, error, timed_out). Bei timed_out sind
+    value/error None (der Aufruf laeuft als Daemon-Thread weiter)."""
+    if acknowledgment_enabled:
+        send_progressive(handler_input, request, t(handler_input, "processing"))
+
+    result = {}
+
+    def run():
+        try:
+            result["value"] = call_gateway(query, session_id, user_id, app_id)
+        except Exception as e:
+            result["error"] = e
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(watchdog_delay)
+    if worker.is_alive():
+        if warteton_enabled:
+            logger.info("Watchdog nach %.1fs ohne Gateway-Antwort, sende Warteton", watchdog_delay)
+            send_progressive(handler_input, request, warteton_phrase or t(handler_input, "warteton"))
+            worker.join(max(0.0, gateway_timeout - watchdog_delay))
+        else:
+            worker.join(max(0.0, ALEXA_WINDOW - watchdog_delay))
+    if worker.is_alive():
+        logger.error("Gateway-Antwort %.1fs ueberschritten", gateway_timeout)
+        return None, None, True
+    return result.get("value"), result.get("error"), False
+
+
 def lambda_trace(session_id, event, elapsed_ms=None):
     """Fire-and-forget: Lambda-Lebenszyklus ins Gateway-Log (CloudWatch-Ersatz)."""
     if not gateway_url:
@@ -350,40 +383,19 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         trace_start = time.monotonic()
         lambda_trace(session_id, "invoke", 0)
 
-        if acknowledgment_enabled:
-            send_progressive(handler_input, request, t(handler_input, "processing"))
-
-        result = {}
-
-        app_id = _application_id()
-
-        def run():
-            try:
-                result["value"] = call_gateway(query, session_id, user_id, app_id)
-            except Exception as e:
-                result["error"] = e
-
-        worker = threading.Thread(target=run, daemon=True)
-        worker.start()
-        worker.join(watchdog_delay)
-        if worker.is_alive():
-            if warteton_enabled:
-                logger.info("Watchdog nach %.1fs ohne Gateway-Antwort, sende Warteton", watchdog_delay)
-                send_progressive(handler_input, request, warteton_phrase or t(handler_input, "warteton"))
-                worker.join(max(0.0, gateway_timeout - watchdog_delay))
-            else:
-                worker.join(max(0.0, ALEXA_WINDOW - watchdog_delay))
-        if worker.is_alive():
-            logger.error("Gateway-Antwort %.1fs ueberschritten", gateway_timeout)
+        value, error, timed_out = gateway_with_watchdog(
+            handler_input, request, query, session_id, user_id, _application_id()
+        )
+        if timed_out:
             phrase = t(handler_input, "error_timeout")
             # Session offen lassen: direkt erneut fragen, ohne neu zu starten.
             return response_builder.speak(phrase).ask(phrase).set_should_end_session(False).response
-        if "error" in result:
-            logger.error("Gateway-Fehler: %s", result["error"], exc_info=True)
-            phrase = t(handler_input, "error_timeout" if _is_timeout(result["error"]) else "error_unreachable")
+        if error is not None:
+            logger.error("Gateway-Fehler: %s", error, exc_info=True)
+            phrase = t(handler_input, "error_timeout" if _is_timeout(error) else "error_unreachable")
             return response_builder.speak(phrase).ask(phrase).set_should_end_session(False).response
 
-        speech, follow_up, is_ssml, display_text, followup_prompt = result["value"]
+        speech, follow_up, is_ssml, display_text, followup_prompt = value
 
         logger.info(
             "Gateway-Antwort: %d Zeichen, ssml=%s, followUp=%s",
@@ -419,20 +431,30 @@ class HelpIntentHandler(AbstractRequestHandler):
     def handle(self, handler_input):
         # Dynamische Hilfe aus dem Gateway (Vorgang "hilfe" kennt die
         # installierten Faehigkeiten); sonst statischer Fallback-Text.
+        # Wie der Query-Pfad ueber Worker + Watchdog/Warteton, damit ein
+        # langsamer LLM-Hilfepfad das Alexa-8s-Fenster nicht reisst (F-D18).
+        request = handler_input.request_envelope.request
+        session = handler_input.request_envelope.session
+        session_id = session.session_id if session else "unknown"
+        user_id = session.user.user_id if session and session.user else None
         help_text = t(handler_input, "help")
-        try:
-            session = handler_input.request_envelope.session
-            session_id = session.session_id if session else "unknown"
-            user_id = session.user.user_id if session and session.user else None
-            speech = call_gateway("hilfe", session_id, user_id, _application_id())[0]
-            help_text = strip_ssml(speech) or help_text
-        except Exception as e:
-            logger.warning("Hilfe vom Gateway fehlgeschlagen: %s", e)
+        value, error, timed_out = gateway_with_watchdog(
+            handler_input, request, "hilfe", session_id, user_id, _application_id()
+        )
+        if value is not None:
+            help_text = strip_ssml(value[0]) or help_text
+        elif timed_out:
+            logger.warning("Hilfe vom Gateway: Timeout")
+        elif error is not None:
+            logger.warning("Hilfe vom Gateway fehlgeschlagen: %s", error)
+        # Hilfe ist immer Klartext (strip_ssml) -> XML-escapen, sonst brechen
+        # '&'/'<' aus Gateway/Entity-Namen die SSML-Antwort (F-D17).
+        speech = escape(help_text)
         return (
             handler_input.response_builder
-            .speak(help_text)
+            .speak(speech)
             .set_card(SimpleCard(title=CARD_TITLE, content=help_text))
-            .ask(help_text)
+            .ask(speech)
             .response
         )
 

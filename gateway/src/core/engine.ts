@@ -274,15 +274,10 @@ async function runToolLoop(
 }
 
 async function runAgent(query: VoiceQuery, mcp: McpContext, trace: TraceEvent[]): Promise<AssistantResponse> {
-  // Allowlist-Semantik (mit der Vorgangs-Checkbox-Logik konsistent):
-  // nicht gesetzt oder "alle" = alle Tools; "keine" = keine Specs;
-  // Komma-Liste = genau diese. (Leere Auswahl in der UI wird als "keine"
-  // gespeichert - KEIN stiller "leer = alle"-Fall mehr.)
-  const agentToolsRaw = (getSetting('agent_tools') ?? '').trim().toLowerCase();
-  let allowlist: string[] | null;
-  if (!agentToolsRaw || agentToolsRaw === 'alle') allowlist = null;
-  else if (agentToolsRaw === 'keine') allowlist = [];
-  else allowlist = agentToolsRaw.split(',').map((s) => s.trim()).filter(Boolean);
+  // Allowlist-Semantik zentral in agentFnAllowlist() (mit der Vorgangs-
+  // Checkbox-Logik konsistent): nicht gesetzt/'alle' = alle, 'keine' = keine,
+  // Komma-Liste = genau diese. Kein stiller "leer = alle"-Fall.
+  const allowlist = agentFnAllowlist();
   const system = agentSystemPrompt(mcp, allowlist);
   const response = await runToolLoop(system, query.text, mcp, trace, query.sessionId, allowlist);
   rememberTurn(query.sessionId, query.text, response.speech);

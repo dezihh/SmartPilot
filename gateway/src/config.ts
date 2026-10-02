@@ -22,6 +22,15 @@ export function normalizeBasePath(raw: string | undefined): string {
   return ('/' + p.replace(/^\/+/, '')).replace(/\/+$/, '');
 }
 
+// Positive Zahl aus der Umgebung. Fehlend, leer, ungueltig oder <= 0 -> Default.
+// Verhindert stilles Fail-open (NaN deaktiviert Limits) bzw. versehentliches
+// Sperren (0). Reine Funktion fuer Tests.
+export function envPositiveNumber(raw: string | undefined, fallback: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 function req(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Fehlende Umgebungsvariable: ${name}`);
@@ -62,11 +71,13 @@ export const config = {
     return Number.isFinite(n) ? n : v;
   })(),
   // Maximale Laenge des Query-Texts in Zeichen (Kostenschutz fuer /api/query).
-  queryMaxChars: Number(process.env.QUERY_MAX_CHARS ?? 500),
+  queryMaxChars: envPositiveNumber(process.env.QUERY_MAX_CHARS, 500),
+  // Rate-Limit fuer /api/query (Anfragen pro Minute und Client, Kostenschutz).
+  queryRateMax: envPositiveNumber(process.env.QUERY_RATE_MAX, 30),
   // Erwartete Alexa-Skill-ID. Die Lambda sendet ihre applicationId als Header
   // X-Alexa-Skill-Id; gesetzt + abweichend -> Warnung (spaeter ggf. Ablehnung).
   alexaSkillId: (process.env.ALEXA_SKILL_ID ?? '').trim(),
   // Absolute Obergrenze einer Admin-Session (Sliding-TTL verlaengert sonst
   // unbegrenzt).
-  sessionMaxMs: Number(process.env.SESSION_MAX_HOURS ?? 24) * 60 * 60 * 1000,
+  sessionMaxMs: envPositiveNumber(process.env.SESSION_MAX_HOURS, 24) * 60 * 60 * 1000,
 };

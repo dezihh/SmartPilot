@@ -470,5 +470,38 @@ class AuditFindingsTest(unittest.TestCase):
         )
 
 
+class HelpIntentTest(unittest.TestCase):
+    def _handler_input(self):
+        hi = FakeHandlerInput(request=FakeRequest(), session=FakeSession())
+        hi.request_envelope.request.intent = FakeIntent(name="AMAZON.HelpIntent")
+        lambda_function._RAW_ENVELOPE.value = {}
+        return hi
+
+    def test_hilfe_text_wird_xml_escaped(self):
+        """F-D17: dynamischer Hilfe-Text muss XML-escaped werden, sonst brechen
+        '&'/'<' aus dem Gateway (LLM/Entity-Namen) die SSML-Antwort."""
+        hi = self._handler_input()
+        with mock.patch.object(lambda_function, "requests") as req:
+            req.post.return_value = fake_response({"speech": "Milch & Honig"})
+            lambda_function.HelpIntentHandler().handle(hi)
+        speak = [c[1] for c in hi.response_builder.calls if c[0] == "speak"][0]
+        self.assertEqual(speak, escape("Milch & Honig"))
+
+    def test_hilfe_hat_watchdog_und_sendet_warteton(self):
+        """F-D18: Der HelpIntent muss den Query-Watchdog nutzen - bei langsamem
+        Gateway-Hilfepfad (mode='llm') wird nach watchdog_delay ein Warteton
+        gesendet, statt das Alexa-8s-Fenster kommentarlos zu reissen."""
+        hi = self._handler_input()
+        with mock.patch.object(lambda_function, "watchdog_delay", 0.05), \
+                mock.patch.object(lambda_function, "requests") as req:
+            def slow(*a, **kw):
+                time.sleep(0.3)  # langsamer als watchdog_delay
+                return fake_response({"speech": "spaet"})
+
+            req.post.side_effect = slow
+            lambda_function.HelpIntentHandler().handle(hi)
+        self.assertEqual(len(hi.directive_service.enqueued), 1, "Warteton nach Watchdog")
+
+
 if __name__ == "__main__":
     unittest.main()

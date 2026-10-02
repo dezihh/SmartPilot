@@ -55,8 +55,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Hinzugefügt
 
-- Testbuttons für Vorgänge, Funktionen und installierte Pakete (führen direkt
-  im Monitor aus bzw. rendern das Template).
+- Testbuttons für Vorgänge und installierte Pakete (führen direkt im Monitor
+  aus; im Funktions-Editor rendert „Test" das Template).
 - Registry-Kanäle (stabil `main` / Vorschlag `packages/community`) in
   `packages/README.md` dokumentiert.
 - Einrichtungshinweis für `stdio`-Server in der Tool-Registry.
@@ -69,6 +69,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Einheitliche Du-Anrede (Willkommen/Hilfe zuvor „Sie").
 - HelpIntent fragt die Gateway-`hilfe` ab (kennt die installierten Fähigkeiten)
   statt eines festen Texts.
+- Lambda: Query- und Hilfe-Pfad nutzen denselben Worker mit Watchdog/Warteton;
+  die Hilfe kann ein langsamer LLM-Aufruf das Alexa-Zeitfenster nicht mehr
+  reißen (Diff-Review F-D18).
+- Lambda: der dynamische Hilfe-Text wird XML-escaped gesprochen — `&`/`<` aus
+  Gateway/Entity-Namen brechen die SSML-Antwort nicht mehr (F-D17).
+- Gateway: `SESSION_MAX_HOURS`, `QUERY_RATE_MAX` und `QUERY_MAX_CHARS` werden
+  beim Start validiert; ein ungültiger Wert fällt auf den Default zurück statt
+  das Limit still zu deaktivieren (NaN) oder zu sperren (F-D19).
+- Agent nutzt die zentrale `agentFnAllowlist()` statt einer inline duplizierten
+  Auswertung (F-D15).
 
 ## [0.1.8] – 2026-09-30
 

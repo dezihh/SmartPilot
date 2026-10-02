@@ -7,9 +7,6 @@ import { processQuery } from '../core/engine.js';
 import { addLog, getSetting } from '../db.js';
 export const queryRoutes = Router();
 
-// Kostenschutz: begrenzt LLM-Aufrufe pro Client (30/Minute) und die Textlaenge.
-const QUERY_RATE_MAX = Number(process.env.QUERY_RATE_MAX ?? 30);
-
 export const handleQuery = async (req: Request, res: Response): Promise<void> => {
   const body = req.body as { sessionId?: string; userId?: string; text?: string };
   const text = typeof body.text === 'string' ? body.text.trim() : '';
@@ -30,7 +27,7 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
   }
   // Key: bevorzugt userId, sonst Client-IP (mit 'trust proxy' korrekt).
   const key = body.userId ? `query:u:${body.userId}` : `query:ip:${req.ip ?? 'unbekannt'}`;
-  if (!checkRateLimit(key, Date.now(), 60_000, QUERY_RATE_MAX)) {
+  if (!checkRateLimit(key, Date.now(), 60_000, config.queryRateMax)) {
     res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
     return;
   }
