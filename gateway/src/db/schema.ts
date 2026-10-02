@@ -259,12 +259,20 @@ if (withReferenceSeed) {
 // ueber die erlaubten Tools je Vorgang).
 db.prepare("DELETE FROM settings WHERE key IN ('warteton', 'fastpath_model', 'fuel_sensor', 'facade_mode', 'tool_budgets')").run();
 
-// Legacy-Aufraeumen: Der kurzlebige Referenz-Seed (SEED_JSON, Commit 23fbce5)
-// hat einen Live-Dump als Funktionen/Vorgaenge in frische Datenbanken
-// geschrieben - inklusive instanzspezifischer Rezepte (Benzinpreis, BMW-Lade-
-// Modi, Boerse). Entfernt wird nur, was noch das alte Muster traegt; selbst
-// angepasste Zeilen bleiben unangetastet.
-{
+// Legacy-Aufraeumen (nur EINMAL, Marker in `settings`): Der kurzlebige
+// Referenz-Seed (SEED_JSON, Commit 23fbce5) hat einen Live-Dump als Funktionen/
+// Vorgaenge in frische Datenbanken geschrieben - inklusive instanzspezifischer
+// Rezepte (Benzinpreis, BMW-Lade-Modi, Boerse). Der Block lief frueher bei
+// JEDEM Start und loeschte/ueberschrieb dadurch auch spaeter weiterverwendete,
+// gleichnamige instanzspezifische Reports (Datenverlust). Der Marker macht die
+// Bereinigung einmalig: Bestands-DBs laufen genau einmal, danach nie wieder;
+// selbst angepasste Zeilen bleiben unangetastet.
+const LEGACY_CLEANUP_KEY = '_legacy_cleanup_v0_2_0';
+const legacyCleanupDone = db
+  .prepare('SELECT value FROM settings WHERE key = ?')
+  .get(LEGACY_CLEANUP_KEY);
+if (!legacyCleanupDone) {
+  const removed: string[] = [];
   const legacyFns: Array<[string, string]> = [
     ['benzinpreis', 'nordoel'],
     ['bmw_netzladung_an', "mcp.call('bmw_netzladung_an')"],
@@ -274,13 +282,17 @@ db.prepare("DELETE FROM settings WHERE key IN ('warteton', 'fastpath_model', 'fu
   ];
   for (const [name, marker] of legacyFns) {
     const row = db.prepare('SELECT id, template FROM tpl_functions WHERE name = ?').get(name) as { id: number; template: string } | undefined;
-    if (row && String(row.template).includes(marker)) db.prepare('DELETE FROM tpl_functions WHERE id = ?').run(row.id);
+    if (row && String(row.template).includes(marker)) {
+      db.prepare('DELETE FROM tpl_functions WHERE id = ?').run(row.id);
+      removed.push(`function:${name}`);
+    }
   }
   const legacyFnNames = legacyFns.map(([n]) => n);
   for (const name of ['benzinpreis', 'bmw_netzladung_an', 'bmw_netzladung_aus', 'boerse', 'boerse_woche']) {
     const row = db.prepare('SELECT function_ref FROM actions WHERE name = ?').get(name) as { function_ref: string | null } | undefined;
     if (row && (row.function_ref === null || legacyFnNames.includes(row.function_ref))) {
       db.prepare('DELETE FROM actions WHERE name = ?').run(name);
+      removed.push(`action:${name}`);
     }
   }
   // hausstatus_gw war ein instanzspezifischer Bericht (EVCC-Akku, Solar,
@@ -299,6 +311,11 @@ db.prepare("DELETE FROM settings WHERE key IN ('warteton', 'fastpath_model', 'fu
       'Hausstatus (generisch): Sonnenstand und Anwesenheit - fertiger Bericht, keinen eigenen bauen.',
       hs.id,
     );
+    removed.push('function:hausstatus_gw (auf generisch umgestellt)');
+  }
+  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(LEGACY_CLEANUP_KEY, '1');
+  if (removed.length > 0) {
+    console.warn('[migration] Legacy-Referenz-Seed einmalig bereinigt: %s', removed.join(', '));
   }
 }
 
