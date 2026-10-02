@@ -21,9 +21,9 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
     res.status(413).json({ error: `text zu lang (max. ${config.queryMaxChars} Zeichen)` });
     return;
   }
-  // Skill-ID der Lambda (Header) gegen die erwartete ID pruefen. Derzeit nur
-  // Warnung (Fail-Closed ist als Ausbau vorgesehen); die Gateway-Auth bleibt
-  // das API_TOKEN.
+  // Header X-Alexa-Skill-Id ist NICHT vertrauenswuerdig (frei setzbar, wer das
+  // API_TOKEN hat) - reine Log-Info, keine Sicherheitsgrenze. Die autoritative
+  // applicationId-Pruefung macht die Lambda (sb.skill_id). Hier nur Warnung.
   const skillId = String(req.headers['x-alexa-skill-id'] ?? '').slice(0, 120);
   if (skillId && config.alexaSkillId && skillId !== config.alexaSkillId) {
     console.warn('[query] Skill-ID-Mismatch: Header=%s erwartet=%s', skillId, config.alexaSkillId);

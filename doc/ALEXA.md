@@ -139,11 +139,12 @@ Im `lambda/`-Ordner eine `config.json` anlegen (Vorlage:
 
 Hosted Skills haben keine Umgebungsvariablen wie Weg B; die Werte stehen daher
 in dieser Datei. Sie liegt damit im hosted CodeCommit-Repo (nur für dein Konto
-sichtbar). `alexa_skill_id` ist optional, aber empfohlen: Die Lambda lehnt dann
-Events mit fremder `applicationId` ab. Zusätzlich sendet die Lambda die
-`applicationId` als Header `X-Alexa-Skill-Id` an das Gateway; ist dort
-`ALEXA_SKILL_ID` gesetzt, wird eine Abweichung protokolliert (derzeit nur
-Warnung).
+sichtbar). `alexa_skill_id` ist Pflicht (`deploy-alexa.yml` setzt sie aus dem
+Secret `ALEXA_SKILL_ID`): Die Lambda lehnt damit Events mit fremder
+`applicationId` ab. Zusätzlich sendet die Lambda die `applicationId` als Header
+`X-Alexa-Skill-Id` an das Gateway — das ist **nur Log/Trace, keine
+Sicherheitsgrenze** (der Header ist frei setzbar); der Gateway-Zugang hängt
+allein am `API_TOKEN`.
 
 ### 3.4 Deploy und Test
 

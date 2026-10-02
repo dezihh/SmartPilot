@@ -46,9 +46,15 @@ jobs:
         env:
           SKILL_ID: ${{ inputs.skill_id || secrets.ALEXA_SKILL_ID }}
         run: |
+          # SKILL_ID ist Pflicht: sie authentifiziert den CodeCommit-Push UND
+          # aktiviert die applicationId-Pruefung der Lambda (sb.skill_id).
+          if [ -z "${SKILL_ID}" ]; then
+            echo "::error::SKILL_ID (Secret ALEXA_SKILL_ID) fehlt - hosted Deploy benoetigt die Skill-ID"
+            exit 1
+          fi
           python3 alexa/scripts/skill_config.py --render-all
           python3 - <<'PYEOF'
-          import json, sys
+          import json, os, sys
           sys.path.insert(0, "alexa/scripts")
           import skill_config
           cfg = skill_config.load()
@@ -58,6 +64,7 @@ jobs:
           hosted = {
               "gateway_url": "${{ secrets.GATEWAY_URL }}",
               "api_token": "${{ secrets.API_TOKEN }}",
+              "alexa_skill_id": os.environ.get("SKILL_ID", ""),
               "watchdog_delay": "5",
               "gateway_timeout": "32",
               "skill_name": names["skill_name"],

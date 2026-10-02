@@ -174,15 +174,19 @@ derzeit nur für `de-DE` hinterlegt.
 
 ## Skill-ID-Handling
 
-- `ALEXA_SKILL_ID` bleibt als Deployment-Secret erhalten.
-- `deploy-aws-lambda.yml` setzt sie als Lambda-Env `alexa_skill_id` **und**
-  begrenzt die Invoke-Permission auf genau diese Skill-ID.
-- Die Lambda nutzt den eingebauten Verifier des ASK SDK (`sb.skill_id`):
-  Events mit abweichender `applicationId` werden abgelehnt.
-- Die Skill-ID ist **keine** Gateway-Authentisierung; am `/api/query`-Request
-  gilt weiterhin Bearer (`API_TOKEN`). Die Lambda sendet die Skill-ID als
-  Header `X-Alexa-Skill-Id` mit, damit das Gateway sie optional prüfen/loggen
-  kann (siehe `ALEXA_SKILL_ID` im Gateway; derzeit nur Warnung).
+- `ALEXA_SKILL_ID` ist Deployment-Pflicht (Secret); `deploy-aws-lambda.yml`
+  und `deploy-alexa.yml` brechen ohne sie ab.
+- Die Prüfung der `applicationId` passiert **autoritativ in der Lambda**: der
+  eingebaute ASK-SDK-Verifier (`sb.skill_id`) lehnt Events mit abweichender
+  `applicationId` ab. Im AWS-Fall ist zusätzlich die Invoke-Permission auf die
+  Skill-ID begrenzt (`--event-source-token`), im hosted-Fall steht die ID in
+  der `config.json`.
+- **Wichtig:** Die Skill-ID ist **keine** Gateway-Authentisierung. Am
+  `/api/query`-Request gilt allein Bearer (`API_TOKEN`). Die Lambda sendet die
+  ID zusätzlich als Header `X-Alexa-Skill-Id` mit — das ist **nur Log/Trace**
+  und **keine Sicherheitsgrenze** (der Header ist frei setzbar; wer das
+  `API_TOKEN` hat, kann ihn beliebig wählen). Deshalb prüft das Gateway ihn nur
+  warnend (`ALEXA_SKILL_ID`, optional) und lehnt nichts ab.
 
 ## Deployment-Reihenfolge
 

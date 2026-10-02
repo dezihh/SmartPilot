@@ -336,7 +336,9 @@ Token-/Cache-Auswertung (`summarizeUsage`, Admin `GET /admin/api/usage`).
 - **Anzeige**: SimpleCard immer, APL-Dokument für Echo-Show-Geräte (das sich
   nach `apl_exit_delay_ms` selbst beendet); rohe Request-Interfaces werden für
   die APL-Erkennung gepuffert.
-- **Client-Auth**: eingebauter Skill-ID-Verifier (`alexa_skill_id`).
+- **Client-Auth**: eingebauter Skill-ID-Verifier (`alexa_skill_id`) — autoritativ
+  in der Lambda. Der an das Gateway gesendete Header `X-Alexa-Skill-Id` ist
+  **nicht** vertrauenswürdig (frei setzbar) und dient nur Log/Trace.
 - **`/api/lambda-trace`**: Fire-and-forget-Lebenszyklus-Log (Invoke/Antwort),
   nur bei Setting `debug_logging=1` persistiert.
 

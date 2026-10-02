@@ -42,8 +42,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Compose bindet den Port standardmäßig nur lokal (`GATEWAY_BIND=127.0.0.1`),
   bringt einen Healthcheck, das Basis-Image ist gepinnt; Admin-Sessions haben
   eine absolute Obergrenze (`SESSION_MAX_HOURS`) zusätzlich zur Sliding-TTL.
-- Lambda sendet die `applicationId` als Header `X-Alexa-Skill-Id`; das Gateway
-  prüft sie gegen `ALEXA_SKILL_ID` (derzeit nur Warnung).
+- Skill-ID-Handling: die `applicationId`-Prüfung bleibt autoritativ in der
+  Lambda (`sb.skill_id`, Fail-Closed beim Deploy — beide Deploy-Workflows
+  verlangen `ALEXA_SKILL_ID`; hosted schreibt sie nun in die `config.json`).
+  Der an das Gateway gesendete Header `X-Alexa-Skill-Id` ist **keine**
+  Sicherheitsgrenze und wird nur zum Loggen ausgewertet.
 - Router: Ganz-Wort-Treffer, bei Gleichstand gewinnt die längste Phrase,
   Verneinungen blockieren Vorgänge mit Seiteneffekt, kombinierte Anfragen
   gehen komplett an den Agenten (auch hybrid/llm).
