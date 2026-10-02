@@ -22,6 +22,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.2.0] – 2026-10-02
+
 ### Geändert (Breaking)
 
 - **Getrennte Token mit sprechenden Namen:** `ADMIN_TOKEN` schützt nur den
@@ -366,7 +368,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.0
 [0.1.8]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.8
 [0.1.7]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.7
 [0.1.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.6
