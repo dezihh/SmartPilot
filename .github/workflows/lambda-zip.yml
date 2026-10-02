@@ -71,14 +71,14 @@ jobs:
           du -h smartpilot-alexa-hosted.zip
 
       - name: Artifact hochladen
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartpilot-alexa-lambda
           path: smartpilot-alexa-lambda.zip
           retention-days: 30
 
       - name: Hosted-Artifact hochladen
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smartpilot-alexa-hosted
           path: smartpilot-alexa-hosted.zip
