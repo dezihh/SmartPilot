@@ -57,9 +57,9 @@ jobs:
           # hosted config.json: Secret-Token einsetzen, niemals in Repo
           hosted = {
               "gateway_url": "${{ secrets.GATEWAY_URL }}",
-              "gateway_token": "${{ secrets.GATEWAY_TOKEN }}",
+              "api_token": "${{ secrets.API_TOKEN }}",
               "watchdog_delay": "5",
-              "gateway_timeout": "28",
+              "gateway_timeout": "32",
               "skill_name": names["skill_name"],
               "assistant_name": names["assistant_name"],
           }

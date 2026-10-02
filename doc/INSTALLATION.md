@@ -81,7 +81,8 @@ Diese Variablen liest der Gateway-Code beim Start:
 
 | Variable | Pflicht | Bedeutung |
 |---|---|---|
-| `AUTH_TOKEN` | ja | schützt Admin- und API-Zugriffe |
+| `ADMIN_TOKEN` | ja | schützt nur den Admin-Bereich (`/admin/**`) |
+| `API_TOKEN` | ja | schützt nur die Adapter-API (`/api/query`, `/api/lambda-trace`) |
 | `LLM_BASE_URL` | ja | Basis-URL der OpenAI-kompatiblen Schnittstelle |
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
 | `PORT` | nein | Gateway-Port, Standard `3000` |
@@ -93,7 +94,7 @@ Diese Variablen liest der Gateway-Code beim Start:
 Weitere optionale Variablen (Tool-Runden, Deadline, Keepalive) sind
 in der [Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Für die
 Alexa-Anbindung über AWS Lambda benötigt das Gateway keine Alexa-spezifischen
-Umgebungsvariablen. Die Lambda greift mit `AUTH_TOKEN` auf `/api/query` zu.
+Umgebungsvariablen. Die Lambda greift mit `API_TOKEN` auf `/api/query` zu.
 
 ### LLM-Endpoint bereitstellen
 
@@ -153,11 +154,15 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
    Öffne anschließend `gateway/.env` und trage mindestens Folgendes ein:
 
    ```dotenv
-   AUTH_TOKEN=<langen-zufälligen-wert-eintragen>
+   ADMIN_TOKEN=<langen-zufälligen-wert-eintragen>
+   API_TOKEN=<anderer-langer-zufälliger-wert>
    LLM_BASE_URL=https://<llm-endpunkt>/v1
    LLM_API_KEY=<api-schlüssel>
    LLM_MODEL=<LLM-modellname>
    ```
+
+   `ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden: Ersteres gilt für
+   die Admin-Oberfläche, letzteres für den Alexa-Zugriff (`/api/query`).
 
    `DB_PATH` kann auf dem Standardwert bleiben. Die Compose bindet das
    Verzeichnis `gateway/data` als persistentes Volume ein; darin liegt die
@@ -169,10 +174,12 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
        GATEWAY_PORT=3000 docker compose up -d --build
 
    `GATEWAY_PORT` ist nur das Host-Port-Mapping (der Code liest `PORT`,
-   im Container 3000). Ohne Angabe: Port 3000.
+   im Container 3000). Ohne Angabe: Port 3000. Der Port wird standardmäßig nur
+   lokal gebunden (`GATEWAY_BIND=127.0.0.1`); für Zugriff aus dem LAN
+   `GATEWAY_BIND=0.0.0.0` setzen. Die Compose bringt einen Healthcheck mit.
 
 4. Admin-Oberfläche öffnen: `http://<host>:<port>/admin` — Login mit
-   `AUTH_TOKEN` (Login-Seite: `/admin/login.html`). `<port>` ist der bei
+   `ADMIN_TOKEN` (Login-Seite: `/admin/login.html`). `<port>` ist der bei
    `GATEWAY_PORT` gewählte Host-Port (Standard `3000`).
 
 5. Testmonitor prüfen (Tab „Monitor / Test“): eine Frage stellen und eine
@@ -212,11 +219,12 @@ Für den Admin-Zugriff hinter einem Reverse Proxy mit zentraler
 Authentifizierung (z. B. tinyauth/Authelia) kann der Proxy das Bearer-Token
 serverseitig setzen: die statische `<BASE_PATH>/admin`-UI und
 `<BASE_PATH>/admin/api/*` (ohne `BASE_PATH` schlicht `/admin` bzw.
-`/admin/api/*`) akzeptieren `Authorization: Bearer <AUTH_TOKEN>` auch ohne
+`/admin/api/*`) akzeptieren `Authorization: Bearer <ADMIN_TOKEN>` auch ohne
 Session-Cookie. So entfällt der doppelte App-Login, und das Token gelangt nie in
 den Browser. Im Proxy geschieht das mit der Zeile
-`proxy_set_header Authorization "Bearer <AUTH_TOKEN>";` — der Wert steht in
-`gateway/.env` und ist identisch mit dem Token der Lambda.
+`proxy_set_header Authorization "Bearer <ADMIN_TOKEN>";` — der Wert steht in
+`gateway/.env`. Das ist das **Admin**-Token; die Lambda nutzt das getrennte
+`API_TOKEN`.
 
 Mit `BASE_PATH=/smartpilot` liegt die Admin-UI unter `/smartpilot/admin/` (die
 UI-API unter `/smartpilot/admin/api/*`); die öffentliche Adapter-API bleibt unter
@@ -241,8 +249,8 @@ entschlüsselten HTTP-Pfad auswertet. Öffentlich benötigt werden:
 
 | URL | Erforderlich | Schutz |
 |---|---|---|
-| `/api/query` | ja | Bearer-Token (`AUTH_TOKEN`); Rate-Limit im vorgelagerten Proxy |
-| `/api/lambda-trace` | nur vorübergehend zur Diagnose | Bearer-Token (`AUTH_TOKEN`); im Normalbetrieb gesperrt |
+| `/api/query` | ja | Bearer-Token (`API_TOKEN`); Rate-Limit im vorgelagerten Proxy |
+| `/api/lambda-trace` | nur vorübergehend zur Diagnose | Bearer-Token (`API_TOKEN`); im Normalbetrieb gesperrt |
 
 `/api/lambda-trace` meldet die Ereignisse `invoke` und `response_sent` sowie
 die in der Lambda gemessene Dauer an das Gateway. Das erleichtert die
@@ -327,11 +335,11 @@ Der Referenzaufbau oben ist die empfohlene Basis: TLS-Terminierung und nur
 
 - **Ganze Instanz hinter TLS:** ein `location /` auf den Gateway-Port legt die
   gesamte Oberfläche inklusive `/admin/` offen; angemeldet wird sich dann über
-  den App-Login (`AUTH_TOKEN`). Nur mit einer IP-Einschränkung sinnvoll, weil
+  den App-Login (`ADMIN_TOKEN`). Nur mit einer IP-Einschränkung sinnvoll, weil
   sonst auch die Admin-UI öffentlich ist.
 - **Zentrale Anmeldung:** ein `auth_request` (z. B. gegen tinyauth/Authelia) vor
   dem Admin-Location; zusätzlich `proxy_set_header Authorization "Bearer
-  <AUTH_TOKEN>";`. Dann entfällt der App-Login, und der Token bleibt
+  <ADMIN_TOKEN>";`. Dann entfällt der App-Login, und der Token bleibt
   serverseitig. Den Unteranfrage-Pfad des `auth_request` gibt der jeweilige
   Dienst vor.
 - **Sub-Pfad (`BASE_PATH`):** das Admin-Location lautet dann
@@ -348,7 +356,7 @@ und Admin-API gehören ins lokale Netz.
 
 Gateway und öffentlicher HTTPS-Zugang sind nun vorbereitet. Im letzten Schritt
 richtest du Skill und AWS Lambda ein. Die Skill-ID begrenzt dabei den
-Alexa-Trigger der Lambda; die Lambda authentisiert sich mit `AUTH_TOKEN` am
+Alexa-Trigger der Lambda; die Lambda authentisiert sich mit `API_TOKEN` am
 öffentlichen API-Weg des Gateways. Die vollständige Einrichtung von Skill,
 Interaktionsmodell, AWS Lambda und Manifest ist in [Alexa anbinden](ALEXA.md)
 beschrieben.

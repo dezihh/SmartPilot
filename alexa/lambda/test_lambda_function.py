@@ -101,7 +101,7 @@ install_stubs()
 
 # Env vor dem Import setzen (Modul liest beim Laden)
 os.environ.setdefault("gateway_url", "https://gw.example.org")
-os.environ.setdefault("gateway_token", "test-token")
+os.environ.setdefault("api_token", "test-token")
 os.environ.setdefault("watchdog_delay", "0.1")
 os.environ.setdefault("gateway_timeout", "0.4")
 os.environ.setdefault("warteton_enabled", "true")
@@ -341,7 +341,7 @@ class GptQueryIntentTest(unittest.TestCase):
         directives = [c[1] for c in hi.response_builder.calls if c[0] == "directive"]
         self.assertTrue(any(d.get("token", "").startswith("mainhelfer-display") for d in directives))
 
-    def test_watchdog_sendet_warteton_und_beendet_mit_fehler(self):
+    def test_watchdog_sendet_warteton_und_laesst_session_offen(self):
         hi = self._handler_input()
         with mock.patch.object(lambda_function, "requests") as req:
             def slow(*a, **kw):
@@ -351,20 +351,31 @@ class GptQueryIntentTest(unittest.TestCase):
             req.post.side_effect = slow
             r = lambda_function.GptQueryIntentHandler().handle(hi)
         speak = [c for c in hi.response_builder.calls if c[0] == "speak"][0][1]
-        self.assertEqual(speak, lambda_function.SPEAK_ERROR)
+        self.assertEqual(speak, lambda_function.STRINGS["de-DE"]["error_timeout"])
         end = [c for c in hi.response_builder.calls if c[0] == "end"][0][1]
-        self.assertTrue(end)
+        self.assertFalse(end, "Session bleibt offen")
         self.assertEqual(len(hi.directive_service.enqueued), 1, "Warteton nach Watchdog")
         # auf Worker-Thread warten, damit der Test nicht auf den Daemon wartet
         time.sleep(0.1)
 
-    def test_gateway_fehler_spricht_error(self):
+    def test_gateway_fehler_spricht_unerreichbar(self):
         hi = self._handler_input()
         with mock.patch.object(lambda_function, "requests") as req:
             req.post.side_effect = RuntimeError("kaputt")
+            r = lambda_function.GptQueryIntentHandler().handle(hi)
+        speak = [c for c in hi.response_builder.calls if c[0] == "speak"][0][1]
+        self.assertEqual(speak, lambda_function.STRINGS["de-DE"]["error_unreachable"])
+
+    def test_gateway_timeout_exception_spricht_timeout(self):
+        class ReadTimeout(Exception):
+            pass
+
+        hi = self._handler_input()
+        with mock.patch.object(lambda_function, "requests") as req:
+            req.post.side_effect = ReadTimeout("zu spaet")
             lambda_function.GptQueryIntentHandler().handle(hi)
         speak = [c for c in hi.response_builder.calls if c[0] == "speak"][0][1]
-        self.assertEqual(speak, lambda_function.SPEAK_ERROR)
+        self.assertEqual(speak, lambda_function.STRINGS["de-DE"]["error_timeout"])
 
     def test_send_progressive_ohne_request_id_ohne_call(self):
         hi = FakeHandlerInput(request=FakeRequest(request_id=None), session=FakeSession())

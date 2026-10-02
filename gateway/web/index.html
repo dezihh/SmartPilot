@@ -277,6 +277,13 @@
             <option value="http">Streamable HTTP</option>
             <option value="stdio">stdio (lokal gestartet)</option>
           </select>
+          <div id="mcp-stdio-hint" class="field-help hidden">
+            stdio startet einen lokalen Prozess <strong>im Gateway-Container</strong> — es gibt
+            keine URL. Trage den Befehl so ein, wie er im Container verfügbar ist
+            (z. B. <code>node_modules/.bin/mcp-searxng</code>), Argumente als Komma-Liste
+            und nötige Umgebungsvariablen als <code>KEY=WERT</code> je Zeile. Der Prozess
+            läuft mit den Rechten des Containers — nur vertrauenswürdige Befehle eintragen.
+          </div>
           <label id="mcp-url-label">URL (Streamable HTTP)</label>
           <input id="mcp-url" type="text" placeholder="https://<home-assistant-host>/api/mcp">
           <label id="mcp-token-label">Bearer-Token (z. B. HA-LLAT, leer = keiner)</label>

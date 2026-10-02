@@ -105,6 +105,13 @@ export function meetsMinVersion(current: string, min: string | undefined): boole
 export function manifestDangerous(m: PackageManifest): { dangerous: boolean; items: string[]; info: string[] } {
   const items: string[] = [];
   const info: string[] = [];
+  // stdio-Server starten einen beliebigen Prozess im Gateway-Container
+  // (command/args) - immer als gefaehrlich einstufen, unabhaengig vom command.
+  for (const s of m.servers ?? []) {
+    if (s.transport === 'stdio') {
+      items.push(`Server "${s.name}" laeuft als stdio-Prozess (command "${s.command ?? ''}") - fuehrt Programme im Gateway-Container aus`);
+    }
+  }
   for (const f of m.functions ?? []) {
     if (/\bshell\s*\(/.test(f.template)) items.push(`Funktion "${f.name}" nutzt shell() - fuehrt Befehle im Gateway-Container aus`);
     if (/\bhttp\s*\(/.test(f.template)) info.push(`Funktion "${f.name}" nutzt http() - ruft externe URLs auf`);

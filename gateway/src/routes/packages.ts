@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../auth.js';
+import { requireAdminAuth } from '../auth.js';
 import {
   installPackage,
   listInstalledPackages,
@@ -85,7 +85,7 @@ async function fetchManifest(id: string): Promise<PackageManifest> {
 }
 
 // Verfuegbare Pakete (Registry).
-packagesRoutes.get('/admin/api/packages/registry', requireAuth, async (_req, res) => {
+packagesRoutes.get('/admin/api/packages/registry', requireAdminAuth, async (_req, res) => {
   try {
     res.json({ packages: await registryEntries(true) });
   } catch (e) {
@@ -94,7 +94,7 @@ packagesRoutes.get('/admin/api/packages/registry', requireAuth, async (_req, res
 });
 
 // Manifest eines Registry-Pakets (fuer die Vorschau).
-packagesRoutes.get('/admin/api/packages/manifest/:id', requireAuth, async (req, res) => {
+packagesRoutes.get('/admin/api/packages/manifest/:id', requireAdminAuth, async (req, res) => {
   try {
     const m = await fetchManifest(String(req.params.id ?? ''));
     const danger = manifestDangerous(m);
@@ -116,7 +116,7 @@ packagesRoutes.get('/admin/api/packages/manifest/:id', requireAuth, async (req, 
 });
 
 // Vorschau fuer Offline-Manifest (im Body).
-packagesRoutes.post('/admin/api/packages/preview', requireAuth, (req, res) => {
+packagesRoutes.post('/admin/api/packages/preview', requireAdminAuth, (req, res) => {
   try {
     const body = req.body as { manifest?: unknown };
     const parsed = parseManifest(JSON.stringify(body.manifest ?? {}));
@@ -142,7 +142,7 @@ packagesRoutes.post('/admin/api/packages/preview', requireAuth, (req, res) => {
 });
 
 // Install: Registry-Id ODER Offline-Manifest im Body; Parameter per Body.
-packagesRoutes.post('/admin/api/packages/:id/install', requireAuth, async (req, res) => {
+packagesRoutes.post('/admin/api/packages/:id/install', requireAdminAuth, async (req, res) => {
   try {
     const body = req.body as { manifest?: unknown; params?: Record<string, string>; dangerousAck?: boolean; dryRun?: boolean; decisions?: Record<string, 'take' | 'keep'> };
     let manifest: PackageManifest;
@@ -175,7 +175,7 @@ packagesRoutes.post('/admin/api/packages/:id/install', requireAuth, async (req, 
   }
 });
 
-packagesRoutes.post('/admin/api/packages/:id/uninstall', requireAuth, (req, res) => {
+packagesRoutes.post('/admin/api/packages/:id/uninstall', requireAdminAuth, (req, res) => {
   try {
     res.json({ report: uninstallPackage(String(req.params.id)) });
     invalidateMcpCache();
@@ -186,7 +186,7 @@ packagesRoutes.post('/admin/api/packages/:id/uninstall', requireAuth, (req, res)
 });
 
 // Installierte Pakete inkl. Items.
-packagesRoutes.get('/admin/api/packages', requireAuth, async (_req, res) => {
+packagesRoutes.get('/admin/api/packages', requireAdminAuth, async (_req, res) => {
   const installed = listInstalledPackages().map((p) => ({
     ...p,
     items: listPackageItems(p.id).map((i) => ({ kind: i.kind, name: i.name, hash: i.content_hash })),
@@ -201,7 +201,7 @@ packagesRoutes.get('/admin/api/packages', requireAuth, async (_req, res) => {
 });
 
 // Lokale Abweichungen eines installierten Pakets (Diff vor dem Reinstall).
-packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAuth, (req, res) => {
+packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAdminAuth, (req, res) => {
   try {
     res.json({ conflicts: conflictItems(String(req.params.id ?? '')) });
   } catch (e) {
@@ -211,7 +211,7 @@ packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAuth, (req, res) 
 
 // --- Sicherung / Rücksicherung (logischer JSON-Export, ohne Logs) ---
 
-packagesRoutes.get('/admin/api/backup', requireAuth, (req, res) => {
+packagesRoutes.get('/admin/api/backup', requireAdminAuth, (req, res) => {
   const includeTokens = String(req.query.tokens ?? '0') === '1';
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="smartpilot-config-${new Date().toISOString().slice(0, 10)}.json"`);
@@ -233,7 +233,7 @@ packagesRoutes.get('/admin/api/backup', requireAuth, (req, res) => {
   });
 });
 
-packagesRoutes.post('/admin/api/backup/restore', requireAuth, (req, res) => {
+packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) => {
   const body = req.body as { backup?: Record<string, unknown>; confirm?: boolean };
   if (!body.confirm) return res.status(400).json({ error: 'Bestaetigung erforderlich (confirm: true)' });
   const backup = body.backup;

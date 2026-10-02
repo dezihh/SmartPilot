@@ -53,6 +53,25 @@ Die aktive Sprache kommt aus dem Gateway-Setting `registry_language`
 `packages/<lang>/...` — weitere Sprachen (`packages/en/...`) koennen so ohne
 Umbau ergaenzt werden.
 
+## Registry-Kanaele (stabil / community)
+
+Das Gateway liest immer **einen** Kanal: `PACKAGES_REGISTRY_URL` + `/<lang>`
+(Default: `main`). Ein Kanal ist kein Zusammenfuehren — zeigt die Variable auf
+einen Branch, kommen die Pakete genau dieses Branches.
+
+- **`main`** = stabiler, kuratierter Katalog (Default).
+- **`packages/community`** = Vorschlags-/Testkanal. Von `main` abgezweigt;
+  neue/Community-Pakete kommen zuerst hierhin (`packages/de/<id>/` **und**
+  Eintrag in `packages/de/index.json`).
+- **Testen**: `PACKAGES_REGISTRY_URL=https://raw.githubusercontent.com/dezihh/SmartPilot/packages/community/packages`
+  setzen und den Gateway-Container neu erstellen. Die Registry wird live
+  gelesen — kein Build und kein Release noetig.
+- **Nach `main` uebernehmen**: Paketordner + Index-Eintrag per Pull Request
+  mergen. Das ist ein reiner Datei-Merge und loest **kein** GitHub-Release aus
+  (Releases haengen nur an `alexa/lambda/**` bzw. Tags). Nur wenn ein Paket
+  eine neue Laufzeit-Abhaengigkeit braucht (z. B. ein neues stdio-Binary im
+  Container), ist ein Gateway-Update noetig.
+
 ## Manifest-Felder
 
 | Feld | Pflicht | Zweck |
@@ -153,10 +172,11 @@ Install:
   geprueft; zu alte Gateways lehnen das Paket mit klarer Meldung ab.
 - **Nachvollziehbarkeit**: `changelog` (Upgrade-Hinweise).
 - **Sicherheit** (in der UI sichtbar):
-  - `shell()`-Templates gelten als **gefaehrlich** und verlangen beim Install
-    eine ausdrueckliche Bestaetigung (`dangerousAck`).
+  - `shell()`-Templates und **jeder `stdio`-Server** (startet einen Prozess im
+    Gateway-Container) gelten als **gefaehrlich** und verlangen beim Install
+    eine ausdrueckliche Bestaetigung (`dangerousAck`) — unabhaengig vom Befehl.
   - `http()`-Templates werden als Info ausgewiesen (externe Aufrufe).
-  - Pakete ohne `shell()`/`http()` gelten als nur lesend/unkritisch.
+  - Pakete ohne `shell()`/`http()`/`stdio` gelten als nur lesend/unkritisch.
 - **Updates**: „Neu installieren" ist ein Upsert. Lokal geaenderte Zeilen
   werden erkannt und pro Element zum Entscheiden angezeigt
   („Paket-Version uebernehmen" / „lokale Aenderung behalten" / abbrechen).

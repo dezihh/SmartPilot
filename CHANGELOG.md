@@ -22,6 +22,51 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+### Geändert (Breaking)
+
+- **Getrennte Token mit sprechenden Namen:** `ADMIN_TOKEN` schützt nur den
+  Admin-Bereich, `API_TOKEN` nur die Adapter-API (`/api/query`,
+  `/api/lambda-trace`); die Lambda nutzt `api_token`. Die alten Namen
+  `AUTH_TOKEN` und `QUERY_TOKEN` entfallen. Bestehende Installationen:
+  `gateway/.env` (`ADMIN_TOKEN`/`API_TOKEN`), Repo-Secret `API_TOKEN`,
+  Lambda-Env `gateway_token` → `api_token` (Details in
+  `doc/INSTALLATION.md`).
+
+### Sicherheit
+
+- `/api/query` erhält Rate-Limit (`QUERY_RATE_MAX`) und Längenlimit
+  (`QUERY_MAX_CHARS`); `trust proxy` ist über `TRUST_PROXY` konfigurierbar
+  (vorher sah der Login-Limiter hinter nginx nur die Proxy-IP).
+- Paket-Install: jeder `stdio`-Server gilt als gefährlich und verlangt
+  `dangerousAck` (vorher nur `shell()`-Templates).
+- Compose bindet den Port standardmäßig nur lokal (`GATEWAY_BIND=127.0.0.1`),
+  bringt einen Healthcheck, das Basis-Image ist gepinnt; Admin-Sessions haben
+  eine absolute Obergrenze (`SESSION_MAX_HOURS`) zusätzlich zur Sliding-TTL.
+- Lambda sendet die `applicationId` als Header `X-Alexa-Skill-Id`; das Gateway
+  prüft sie gegen `ALEXA_SKILL_ID` (derzeit nur Warnung).
+- Router: Ganz-Wort-Treffer, bei Gleichstand gewinnt die längste Phrase,
+  Verneinungen blockieren Vorgänge mit Seiteneffekt, kombinierte Anfragen
+  gehen komplett an den Agenten (auch hybrid/llm).
+- Abhängigkeiten: `mcp-searxng` 2.5.0 + `ip-address`-Override → `npm audit`
+  ohne Funde; Dependabot für npm/pip/github-actions.
+
+### Hinzugefügt
+
+- Testbuttons für Vorgänge, Funktionen und installierte Pakete (führen direkt
+  im Monitor aus bzw. rendern das Template).
+- Registry-Kanäle (stabil `main` / Vorschlag `packages/community`) in
+  `packages/README.md` dokumentiert.
+- Einrichtungshinweis für `stdio`-Server in der Tool-Registry.
+
+### Behoben
+
+- Alexa: getrennte Fehlermeldungen („Ich erreiche meinen Server gerade nicht."
+  / „Das dauert zu lange.") statt eines Sammeltexts; die Session bleibt nach
+  einem Fehler offen.
+- Einheitliche Du-Anrede (Willkommen/Hilfe zuvor „Sie").
+- HelpIntent fragt die Gateway-`hilfe` ab (kennt die installierten Fähigkeiten)
+  statt eines festen Texts.
+
 ## [0.1.8] – 2026-09-30
 
 ### Hinzugefügt
@@ -159,7 +204,7 @@ Findings aus dem Diff-Review zu v0.1.2.
 
 - Reverse-Proxy-Betrieb: die statische Admin-UI (`/admin/`) akzeptiert jetzt
   auch das Bearer-Token, nicht nur den Session-Cookie. Ein vorgelagerter Proxy
-  (z. B. tinyauth/Authelia) kann `Authorization: Bearer <AUTH_TOKEN>` setzen und
+  (z. B. tinyauth/Authelia) kann `Authorization: Bearer <ADMIN_TOKEN>` setzen und
   den App-Login überspringen; das Token bleibt proxy-seitig und gelangt nie in
   den Browser (Issue #10)
 
@@ -233,7 +278,7 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
 ### Gateway
 
 - `POST /api/query` als einziger Adapter-Eingang (Bearer-Token
-  `AUTH_TOKEN`, constant-time Vergleich); Admin-Oberfläche mit
+  `ADMIN_TOKEN`, constant-time Vergleich); Admin-Oberfläche mit
   Session-Login (HttpOnly, 12 h), Rate-Limit und JSON-Body-Limit (1 MB)
 - Router mit drei Antwortwegen pro Vorgang: `deterministic`, `hybrid`,
   `llm` — Trigger-Phrasen mit Fuzzy-Schwellwert, ohne Treffer übernimmt

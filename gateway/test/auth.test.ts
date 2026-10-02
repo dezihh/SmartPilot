@@ -1,6 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { requireAuth, requestAuthorized, bearerToken, createSession, sessionValid, cookieFor } from '../src/auth.js';
+import { requireAdminAuth, requestAuthorized, bearerToken, createSession, sessionValid, cookieFor } from '../src/auth.js';
 import { config } from '../src/config.js';
 
 interface Captured {
@@ -30,48 +30,48 @@ function authHeaders(authorization?: string, cookie?: string) {
 
 beforeEach(() => {
   // Sessions-Map leeren: gueltige Session erzeugen und direkt wieder loeschen
-  const id = createSession(config.authToken);
+  const id = createSession(config.adminToken);
   if (id) sessionValid({ headers: { cookie: `va_session=${id}` } } as never);
 });
 
-test('requireAuth: ohne Bearer -> 401, next nicht gerufen', () => {
+test('requireAdminAuth: ohne Bearer -> 401, next nicht gerufen', () => {
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders() as never, res, () => {
+  requireAdminAuth(authHeaders() as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, 401);
   assert.equal(captured.nextCalled, false);
 });
 
-test('requireAuth: falscher Bearer -> 401', () => {
+test('requireAdminAuth: falscher Bearer -> 401', () => {
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders('Bearer falsch') as never, res, () => {
+  requireAdminAuth(authHeaders('Bearer falsch') as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, 401);
 });
 
-test('requireAuth: kuerzerer Token (Laengen-Fall timingSafeEqual) -> 401, kein Wurf', () => {
+test('requireAdminAuth: kuerzerer Token (Laengen-Fall timingSafeEqual) -> 401, kein Wurf', () => {
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders('Bearer k') as never, res, () => {
+  requireAdminAuth(authHeaders('Bearer k') as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, 401);
   assert.equal(captured.nextCalled, false);
 });
 
-test('requireAuth: richtiger Bearer -> next gerufen', () => {
+test('requireAdminAuth: richtiger Bearer -> next gerufen', () => {
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders(`Bearer ${config.authToken}`) as never, res, () => {
+  requireAdminAuth(authHeaders(`Bearer ${config.adminToken}`) as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, undefined);
   assert.equal(captured.nextCalled, true);
 });
 
-test('requireAuth: Bearer-Praefix fehlt (rohes Token) -> 401', () => {
+test('requireAdminAuth: Bearer-Praefix fehlt (rohes Token) -> 401', () => {
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders(config.authToken) as never, res, () => {
+  requireAdminAuth(authHeaders(config.adminToken) as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, 401);
@@ -79,7 +79,7 @@ test('requireAuth: Bearer-Praefix fehlt (rohes Token) -> 401', () => {
 
 test('createSession: falsches Token -> null, richtiges -> Session-ID', () => {
   assert.equal(createSession('falsch'), null);
-  const id = createSession(config.authToken);
+  const id = createSession(config.adminToken);
   assert.match(id ?? '', /^[0-9a-f]{64}$/);
 });
 
@@ -88,7 +88,7 @@ test('sessionValid: unbekannte Session -> false', () => {
 });
 
 test('sessionValid: gueltige Session -> true, Sliding-Refresh laesst zweiten Aufruf bestehen', () => {
-  const id = createSession(config.authToken)!;
+  const id = createSession(config.adminToken)!;
   const req = { headers: { cookie: `other=1; va_session=${id}; more=2` } } as never;
   assert.equal(sessionValid(req), true);
   assert.equal(sessionValid(req), true);
@@ -102,10 +102,10 @@ test('cookieFor: HttpOnly + SameSite=Lax + Path=/admin', () => {
   assert.ok(cookie.includes('Path=/admin'));
 });
 
-test('requireAuth akzeptiert gueltigen Session-Cookie ohne Bearer', () => {
-  const id = createSession(config.authToken)!;
+test('requireAdminAuth akzeptiert gueltigen Session-Cookie ohne Bearer', () => {
+  const id = createSession(config.adminToken)!;
   const { res, captured } = fakeRes();
-  requireAuth(authHeaders(undefined, `va_session=${id}`) as never, res, () => {
+  requireAdminAuth(authHeaders(undefined, `va_session=${id}`) as never, res, () => {
     captured.nextCalled = true;
   });
   assert.equal(captured.status, undefined);
@@ -113,8 +113,8 @@ test('requireAuth akzeptiert gueltigen Session-Cookie ohne Bearer', () => {
 });
 
 test('requestAuthorized: Bearer ODER Session, sonst false (Issue #10)', () => {
-  assert.equal(requestAuthorized(authHeaders(`Bearer ${config.authToken}`) as never), true);
-  const id = createSession(config.authToken)!;
+  assert.equal(requestAuthorized(authHeaders(`Bearer ${config.adminToken}`) as never), true);
+  const id = createSession(config.adminToken)!;
   assert.equal(requestAuthorized(authHeaders(undefined, `va_session=${id}`) as never), true);
   assert.equal(requestAuthorized(authHeaders() as never), false);
   assert.equal(requestAuthorized(authHeaders('Bearer falsch') as never), false);

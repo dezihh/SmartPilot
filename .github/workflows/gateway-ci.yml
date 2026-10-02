@@ -21,7 +21,8 @@ jobs:
     # config.ts erzwingt diese Werte beim Import; die Tests brauchen keine
     # echten Dienste (fetch/DB werden isoliert).
     env:
-      AUTH_TOKEN: ci-token
+      ADMIN_TOKEN: ci-token
+      API_TOKEN: ci-query-token
       LLM_BASE_URL: http://127.0.0.1:9
       LLM_API_KEY: ci-key
       LLM_MODEL: ci-model

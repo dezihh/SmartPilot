@@ -7,7 +7,7 @@ const API = (() => {
 let bootstrap = { settings: {}, actions: [], functions: [], servers: [], prompts: [] };
 
 function token() {
-  // Session-Cookie (va_session) authentifiziert via requireAuth; nur bei
+  // Session-Cookie (va_session) authentifiziert via requireAdminAuth; nur bei
   // explizit eingetragenem Token im Token-Feld kommt ein Bearer mit.
   return document.body.dataset.token ?? '';
 }
@@ -393,8 +393,10 @@ function renderActions() {
       <td><span class="badge">${esc(a.mode)}</span></td>
       <td>${esc((a.triggers ?? []).join(', '))}</td>
       <td>${a.enabled ? '✔' : '✖'}</td>
-      <td class="actions"><button class="btn small">Bearbeiten</button></td>`;
-    tr.querySelector('button').onclick = () => openActionEditor(a.id);
+      <td class="actions"><button class="btn small" data-test title="Ersten Trigger im Monitor ausführen">Testen</button><button class="btn small">Bearbeiten</button></td>`;
+    const buttons = tr.querySelectorAll('button');
+    buttons[0].onclick = () => testInMonitor((a.triggers ?? [])[0] || a.name);
+    buttons[1].onclick = () => openActionEditor(a.id);
     tbody.append(tr);
   }
 }
@@ -472,8 +474,10 @@ function renderFunctions() {
       <td><code title="Einbettung in Templates: {{ fn('${esc(f.name)}') }}">${esc(f.name)}</code></td>
       <td>${esc(f.description)}</td>
       <td>${f.enabled ? '✔' : '✖'}</td>
-      <td class="actions"><button class="btn small">Bearbeiten</button></td>`;
-    tr.querySelector('button').onclick = () => openFunctionEditor(f.id);
+      <td class="actions"><button class="btn small" data-test title="Template live rendern">Testen</button><button class="btn small">Bearbeiten</button></td>`;
+    const buttons = tr.querySelectorAll('button');
+    buttons[0].onclick = () => { openFunctionEditor(f.id); previewFunction(); };
+    buttons[1].onclick = () => openFunctionEditor(f.id);
     tbody.append(tr);
   }
 }
@@ -750,6 +754,7 @@ function toggleMcpTransportFields(transport) {
   for (const id of ['mcp-command-label', 'mcp-command', 'mcp-args-label', 'mcp-args', 'mcp-env-label', 'mcp-env']) {
     $(id).classList.toggle('hidden', !stdio);
   }
+  $('mcp-stdio-hint').classList.toggle('hidden', !stdio);
 }
 
 function openServerEditor(id) {
@@ -827,6 +832,34 @@ async function deleteServer() {
   await api(`/mcp-servers/${id}`, { method: 'DELETE' });
   await loadBootstrap();
   $('mcp-editor').classList.add('hidden');
+}
+
+// Testbutton aus Vorgaengen/Paketen: Phrase im Monitor ausfuehren (Ergebnis+Trace).
+function testInMonitor(phrase) {
+  showTab('monitor');
+  $('test-text').value = phrase;
+  sendTest();
+}
+
+// Paket: ersten Vorgang (sonst erste Funktion) des Pakets testen.
+function testPackage(id) {
+  const p = (pkgState.installed ?? []).find((x) => x.id === id);
+  const items = p?.items ?? [];
+  const actionName = items.find((i) => i.kind === 'action')?.name;
+  if (actionName) {
+    const a = (bootstrap.actions ?? []).find((x) => x.name === actionName);
+    testInMonitor((a?.triggers ?? [])[0] || actionName);
+    return;
+  }
+  const fnName = items.find((i) => i.kind === 'function')?.name;
+  const f = fnName ? (bootstrap.functions ?? []).find((x) => x.name === fnName) : null;
+  if (f) {
+    showTab('functions');
+    openFunctionEditor(f.id);
+    previewFunction();
+    return;
+  }
+  alert('Dieses Paket hat keinen direkt testbaren Vorgang/eine Funktion.');
 }
 
 async function sendTest() {
@@ -1009,11 +1042,12 @@ function renderPackages() {
   $('pkg-available').innerHTML = avail.length ? avail.join('') : '<div class="field-help">Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.</div>';
   const inst = pkgState.installed.map((p) => {
     const items = (p.items ?? []).map((i) => `<li>${escHtml(i.kind)}: ${escHtml(i.name)}</li>`).join('');
-    return `<div class="pkg-installed-item"><div><strong>${escHtml(p.id)}</strong> v${escHtml(p.version)} <span class="pkg-version">${escHtml(p.source)}</span><div class="field-help">${escHtml(p.installed_at)}</div></div><div class="toolbar"><button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button><button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button></div><details><summary>Enthält</summary><ul>${items}</ul></details></div>`;
+    return `<div class="pkg-installed-item"><div><strong>${escHtml(p.id)}</strong> v${escHtml(p.version)} <span class="pkg-version">${escHtml(p.source)}</span><div class="field-help">${escHtml(p.installed_at)}</div></div><div class="toolbar"><button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button><button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button><button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button></div><details><summary>Enthält</summary><ul>${items}</ul></details></div>`;
   });
   $('pkg-installed').innerHTML = inst.length ? inst.join('') : '<div class="field-help">Noch keine Pakete installiert.</div>';
   for (const b of document.querySelectorAll('#pkg-available [data-install]')) b.onclick = () => showInstallForm(b.dataset.install, false);
   for (const b of document.querySelectorAll('[data-reinstall]')) b.onclick = () => showInstallForm(b.dataset.reinstall, null);
+  for (const b of document.querySelectorAll('[data-testpkg]')) b.onclick = () => testPackage(b.dataset.testpkg);
   for (const b of document.querySelectorAll('[data-uninstall]')) b.onclick = async () => {
     if (!confirm(`Paket "${b.dataset.uninstall}" entfernen? Nur unveränderte Zeilen werden gelöscht.`)) return;
     try {

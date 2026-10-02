@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { request, type IncomingHttpHeaders } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-process.env.AUTH_TOKEN = 'test-secret';
+process.env.ADMIN_TOKEN = 'test-secret';
+process.env.API_TOKEN = 'test-query-secret';
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
@@ -111,8 +112,8 @@ test('Oeffentliche API bleibt auf der Wurzel (/api/query verlangt Auth)', async 
   assert.equal(no.status, 401);
 });
 
-test('Oeffentliche API bleibt auf der Wurzel: mit Token und ohne text -> 400 (Route existiert)', async () => {
-  const r = await call('POST', '/api/query', { body: {}, token: 'test-secret' });
+test('Oeffentliche API bleibt auf der Wurzel: mit API_TOKEN und ohne text -> 400 (Route existiert)', async () => {
+  const r = await call('POST', '/api/query', { body: {}, token: 'test-query-secret' });
   assert.equal(r.status, 400);
 });
 

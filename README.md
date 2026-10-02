@@ -88,11 +88,15 @@ LLM-Schnittstelle (mit Tool-Calling).
 git clone https://github.com/dezihh/SmartPilot.git
 cd SmartPilot
 cp gateway/.env.example gateway/.env
-# gateway/.env ausfüllen: AUTH_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
+# gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
 GATEWAY_PORT=3000 docker compose up -d --build
 ```
 
-Danach: `http://<host>:3000/admin` öffnen, mit `AUTH_TOKEN` anmelden und im
+Der Compose bindet den Port standardmäßig nur lokal (`GATEWAY_BIND=127.0.0.1`).
+Für Zugriff aus dem LAN/über eine andere Maschine `GATEWAY_BIND=0.0.0.0`
+setzen — die Admin-UI gehört ohnehin nur ins vertrauenswürdige Netz.
+
+Danach: `http://<host>:3000/admin` öffnen, mit `ADMIN_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.
 
 > Mit `BASE_PATH` (Sub-URL hinter einem Reverse Proxy) liegt die Admin-UI
@@ -116,8 +120,10 @@ Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
 
 ## Sicherheit
 
-- **`AUTH_TOKEN` — der eine Schlüssel.** Schützt `/api/query` (Alexa-Zugriff)
-  und die Admin-Oberfläche, wird constant-time verglichen. Lang und zufällig
+- **Zwei getrennte Schlüssel.** `API_TOKEN` schützt nur die Adapter-API
+  (`/api/query`, `/api/lambda-trace`), `ADMIN_TOKEN` nur die Admin-Oberfläche.
+  Beide werden constant-time verglichen und müssen sich unterscheiden — wer das
+  API-Token hat, kommt damit **nicht** in den Admin-Bereich. Lang und zufällig
   wählen.
 - **Der öffentliche Weg — Reverse-Proxy mit TLS.** Nur dieser eine Endpunkt
   (nginx) darf ins Internet; die Admin-UI selbst nie exponieren —

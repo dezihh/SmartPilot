@@ -9,7 +9,7 @@ Der Monitor spart bei der Fehlersuche mehrere externe Schichten.
 
 1. Prüfe, ob der Gateway-Prozess läuft.
 2. Prüfe Host und `PORT`.
-3. Trage den exakten Wert aus `AUTH_TOKEN` rechts oben ein.
+3. Trage den exakten Wert aus `ADMIN_TOKEN` rechts oben ein.
 4. Prüfe Browser-Netzwerkfehler und Gateway-Log.
 
 ## Tool-Registry
@@ -160,7 +160,7 @@ Das Gateway lädt die Registry über `raw.githubusercontent.com`
 3. Prüfe, ob die Trigger-Permission der Lambda auf die tatsächliche Skill-ID
    beschränkt ist.
 4. Prüfe öffentlichen HTTPS-Endpunkt und Zertifikat.
-5. Prüfe Lambda-`gateway_url` und `gateway_token`.
+5. Prüfe Lambda-`gateway_url` und `api_token` (muss dem Gateway-`API_TOKEN` entsprechen).
 6. Vergleiche Lambda- und Gateway-Logs anhand des Zeitpunkts.
 7. Prüfe den Buildstatus des Interaction Model und des Manifests.
 

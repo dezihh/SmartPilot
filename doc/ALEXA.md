@@ -11,7 +11,7 @@ Zwischenstand.
 
 - Abgeschlossene [Installation](INSTALLATION.md): Das Gateway läuft, hat eine
   öffentliche HTTPS-Adresse, und `POST /api/query` antwortet mit dem
-  Bearer-Token `AUTH_TOKEN`.
+  Bearer-Token `ADMIN_TOKEN`.
 - Ein Amazon-Developer-Konto.
 - Für Weg B zusätzlich ein AWS-Konto.
 
@@ -128,9 +128,9 @@ Im `lambda/`-Ordner eine `config.json` anlegen (Vorlage:
 ```json
 {
   "gateway_url": "https://<gateway-host>",
-  "gateway_token": "<AUTH_TOKEN>",
+  "api_token": "<API_TOKEN>",
   "watchdog_delay": "5",
-  "gateway_timeout": "28",
+  "gateway_timeout": "32",
   "skill_name": "SmartPilot",
   "assistant_name": "Dein SmartPilot",
   "alexa_skill_id": "amzn1.ask.skill.<deine-id>"
@@ -140,13 +140,16 @@ Im `lambda/`-Ordner eine `config.json` anlegen (Vorlage:
 Hosted Skills haben keine Umgebungsvariablen wie Weg B; die Werte stehen daher
 in dieser Datei. Sie liegt damit im hosted CodeCommit-Repo (nur für dein Konto
 sichtbar). `alexa_skill_id` ist optional, aber empfohlen: Die Lambda lehnt dann
-Events mit fremder `applicationId` ab.
+Events mit fremder `applicationId` ab. Zusätzlich sendet die Lambda die
+`applicationId` als Header `X-Alexa-Skill-Id` an das Gateway; ist dort
+`ALEXA_SKILL_ID` gesetzt, wird eine Abweichung protokolliert (derzeit nur
+Warnung).
 
 ### 3.4 Deploy und Test
 
 **Deploy** klicken (lädt Abhängigkeiten, baut und deployt). Danach testen
 (Schritt 5). Ein LaunchRequest („Alexa, öffne …") funktioniert auch ohne
-erreichbares Gateway; freie Fragen brauchen `gateway_url` und `gateway_token`.
+erreichbares Gateway; freie Fragen brauchen `gateway_url` und `api_token`.
 
 ## 4. Weg B: eigene AWS-Lambda (empfohlen)
 
@@ -172,10 +175,10 @@ erreichbares Gateway; freie Fragen brauchen `gateway_url` und `gateway_token`.
 | Variable | Wert |
 |---|---|
 | `gateway_url` | öffentliche Basisadresse des Gateways |
-| `gateway_token` | muss dem `AUTH_TOKEN` des Gateways entsprechen |
+| `api_token` | muss dem `API_TOKEN` des Gateways entsprechen |
 | `alexa_skill_id` | Skill-ID deines Skills (Schritt 1, Punkt 8: **Build → Endpoint → „Your Skill ID“**); abweichende IDs werden abgelehnt |
 | `watchdog_delay` | z. B. `5` (Warteton, wenn das Gateway länger braucht) |
-| `gateway_timeout` | z. B. `28` (Timeout der Anfrage ans Gateway; muss unter dem Funktions-Timeout liegen) |
+| `gateway_timeout` | z. B. `32` (Timeout der Anfrage ans Gateway; muss unter dem Funktions-Timeout liegen, z. B. Lambda 35 s) |
 | `skill_name` | Anzeigename, z. B. `SmartPilot` |
 | `assistant_name` | Name im Gespräch, z. B. `Dein SmartPilot` |
 | `apl_exit_delay_ms` | z. B. `90000` (Anzeige auf dem Echo Show) |

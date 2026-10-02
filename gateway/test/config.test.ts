@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 // config.ts verlangt Pflicht-Env beim Import -> vor dem dynamischen Import setzen.
-process.env.AUTH_TOKEN = 'test-secret';
+process.env.ADMIN_TOKEN = 'test-secret';
+process.env.API_TOKEN = 'test-query-secret';
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';

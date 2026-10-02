@@ -24,25 +24,25 @@ jobs:
           v = json.load(sys.stdin) or {}
           for k in sorted(v):
               val = v[k]
-              shown = "<leer>" if not val else ("***mask***" if "token" in k or "url" in k or k in ("gateway_token","gateway_url") else val)
+              shown = "<leer>" if not val else ("***mask***" if "token" in k or "url" in k or k in ("api_token","gateway_url") else val)
               print(f"{k} = {shown}")
           '
 
       - name: Gateway direkt testen (Token nur im Header, nie loggen)
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-          GATEWAY_TOKEN: ${{ secrets.GATEWAY_TOKEN }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
         run: |
           BASE="${GATEWAY_URL%/}"
           echo "Gateway-Base: ${BASE%/} (Secret-Wert wird in Logs maskiert)"
           echo "=== URLs vorhanden? ==="
           curl -s -o /dev/null -w "/api/query  -> %{http_code}\n" -X POST \
-            -H "Authorization: Bearer ${GATEWAY_TOKEN}" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${API_TOKEN}" -H "Content-Type: application/json" \
             -d '{"sessionId":"debug-$(date +%s)","text":"wie ist der hausstatus"}' \
             --max-time 40 "${BASE}/api/query" || echo "api/query FEHLGESCHLAGEN (curl exit $?)"
           curl -s --max-time 10 -o /dev/null -w "/            -> %{http_code}\n" "${BASE}/" || echo "Root-Check fehlgeschlagen"
           echo "=== Response-Body (gekuerzt, Token-frei) ==="
-          curl -s -X POST -H "Authorization: Bearer ${GATEWAY_TOKEN}" -H "Content-Type: application/json" \
+          curl -s -X POST -H "Authorization: Bearer ${API_TOKEN}" -H "Content-Type: application/json" \
             -d '{"sessionId":"debug-body","text":"wie ist der hausstatus"}' \
             --max-time 40 "${BASE}/api/query" | head -c 800
           echo ""

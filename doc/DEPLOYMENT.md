@@ -18,7 +18,7 @@ ausschließlich über die Lambda und `POST /api/query` (Bearer-Token).
 
 - Ein laufendes, öffentlich per HTTPS erreichbares Gateway (siehe
   [Installation](INSTALLATION.md)); `POST /api/query` antwortet mit dem
-  Bearer-Token `AUTH_TOKEN`.
+  Bearer-Token `API_TOKEN`.
 - Ein vorhandener Alexa-Skill (Skill-ID). Die Anlage beschreibt
   [Alexa anbinden](ALEXA.md); ohne Skill gibt es keine `ALEXA_SKILL_ID`.
 - Ein AWS-Konto und ein Deploy-Benutzer mit Rechten für Lambda und IAM
@@ -37,7 +37,7 @@ Nur Namen und Zweck – die Werte liegen ausschließlich in den Repo-Secrets.
 | `AWS_REGION` | AWS-Region (Default `eu-west-1`) |
 | `AWS_LAMBDA_ROLE` | optional: bestehende Rollen-ARN überspringt die Auto-Anlage |
 | `GATEWAY_URL` | öffentliche Basisadresse des Gateways |
-| `GATEWAY_TOKEN` | muss dem `AUTH_TOKEN` des Gateways entsprechen |
+| `API_TOKEN` | muss dem `API_TOKEN` des Gateways entsprechen (Adapter-API; genutzt von Lambda- und Debug-Workflows) |
 | `ALEXA_SKILL_ID` | Skill-ID: Lambda-`applicationId`-Prüfung und Invoke-Trigger |
 | `ASK_AUTH_INFO` / `ASK_CLI_CONFIG` | ASK-CLI-/SMAPI-Anmeldung (base64), für Skill-Sync |
 
@@ -150,7 +150,7 @@ aktuelle Zustand angezeigt (kein PUT).
 | Variable | Herkunft |
 |---|---|
 | `gateway_url` | Secret `GATEWAY_URL` |
-| `gateway_token` | Secret `GATEWAY_TOKEN` (gleich `AUTH_TOKEN` des Gateways) |
+| `api_token` | Secret `API_TOKEN` (gleich `API_TOKEN` des Gateways) |
 | `alexa_skill_id` | Secret `ALEXA_SKILL_ID`; wird vor der Verarbeitung gegen die `applicationId` geprüft |
 | `watchdog_delay`, `gateway_timeout`, `apl_exit_delay_ms` | feste Werte aus dem Workflow |
 | `skill_name`, `assistant_name` | aus `alexa/skill.config.json` (primäre Locale) |
@@ -179,9 +179,10 @@ derzeit nur für `de-DE` hinterlegt.
   begrenzt die Invoke-Permission auf genau diese Skill-ID.
 - Die Lambda nutzt den eingebauten Verifier des ASK SDK (`sb.skill_id`):
   Events mit abweichender `applicationId` werden abgelehnt.
-- Die Skill-ID ist **keine** Gateway-Authentisierung und wird dem
-  `/api/query`-Request nicht hinzugefügt; dort gilt weiter Bearer
-  (`AUTH_TOKEN`).
+- Die Skill-ID ist **keine** Gateway-Authentisierung; am `/api/query`-Request
+  gilt weiterhin Bearer (`API_TOKEN`). Die Lambda sendet die Skill-ID als
+  Header `X-Alexa-Skill-Id` mit, damit das Gateway sie optional prüfen/loggen
+  kann (siehe `ALEXA_SKILL_ID` im Gateway; derzeit nur Warnung).
 
 ## Deployment-Reihenfolge
 
@@ -225,7 +226,7 @@ npm ci
 npm test             # Unit-Tests (node:test)
 npm run typecheck    # Typprüfung (tsc --noEmit)
 npm run dev          # tsx watch für Entwicklung
-npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, AUTH_TOKEN)
+npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, ADMIN_TOKEN)
 ```
 
 ### Weitere Werkzeuge

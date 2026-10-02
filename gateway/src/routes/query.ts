@@ -1,25 +1,48 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { requireAuth } from '../auth.js';
+import { requireApiAuth } from '../auth.js';
+import { checkRateLimit } from '../rateLimit.js';
+import { config } from '../config.js';
 import { processQuery } from '../core/engine.js';
 import { addLog, getSetting } from '../db.js';
 export const queryRoutes = Router();
 
+// Kostenschutz: begrenzt LLM-Aufrufe pro Client (30/Minute) und die Textlaenge.
+const QUERY_RATE_MAX = Number(process.env.QUERY_RATE_MAX ?? 30);
+
 export const handleQuery = async (req: Request, res: Response): Promise<void> => {
   const body = req.body as { sessionId?: string; userId?: string; text?: string };
-  if (!body.text) {
+  const text = typeof body.text === 'string' ? body.text.trim() : '';
+  if (!text) {
     res.status(400).json({ error: 'text erforderlich' });
+    return;
+  }
+  if (text.length > config.queryMaxChars) {
+    res.status(413).json({ error: `text zu lang (max. ${config.queryMaxChars} Zeichen)` });
+    return;
+  }
+  // Skill-ID der Lambda (Header) gegen die erwartete ID pruefen. Derzeit nur
+  // Warnung (Fail-Closed ist als Ausbau vorgesehen); die Gateway-Auth bleibt
+  // das API_TOKEN.
+  const skillId = String(req.headers['x-alexa-skill-id'] ?? '').slice(0, 120);
+  if (skillId && config.alexaSkillId && skillId !== config.alexaSkillId) {
+    console.warn('[query] Skill-ID-Mismatch: Header=%s erwartet=%s', skillId, config.alexaSkillId);
+  }
+  // Key: bevorzugt userId, sonst Client-IP (mit 'trust proxy' korrekt).
+  const key = body.userId ? `query:u:${body.userId}` : `query:ip:${req.ip ?? 'unbekannt'}`;
+  if (!checkRateLimit(key, Date.now(), 60_000, QUERY_RATE_MAX)) {
+    res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
     return;
   }
   const result = await processQuery({
     sessionId: body.sessionId ?? 'api-test',
     userId: body.userId,
-    text: body.text,
+    text,
   });
   res.json(result);
 };
 
-queryRoutes.post('/api/query', requireAuth, handleQuery);
+queryRoutes.post('/api/query', requireApiAuth, handleQuery);
 
 export const handleLambdaTrace = (req: Request, res: Response) => {
   const body = req.body as { sessionId?: string; event?: string; elapsedMs?: number; note?: string };
@@ -40,4 +63,4 @@ export const handleLambdaTrace = (req: Request, res: Response) => {
 };
 // Unter /api (nicht /admin): die LAN-only-Regel des Nginx-Vhosts blockiert sonst AWS-Lambda-IPs (403).
 // Der Admin-Alias (/admin/api/lambda-trace) wird in app.ts unter dem Admin-Prefix registriert.
-queryRoutes.post('/api/lambda-trace', requireAuth, handleLambdaTrace);
+queryRoutes.post('/api/lambda-trace', requireApiAuth, handleLambdaTrace);

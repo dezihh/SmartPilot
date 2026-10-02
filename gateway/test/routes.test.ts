@@ -7,7 +7,9 @@ import { request, type IncomingHttpHeaders } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 // config/auth lesen die Umgebung beim Import -> vor den dynamischen Importen setzen.
-process.env.AUTH_TOKEN = 'test-secret';
+process.env.ADMIN_TOKEN = 'test-secret';
+process.env.API_TOKEN = 'test-query-secret';
+process.env.QUERY_RATE_MAX = '2'; // kleiner Wert fuer den Rate-Limit-Test
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
@@ -318,16 +320,39 @@ test('logs und usage sind lesbar', async () => {
   assert.equal(usage.status, 200);
 });
 
-test('lambda-trace: POST quittiert mit 204', async () => {
-  const r = await call('POST', '/api/lambda-trace', { cookie, body: { sessionId: 's1', event: 'test', elapsedMs: 5 } });
+test('lambda-trace: POST quittiert mit 204 (nur API_TOKEN, keine Session)', async () => {
+  const r = await call('POST', '/api/lambda-trace', { token: 'test-query-secret', body: { sessionId: 's1', event: 'test', elapsedMs: 5 } });
   assert.equal(r.status, 204);
+  // Admin-Session autorisiert die Adapter-API nicht mehr.
+  assert.equal((await call('POST', '/api/lambda-trace', { cookie, body: {} })).status, 401);
 });
 
-test('query: fehlender text 400, ohne Session 401', async () => {
-  const bad = await call('POST', '/api/query', { cookie, body: {} });
+test('query: fehlender text 400, ohne Auth 401', async () => {
+  const bad = await call('POST', '/api/query', { token: 'test-query-secret', body: {} });
   assert.equal(bad.status, 400);
   const noAuth = await call('POST', '/admin/api/query', { body: { text: 'hallo' } });
   assert.equal(noAuth.status, 401);
+});
+
+test('#1: /api/query akzeptiert nur API_TOKEN, nicht ADMIN_TOKEN/Session', async () => {
+  // ADMIN_TOKEN (Admin) darf die Adapter-API NICHT oeffnen.
+  assert.equal((await call('POST', '/api/query', { token: 'test-secret', body: { text: 'hi' } })).status, 401);
+  // Admin-Session ebenso wenig.
+  assert.equal((await call('POST', '/api/query', { cookie, body: { text: 'hi' } })).status, 401);
+  // API_TOKEN autorisiert (Route erreicht -> 400 wegen fehlendem text).
+  assert.equal((await call('POST', '/api/query', { token: 'test-query-secret', body: {} })).status, 400);
+});
+
+test('#3: /api/query kappt zu langen Text (413) und rate-limitet (429)', async () => {
+  resetRateLimitsForTests();
+  const long = await call('POST', '/api/query', { token: 'test-query-secret', body: { text: 'x'.repeat(501) } });
+  assert.equal(long.status, 413);
+  // Zwei Anfragen erlaubt (QUERY_RATE_MAX=2), die dritte wird abgewiesen.
+  await call('POST', '/api/query', { token: 'test-query-secret', body: { text: 'hallo' } });
+  await call('POST', '/api/query', { token: 'test-query-secret', body: { text: 'hallo' } });
+  const third = await call('POST', '/api/query', { token: 'test-query-secret', body: { text: 'hallo' } });
+  assert.equal(third.status, 429);
+  resetRateLimitsForTests();
 });
 
 test('indexes: PUT/DELETE inkl. Validierung', async () => {

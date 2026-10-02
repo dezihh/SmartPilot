@@ -77,6 +77,29 @@ test('manifestDangerous: shell = gefaehrlich, http = Info', () => {
   assert.equal(h.info.length, 1);
 });
 
+test('#2: manifestDangerous markiert jeden stdio-Server als gefaehrlich', () => {
+  const stdio = manifestDangerous({
+    id: 'a',
+    version: '1.0.0',
+    name: 'a',
+    summary: 's',
+    description: 'd',
+    servers: [{ name: 'sh', transport: 'stdio', command: 'sh' }],
+  });
+  assert.equal(stdio.dangerous, true);
+  assert.equal(stdio.items.length, 1);
+  // http-Server bleiben harmlos (nur externe Aufrufe).
+  const http = manifestDangerous({
+    id: 'a',
+    version: '1.0.0',
+    name: 'a',
+    summary: 's',
+    description: 'd',
+    servers: [{ name: 'web', transport: 'http', url: 'https://x/mcp' }],
+  });
+  assert.equal(http.dangerous, false);
+});
+
 test('parseManifest: JSON + Fehler-Faelle', () => {
   const ok = parseManifest(JSON.stringify(OK_MANIFEST));
   assert.equal(ok.ok, true);
@@ -254,7 +277,7 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
   app.use(packagesRoutes);
   const server = app.listen(0);
   const port = (server.address() as AddressInfo).port;
-  const auth = { Authorization: `Bearer ${config.authToken}`, 'Content-Type': 'application/json' };
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
   const base = `http://127.0.0.1:${port}`;
   try {
     const install = await fetch(`${base}/admin/api/packages/test-package/install`, {
@@ -311,7 +334,7 @@ test('Install: zu altes Gateway wird abgelehnt (minGatewayVersion)', async () =>
   app.use(packagesRoutes);
   const server = app.listen(0);
   const port = (server.address() as AddressInfo).port;
-  const auth = { Authorization: `Bearer ${config.authToken}`, 'Content-Type': 'application/json' };
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
   try {
     const res = await fetch(`http://127.0.0.1:${port}/admin/api/packages/future/install`, {
       method: 'POST', headers: auth,

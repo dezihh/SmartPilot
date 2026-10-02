@@ -135,6 +135,8 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 
 | Variable | Standard | Zweck |
 |---|---:|---|
+| `ADMIN_TOKEN` | – | Bearer-Token nur für den Admin-Bereich (Pflicht) |
+| `API_TOKEN` | – | Bearer-Token nur für `/api/*` (Pflicht; muss sich von `ADMIN_TOKEN` unterscheiden) |
 | `PORT` | `3000` | HTTP-Port |
 | `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
@@ -145,9 +147,14 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `AGENT_CLARIFICATION_BUDGET` | `2` | Rückfragebudget |
 | `MAX_TOOL_ITERATIONS` | `6` | maximale Tool-Runden |
 | `LLM_TOOL_DEADLINE_MS` | `9000` | Deadline des Agent-Loops |
+| `TRUST_PROXY` | leer | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); leer = aus |
+| `QUERY_MAX_CHARS` | `500` | max. Zeichen für `/api/query` (Kostenschutz) |
+| `QUERY_RATE_MAX` | `30` | max. `/api/query`-Anfragen pro Minute und Client |
+| `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; Header `X-Alexa-Skill-Id` der Lambda wird geprüft (nur Warnung) |
+| `SESSION_MAX_HOURS` | `24` | absolute Obergrenze einer Admin-Session (Sliding-TTL verlängert sonst unbegrenzt) |
 | `GATEWAY_PORT` | `3000` | nur Compose-Host-Mapping (der Code liest `PORT`) |
 
-Pflichtvariablen: `AUTH_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
+Pflichtvariablen: `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
 
 ## Budgets und Tool-Auswahl
 
@@ -175,7 +182,7 @@ Funktionen des Gateways.
 ## Sicherheitsgrenzen
 
 - Admin-Oberfläche und `/admin/*` nur im vertrauenswürdigen Netz anbieten.
-- Öffentlich nur `/api/query` anbieten und mit `AUTH_TOKEN` schützen.
+- Öffentlich nur `/api/query` anbieten und mit `API_TOKEN` schützen.
 - Den Alexa-Trigger der Lambda auf die eigene Skill-ID beschränken.
 - Secrets nur über lokale Konfiguration oder Secret Store übergeben.
 - Dynamische HTTP-URLs nicht ins private Netz erlauben.

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 # Requires the repository variable EXTERNAL_BASE_URL (e.g. https://gateway.example.com)
-# and the secret GATEWAY_TOKEN (must equal the gateway AUTH_TOKEN). The job is
+# and the secret API_TOKEN (must equal the gateway API_TOKEN). The job is
 # skipped when EXTERNAL_BASE_URL is not configured.
 #
 # Verbindliche Architektur: Alexa Skill -> AWS Lambda -> POST /api/query -> Gateway.
@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EXTERNAL_BASE_URL: ${{ vars.EXTERNAL_BASE_URL }}
-      GATEWAY_TOKEN: ${{ secrets.GATEWAY_TOKEN }}
+      API_TOKEN: ${{ secrets.API_TOKEN }}
     steps:
       - name: Voraussetzungen pruefen
         run: |
-          if [ -z "${GATEWAY_TOKEN}" ]; then
-            echo "::error::Secret GATEWAY_TOKEN fehlt - /api/query kann nicht geprueft werden"
+          if [ -z "${API_TOKEN}" ]; then
+            echo "::error::Secret API_TOKEN fehlt - /api/query kann nicht geprueft werden"
             exit 1
           fi
 
@@ -43,11 +43,11 @@ jobs:
           [ "${verify}" = "0" ] || { echo "::error::TLS-Verifikation fehlgeschlagen (${verify})"; exit 1; }
           echo | openssl s_client -connect "${HOST}:443" -servername "$HOST" 2>/dev/null | grep -E "subject=|issuer=|Verify return" || true
 
-      - name: POST /api/query mit GATEWAY_TOKEN pruefen
+      - name: POST /api/query mit API_TOKEN pruefen
         run: |
           BASE="${EXTERNAL_BASE_URL%/}"
           body=$(curl -sS -m 30 -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer ${GATEWAY_TOKEN}" \
+            -H "Authorization: Bearer ${API_TOKEN}" \
             -H "Content-Type: application/json" \
             --data '{"sessionId":"extcheck","text":"Hallo"}' \
             "${BASE}/api/query") || { echo "::error::POST /api/query nicht erreichbar"; exit 1; }

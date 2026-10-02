@@ -1,0 +1,20 @@
+# Automatische Abhaengigkeits-Updates (Security + Versionspflege).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /gateway
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: pip
+    directory: /alexa/lambda
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

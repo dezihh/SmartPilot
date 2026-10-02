@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { join } from 'node:path';
-import { requireAuth, createSession, sessionValid, cookieFor } from '../auth.js';
+import { requireAdminAuth, createSession, sessionValid, cookieFor } from '../auth.js';
 import { config } from '../config.js';
 import {
   deleteMcpServer,
@@ -73,12 +73,12 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
   };
 }
 
-mcpRoutes.get('/admin/api/mcp-servers', requireAuth, (req, res) => {
+mcpRoutes.get('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
   res.json({ servers: listMcpServers(false) });
 });
 
 // Alle fuer LLM-Actions verfuegbaren Tools (Facade + MCP) fuer den Web-Editor
-mcpRoutes.get('/admin/api/tools', requireAuth, async (req, res) => {
+mcpRoutes.get('/admin/api/tools', requireAdminAuth, async (req, res) => {
   try {
     const mcp = await getMcpContext();
     const serverTools = mcp.servers.map((s) => ({ server: s.name, tools: s.tools.map((t) => t.name) }));
@@ -89,7 +89,7 @@ mcpRoutes.get('/admin/api/tools', requireAuth, async (req, res) => {
   }
 });
 
-mcpRoutes.post('/admin/api/mcp-servers', requireAuth, (req, res) => {
+mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
   try {
     const server = createMcpServer(normalizeServerInput(req.body as Record<string, unknown>));
     invalidateMcpCache();
@@ -99,7 +99,7 @@ mcpRoutes.post('/admin/api/mcp-servers', requireAuth, (req, res) => {
   }
 });
 
-mcpRoutes.put('/admin/api/mcp-servers/:id', requireAuth, (req, res) => {
+mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   const id = Number(req.params.id);
   try {
     const updated = updateMcpServer(id, normalizeServerInput(req.body as Record<string, unknown>));
@@ -114,13 +114,13 @@ mcpRoutes.put('/admin/api/mcp-servers/:id', requireAuth, (req, res) => {
   }
 });
 
-mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAuth, (req, res) => {
+mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   deleteMcpServer(Number(req.params.id));
   invalidateMcpCache();
   res.json({ ok: true });
 });
 
-mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAuth, async (req, res) => {
+mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req, res) => {
   const server = getMcpServer(Number(req.params.id));
   if (!server) {
     res.status(404).json({ error: 'nicht gefunden' });
@@ -137,7 +137,7 @@ mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAuth, async (req, res
   }
 });
 
-mcpRoutes.put('/admin/api/prompts/:key', requireAuth, (req, res) => {
+mcpRoutes.put('/admin/api/prompts/:key', requireAdminAuth, (req, res) => {
   const body = req.body as { content?: string };
   if (typeof body.content !== 'string') {
     res.status(400).json({ error: 'content erforderlich' });
@@ -147,11 +147,11 @@ mcpRoutes.put('/admin/api/prompts/:key', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-mcpRoutes.get('/admin/api/logs', requireAuth, (req, res) => {
+mcpRoutes.get('/admin/api/logs', requireAdminAuth, (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 50) || 50, 200);
   res.json({ logs: listLogs(limit) });
 });
 
-mcpRoutes.get('/admin/api/usage', requireAuth, (_req, res) => {
+mcpRoutes.get('/admin/api/usage', requireAdminAuth, (_req, res) => {
   res.json({ usage: summarizeUsage() });
 });

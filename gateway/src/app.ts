@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import { join } from 'node:path';
-import { createSession, requestAuthorized, bearerToken, cookieFor, requireAuth } from './auth.js';
+import { createSession, requestAuthorized, bearerToken, cookieFor, requireAdminAuth } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { config } from './config.js';
 import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
@@ -12,7 +12,15 @@ import { packagesRoutes } from './routes/packages.js';
 // koennen. Der Entry src/server.ts startet sie nur.
 export function createApp(): Express {
   const app = express();
+  // Hinter einem Reverse-Proxy die echte Client-IP aus X-Forwarded-For lesen
+  // (sonst greift das Rate-Limit fuer alle Clients gemeinsam auf die Proxy-IP).
+  if (config.trustProxy !== undefined) app.set('trust proxy', config.trustProxy);
   app.use(express.json({ limit: '1mb' }));
+
+  // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).
+  app.get('/healthz', (_req, res) => {
+    res.json({ ok: true });
+  });
 
   const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
   const adminBase = `${base}/admin`;
@@ -87,8 +95,8 @@ export function createApp(): Express {
   admin.use(mcpRoutes);
   admin.use(packagesRoutes);
   // Admin-Aliase der Adapter-API - unter dem Prefix statt auf der Wurzel.
-  admin.post('/admin/api/query', requireAuth, handleQuery);
-  admin.post('/admin/api/lambda-trace', requireAuth, handleLambdaTrace);
+  admin.post('/admin/api/query', requireAdminAuth, handleQuery);
+  admin.post('/admin/api/lambda-trace', requireAdminAuth, handleLambdaTrace);
 
   app.use(base || '/', admin);
 

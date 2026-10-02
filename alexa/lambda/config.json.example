@@ -1,8 +1,8 @@
 {
   "gateway_url": "https://your-gateway.example.com",
-  "gateway_token": "<AUTH_TOKEN aus gateway/.env>",
+  "api_token": "<API_TOKEN aus gateway/.env>",
   "watchdog_delay": "5",
-  "gateway_timeout": "28",
+  "gateway_timeout": "32",
   "skill_name": "SmartPilot",
   "assistant_name": "Dein SmartPilot",
   "alexa_skill_id": "amzn1.ask.skill.<deine-id>"

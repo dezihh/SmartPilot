@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { TraceEvent } from '../types.js';
 import type { Request, Response } from 'express';
-import { requireAuth } from '../auth.js';
+import { requireAdminAuth } from '../auth.js';
 import { config } from '../config.js';
 import {
   createAction,
@@ -30,7 +30,7 @@ import { assistIndex, applyDraft } from '../core/indexAssistant.js';
 import { getMcpContext } from '../mcp/registry.js';
 export const adminRoutes = Router();
 
-adminRoutes.get('/admin/api/bootstrap', requireAuth, (req, res) => {
+adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (req, res) => {
   res.json({
     settings: getSettings(),
     // Effektive Defaults (aus .env bzw. Code) fuer die Web-UI-Platzhalter:
@@ -54,7 +54,7 @@ adminRoutes.get('/admin/api/bootstrap', requireAuth, (req, res) => {
   });
 });
 
-adminRoutes.put('/admin/api/settings', requireAuth, (req, res) => {
+adminRoutes.put('/admin/api/settings', requireAdminAuth, (req, res) => {
   const body = req.body as { settings?: Record<string, string> };
   if (!body.settings || typeof body.settings !== 'object') {
     res.status(400).json({ error: 'settings-Objekt erforderlich' });
@@ -64,20 +64,20 @@ adminRoutes.put('/admin/api/settings', requireAuth, (req, res) => {
   res.json({ settings: getSettings() });
 });
 
-adminRoutes.post('/admin/api/settings/restore-defaults', requireAuth, (req, res) => {
+adminRoutes.post('/admin/api/settings/restore-defaults', requireAdminAuth, (req, res) => {
   restoreDefaultSettings();
   res.json({ settings: getSettings() });
 });
 
-adminRoutes.get('/admin/api/actions', requireAuth, (req, res) => {
+adminRoutes.get('/admin/api/actions', requireAdminAuth, (req, res) => {
   res.json({ actions: listActions(false) });
 });
 
-adminRoutes.get('/admin/api/functions', requireAuth, (req, res) => {
+adminRoutes.get('/admin/api/functions', requireAdminAuth, (req, res) => {
   res.json({ functions: listFunctions(false) });
 });
 
-adminRoutes.post('/admin/api/functions', requireAuth, (req, res) => {
+adminRoutes.post('/admin/api/functions', requireAdminAuth, (req, res) => {
   try {
     const fn = createFunction(normalizeFunctionInput(req.body as Record<string, unknown>));
     res.json({ function: fn });
@@ -86,7 +86,7 @@ adminRoutes.post('/admin/api/functions', requireAuth, (req, res) => {
   }
 });
 
-adminRoutes.put('/admin/api/functions/:id', requireAuth, (req, res) => {
+adminRoutes.put('/admin/api/functions/:id', requireAdminAuth, (req, res) => {
   try {
     const fn = updateFunction(Number(req.params.id), normalizeFunctionInput(req.body as Record<string, unknown>));
     if (!fn) return res.status(404).json({ error: 'Funktion nicht gefunden' });
@@ -96,7 +96,7 @@ adminRoutes.put('/admin/api/functions/:id', requireAuth, (req, res) => {
   }
 });
 
-adminRoutes.delete('/admin/api/functions/:id', requireAuth, (req, res) => {
+adminRoutes.delete('/admin/api/functions/:id', requireAdminAuth, (req, res) => {
   deleteFunction(Number(req.params.id));
   res.json({ ok: true });
 });
@@ -104,7 +104,7 @@ adminRoutes.delete('/admin/api/functions/:id', requireAuth, (req, res) => {
 // Index-Quellen: universale benannte Snapshot-Indexe (entity_index = Default,
 // entity_index_<key> = benannt). Der Desc-Feldwert lebt im Config-JSON
 // ("desc") und wird vom Index-Loader ignoriert.
-adminRoutes.get('/admin/api/indexes', requireAuth, (req, res) => {
+adminRoutes.get('/admin/api/indexes', requireAdminAuth, (req, res) => {
   const settings = getSettings();
   const indexes: { key: string; config: string }[] = [];
   for (const [key, value] of Object.entries(settings)) {
@@ -117,7 +117,7 @@ adminRoutes.get('/admin/api/indexes', requireAuth, (req, res) => {
   res.json({ indexes });
 });
 
-adminRoutes.put('/admin/api/indexes/:key', requireAuth, async (req, res) => {
+adminRoutes.put('/admin/api/indexes/:key', requireAdminAuth, async (req, res) => {
   const key = String(req.params.key ?? '').toLowerCase();
   if (key && !/^[a-z0-9_]{1,30}$/.test(key)) return res.status(400).json({ error: 'Ungültiger Key (a-z 0-9 _, max. 30)' });
   let obj: Record<string, unknown>;
@@ -135,7 +135,7 @@ adminRoutes.put('/admin/api/indexes/:key', requireAuth, async (req, res) => {
   res.json({ ok: true, key });
 });
 
-adminRoutes.delete('/admin/api/indexes/:key', requireAuth, (req, res) => {
+adminRoutes.delete('/admin/api/indexes/:key', requireAdminAuth, (req, res) => {
   const key = String(req.params.key ?? '').toLowerCase();
   if (!key || !/^[a-z0-9_]{1,30}$/.test(key)) {
     return res.status(400).json({ error: 'Nur benannte Indexe löschbar (Default-Index leeren statt löschen)' });
@@ -149,7 +149,7 @@ adminRoutes.delete('/admin/api/indexes/:key', requireAuth, (req, res) => {
 });
 
 // Vorschau: Template direkt rendern (mit echtem MCP-Kontext), fuer den Funktionen-Editor
-adminRoutes.post('/admin/api/functions/preview', requireAuth, async (req, res) => {
+adminRoutes.post('/admin/api/functions/preview', requireAdminAuth, async (req, res) => {
   try {
     const template = String((req.body as { template?: unknown }).template ?? '');
     const argsRaw = (req.body as { args?: unknown }).args;
@@ -169,7 +169,7 @@ adminRoutes.post('/admin/api/functions/preview', requireAuth, async (req, res) =
 // Index-Assistent (Phase 2): LLM entwirft ein Index-Draft, der deterministische
 // Validator prueft es live (lesende Tools only, Datenvertrag). Speichern nur
 // ueber /index/apply nach Admin-Bestaetigung.
-adminRoutes.post('/admin/api/index/assist', requireAuth, async (req, res) => {
+adminRoutes.post('/admin/api/index/assist', requireAdminAuth, async (req, res) => {
   try {
     const goal = String((req.body as { goal?: unknown }).goal ?? '');
     const indexKey = String((req.body as { indexKey?: unknown }).indexKey ?? '')
@@ -182,7 +182,7 @@ adminRoutes.post('/admin/api/index/assist', requireAuth, async (req, res) => {
   }
 });
 
-adminRoutes.post('/admin/api/index/apply', requireAuth, async (req, res) => {
+adminRoutes.post('/admin/api/index/apply', requireAdminAuth, async (req, res) => {
   try {
     const draft = (req.body as { draft?: unknown }).draft as never;
     const indexKey = String((req.body as { indexKey?: unknown }).indexKey ?? '')
@@ -195,7 +195,7 @@ adminRoutes.post('/admin/api/index/apply', requireAuth, async (req, res) => {
   }
 });
 
-adminRoutes.post('/admin/api/actions', requireAuth, (req, res) => {
+adminRoutes.post('/admin/api/actions', requireAdminAuth, (req, res) => {
   try {
     res.json({ action: createAction(normalizeActionInput(req.body as Record<string, unknown>)) });
   } catch (e) {
@@ -203,7 +203,7 @@ adminRoutes.post('/admin/api/actions', requireAuth, (req, res) => {
   }
 });
 
-adminRoutes.put('/admin/api/actions/:id', requireAuth, (req, res) => {
+adminRoutes.put('/admin/api/actions/:id', requireAdminAuth, (req, res) => {
   const id = Number(req.params.id);
   const existing = getAction(id);
   if (!existing) {
@@ -218,7 +218,7 @@ adminRoutes.put('/admin/api/actions/:id', requireAuth, (req, res) => {
   }
 });
 
-adminRoutes.delete('/admin/api/actions/:id', requireAuth, (req, res) => {
+adminRoutes.delete('/admin/api/actions/:id', requireAdminAuth, (req, res) => {
   deleteAction(Number(req.params.id));
   res.json({ ok: true });
 });

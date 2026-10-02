@@ -20,13 +20,13 @@ jobs:
       - name: Gateway direkt testen (extern → Gateway erreichbar + Token gueltig?)
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-          GATEWAY_TOKEN: ${{ secrets.GATEWAY_TOKEN }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
         run: |
           set +e
           BASE="${GATEWAY_URL%/}"
           echo "=== POST ${BASE}/api/query (extern) ==="
           curl -s -o /tmp/gw.json -w "HTTP %{http_code} in %{time_total}s\n" -X POST \
-            -H "Authorization: Bearer ${GATEWAY_TOKEN}" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${API_TOKEN}" -H "Content-Type: application/json" \
             -d '{"sessionId":"ci-ext-$(date +%s)","text":"wie ist der hausstatus"}' \
             --max-time 60 "${BASE}/api/query"
           head -c 400 /tmp/gw.json

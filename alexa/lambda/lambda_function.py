@@ -42,15 +42,18 @@ def load_config():
 load_config()
 
 gateway_url = os.environ.get("gateway_url", "").rstrip("/")
-gateway_token = os.environ.get("gateway_token", "")
+api_token = os.environ.get("api_token", "")
 acknowledgment_enabled = os.environ.get("acknowledgment_enabled", "false").lower() == "true"
 ask_for_further_commands = os.environ.get("ask_for_further_commands", "false").lower() == "true"
 warteton_enabled = os.environ.get("warteton_enabled", "true").lower() == "true"
 warteton_phrase = os.environ.get("warteton_phrase", "")
 watchdog_delay = float(os.environ.get("watchdog_delay", "6.5"))
-gateway_timeout = float(os.environ.get("gateway_timeout", "28"))
+gateway_timeout = float(os.environ.get("gateway_timeout", "32"))
 alexa_skill_id = os.environ.get("alexa_skill_id", "")
 assistant_name = os.environ.get("assistant_name", "Dein SmartPilot")
+# Nur Fallback, wenn der Warteton (Progressive Response) aus ist: Alexa erwartet
+# dann innerhalb von ~8 s eine Antwort. Mit Warteton darf gateway_timeout bis
+# unter das Lambda-Timeout (z. B. 35 s) reichen.
 ALEXA_WINDOW = 8.0
 
 # Sprachtexte pro Locale. Aktuell nur de-DE; eine weitere Sprache ist ein
@@ -60,10 +63,12 @@ ALEXA_WINDOW = 8.0
 DEFAULT_LOCALE = "de-DE"
 STRINGS = {
     "de-DE": {
-        "welcome": "Hallo, ich bin {name}. Was kann ich für Sie tun?",
-        "help": "Sie können mir zum Beispiel nach dem Hausstatus oder aktuellen Informationen fragen.",
+        "welcome": "Hallo, ich bin {name}. Was kann ich für dich tun?",
+        "help": "Du kannst mir zum Beispiel nach dem Hausstatus oder aktuellen Informationen fragen.",
         "stop": ["Bis zum nächsten Mal.", "Alles klar, bis später.", "Okay, tschüss."],
         "error": "Entschuldigung, da ist etwas schiefgelaufen.",
+        "error_unreachable": "Ich erreiche meinen Server gerade nicht.",
+        "error_timeout": "Das dauert zu lange. Frag es gleich nochmal.",
         "processing": "Einen Moment bitte.",
         "warteton": "Einen Moment, ich schaue das kurz nach.",
         "no_query": "Das habe ich akustisch nicht verstanden. Wie lautet deine Frage?",
@@ -228,13 +233,28 @@ def render_apl(handler_input, title, text):
     )
 
 
-def call_gateway(query, session_id, user_id):
+def _application_id():
+    """applicationId aus dem rohen Request-Envelope (context.System.application).
+    Wird als Header an das Gateway weitergereicht (optionale Pruefung/Log)."""
+    env = _RAW_ENVELOPE.value or {}
+    app = (((env.get("context") or {}).get("System") or {}).get("application")) or {}
+    return app.get("applicationId", "") if isinstance(app, dict) else ""
+
+
+def _is_timeout(err):
+    """requests-Timeout ohne Import der Exception-Klasse (stub-sicher)."""
+    return err.__class__.__name__ in ("Timeout", "ReadTimeout", "ConnectTimeout", "ConnectTimeoutError")
+
+
+def call_gateway(query, session_id, user_id, skill_id=None):
     if not gateway_url:
         raise RuntimeError("gateway_url nicht konfiguriert")
     headers = {
-        "Authorization": "Bearer {}".format(gateway_token),
+        "Authorization": "Bearer {}".format(api_token),
         "Content-Type": "application/json",
     }
+    if skill_id:
+        headers["X-Alexa-Skill-Id"] = skill_id
     data = {"sessionId": session_id, "text": query}
     if user_id:
         data["userId"] = user_id
@@ -278,7 +298,7 @@ def lambda_trace(session_id, event, elapsed_ms=None):
             requests.post(
                 "{}/api/lambda-trace".format(gateway_url),
                 headers={
-                    "Authorization": "Bearer {}".format(gateway_token),
+                    "Authorization": "Bearer {}".format(api_token),
                     "Content-Type": "application/json",
                 },
                 json={"sessionId": session_id, "event": event, "elapsedMs": elapsed_ms},
@@ -335,9 +355,11 @@ class GptQueryIntentHandler(AbstractRequestHandler):
 
         result = {}
 
+        app_id = _application_id()
+
         def run():
             try:
-                result["value"] = call_gateway(query, session_id, user_id)
+                result["value"] = call_gateway(query, session_id, user_id, app_id)
             except Exception as e:
                 result["error"] = e
 
@@ -353,10 +375,13 @@ class GptQueryIntentHandler(AbstractRequestHandler):
                 worker.join(max(0.0, ALEXA_WINDOW - watchdog_delay))
         if worker.is_alive():
             logger.error("Gateway-Antwort %.1fs ueberschritten", gateway_timeout)
-            return response_builder.speak(t(handler_input, "error")).set_should_end_session(True).response
+            phrase = t(handler_input, "error_timeout")
+            # Session offen lassen: direkt erneut fragen, ohne neu zu starten.
+            return response_builder.speak(phrase).ask(phrase).set_should_end_session(False).response
         if "error" in result:
             logger.error("Gateway-Fehler: %s", result["error"], exc_info=True)
-            return response_builder.speak(t(handler_input, "error")).set_should_end_session(True).response
+            phrase = t(handler_input, "error_timeout" if _is_timeout(result["error"]) else "error_unreachable")
+            return response_builder.speak(phrase).ask(phrase).set_should_end_session(False).response
 
         speech, follow_up, is_ssml, display_text, followup_prompt = result["value"]
 
@@ -392,7 +417,17 @@ class HelpIntentHandler(AbstractRequestHandler):
         return ask_utils.is_intent_name("AMAZON.HelpIntent")(handler_input)
 
     def handle(self, handler_input):
+        # Dynamische Hilfe aus dem Gateway (Vorgang "hilfe" kennt die
+        # installierten Faehigkeiten); sonst statischer Fallback-Text.
         help_text = t(handler_input, "help")
+        try:
+            session = handler_input.request_envelope.session
+            session_id = session.session_id if session else "unknown"
+            user_id = session.user.user_id if session and session.user else None
+            speech = call_gateway("hilfe", session_id, user_id, _application_id())[0]
+            help_text = strip_ssml(speech) or help_text
+        except Exception as e:
+            logger.warning("Hilfe vom Gateway fehlgeschlagen: %s", e)
         return (
             handler_input.response_builder
             .speak(help_text)

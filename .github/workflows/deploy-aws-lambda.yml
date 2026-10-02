@@ -5,7 +5,7 @@ on:
     inputs:
       timeout:
         description: "Lambda-Timeout in Sekunden (> 8 noetig, um hosted-Limit zu sprengen)"
-        default: "30"
+        default: "35"
 
 # Der aufgerufene Build-Workflow (lambda-zip.yml) deklariert contents: write
 # (fuer das rollende "latest"-Release) - der Caller muss das erlauben.
@@ -46,7 +46,7 @@ jobs:
       - name: Funktion deployen (einfacher Weg, kein Layer-Stack)
         env:
           GATEWAY_URL: ${{ secrets.GATEWAY_URL }}
-          GATEWAY_TOKEN: ${{ secrets.GATEWAY_TOKEN }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
           TIMEOUT: ${{ inputs.timeout }}
           LAMBDA_ROLE: ${{ secrets.AWS_LAMBDA_ROLE }}
           SKILL_ID: ${{ secrets.ALEXA_SKILL_ID }}
@@ -107,7 +107,7 @@ jobs:
           fi
 
           # 2) Timeout + Env setzen (als volles Operations-JSON, sicher für Sonderzeichen im Token)
-          python3 -c 'import json,sys; t,u,g,s,n,a=sys.argv[1:]; timeout=int(t); open("/tmp/cfg.json","w").write(json.dumps({"FunctionName":"smartpilot-alexa","Timeout":timeout,"MemorySize":512,"Environment":{"Variables":{"gateway_url":u,"gateway_token":g,"alexa_skill_id":s,"watchdog_delay":"5","gateway_timeout":str(max(9, timeout-3)),"skill_name":n,"assistant_name":a,"apl_exit_delay_ms":"90000"}}}))' "${TIMEOUT}" "${GATEWAY_URL}" "${GATEWAY_TOKEN}" "${SKILL_ID}" "${SKILL_NAME}" "${ASSISTANT_NAME}"
+          python3 -c 'import json,sys; t,u,q,s,n,a=sys.argv[1:]; timeout=int(t); open("/tmp/cfg.json","w").write(json.dumps({"FunctionName":"smartpilot-alexa","Timeout":timeout,"MemorySize":512,"Environment":{"Variables":{"gateway_url":u,"api_token":q,"alexa_skill_id":s,"watchdog_delay":"5","gateway_timeout":str(max(9, timeout-3)),"skill_name":n,"assistant_name":a,"apl_exit_delay_ms":"90000"}}}))' "${TIMEOUT}" "${GATEWAY_URL}" "${API_TOKEN}" "${SKILL_ID}" "${SKILL_NAME}" "${ASSISTANT_NAME}"
           for attempt in $(seq 1 6); do
             if aws lambda update-function-configuration --cli-input-json file:///tmp/cfg.json
             then

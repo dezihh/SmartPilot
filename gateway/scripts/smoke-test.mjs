@@ -2,11 +2,12 @@
 // Ableitung aus README-Zielen: Schnelligkeit, Determinismus, MCP-Anbindung,
 // Zwei-Modi-Flow, Token-Logging, Sicherheit.
 //
-// Nutzung:  GATEWAY=http://localhost:8331 AUTH_TOKEN=... node smoke-test.mjs
+// Nutzung:  GATEWAY=http://localhost:8331 ADMIN_TOKEN=... API_TOKEN=... node smoke-test.mjs
 // Exit-Code 0 = alle Tests ok, 1 = mindestens ein Fehler.
 
 const BASE = process.env.GATEWAY ?? 'http://localhost:8331';
-const TOKEN = process.env.AUTH_TOKEN ?? '';
+const TOKEN = process.env.ADMIN_TOKEN ?? ''; // Admin
+const QUERY = process.env.API_TOKEN ?? ''; // Adapter-API
 const TTL = Number(process.env.TTL ?? 120000);
 
 const results = [];
@@ -54,7 +55,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sid = () => `smoke-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 async function query(text, sessionId) {
-  return post('/api/query', { sessionId, text }, TOKEN);
+  return post('/api/query', { sessionId, text }, QUERY);
 }
 
 async function main() {
@@ -62,7 +63,10 @@ async function main() {
   console.log('');
 
   if (!TOKEN) {
-    check('AUTH_TOKEN gesetzt', false, 'AUTH_TOKEN env fehlt');
+    check('ADMIN_TOKEN gesetzt', false, 'ADMIN_TOKEN env fehlt');
+  }
+  if (!QUERY) {
+    check('API_TOKEN gesetzt', false, 'API_TOKEN env fehlt');
   }
 
   // ---- 1. Sicherheit -----------------------------------------------------
@@ -72,6 +76,8 @@ async function main() {
     check('  /api/query ohne Bearer → 401', noAuth.status === 401, `HTTP ${noAuth.status}`);
     const wrongAuth = await post('/api/query', { text: 'test' }, 'falscher-token');
     check('  /api/query mit falschem Bearer → 401', wrongAuth.status === 401, `HTTP ${wrongAuth.status}`);
+    const adminOnQuery = await post('/api/query', { text: 'test' }, TOKEN);
+    check('  /api/query mit ADMIN_TOKEN → 401 (Split)', adminOnQuery.status === 401, `HTTP ${adminOnQuery.status}`);
     const adminNoCookie = await get('/admin/', TOKEN);
     check('  /admin ohne Session → 4xx', adminNoCookie.status >= 400, `HTTP ${adminNoCookie.status}`);
     const loginWrong = await post('/admin/login', { token: 'falsch' }, '');

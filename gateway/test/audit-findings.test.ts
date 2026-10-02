@@ -10,7 +10,8 @@ import { join } from 'node:path';
 
 // Env VOR dem (dynamischen) Import der config-abhaengigen Module setzen:
 // dotenv ueberschreibt bereits gesetzte Werte nicht.
-process.env.AUTH_TOKEN = 'audit-test-token';
+process.env.ADMIN_TOKEN = 'audit-test-token';
+process.env.API_TOKEN = 'audit-query-token';
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9';
 process.env.LLM_API_KEY = 'audit-test-key';
 process.env.LLM_MODEL = 'audit-test-model';

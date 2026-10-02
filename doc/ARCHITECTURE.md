@@ -223,7 +223,8 @@ ein `{"speech": …}`-Objekt, setzt er `ssml: true` bzw. übernimmt Display-Date
 | Ebene | Umsetzung im Code |
 |---|---|
 | **Client-Auth** (Sprachclient → Adapter) | liegt beim Adapter: die Alexa-Lambda nutzt den eingebauten ask-sdk-Skill-ID-Verifier (`applicationId` gegen `alexa_skill_id`). Das Gateway hat **keinen** Client-Endpunkt. |
-| **API-/Admin-Auth** (`/api/*`, `/admin/*`) | Bearer-Token (`AUTH_TOKEN`, constant-time via `timingSafeEqual`); Admin-UI zusätzlich per Session-Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/admin`, 12 h) |
+| **API-Auth** (`/api/*`) | **eigener** Bearer-Token `API_TOKEN` (constant-time via `timingSafeEqual`); keine Admin-Session. Wer das API-Token hat, erhält **keinen** Admin-Zugang. |
+| **Admin-Auth** (`/admin/*`) | Bearer-Token `ADMIN_TOKEN` (constant-time); Admin-UI zusätzlich per Session-Cookie (`HttpOnly`, `SameSite=Lax`, `Path=/admin`, 12 h) |
 | **Admin-Login** (`POST /admin/login`) | Token → Session-Cookie, rate-limited (10 Versuche/Minute pro IP) |
 | **MCP-Server-Auth** (Gateway → MCP) | je Server: ohne Token (LAN-intern) oder Bearer-Token in der Registry; stdio über `env` |
 
@@ -262,7 +263,7 @@ Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
 
 ## Admin-API und Admin-UI
 
-- Routen unter `/admin/api/*` (alle mit `requireAuth`): `bootstrap`,
+- Routen unter `/admin/api/*` (alle mit `requireAdminAuth`): `bootstrap`,
   `settings` (+ `restore-defaults`), `actions`, `functions` (+ `preview`),
   `indexes` (+ `index/assist`, `index/apply`), `mcp-servers` (+ `health`),
   `tools`, `prompts`, `logs`, `usage`, `packages/*` (+ `backup`/`restore`).
@@ -290,8 +291,8 @@ Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
   `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` (Pflicht).
 - **MCP-Server**: beliebige Server (HTTP oder stdio), die per Registry
   angebunden werden. Home Assistant, Music Assistant usw. kommen als Paket.
-- **`.env`** (Pflicht): `AUTH_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`,
-  `LLM_MODEL`. **Optional**: `PORT`, `DB_PATH`, `LLM_MAX_TOKENS`,
+- **`.env`** (Pflicht): `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`,
+  `LLM_API_KEY`, `LLM_MODEL`. **Optional**: `PORT`, `DB_PATH`, `LLM_MAX_TOKENS`,
   `LLM_REASONING_EFFORT`, `LLM_TOOL_DEADLINE_MS`, `MAX_TOOL_ITERATIONS`,
   `AGENT_CLARIFICATION_BUDGET`, `LLM_KEEPALIVE_MS`.
 - **DB-Settings** überschreiben zur Laufzeit (u. a. Modell, Token-Budget,
@@ -310,7 +311,7 @@ Endpunkte/Rezepte stehen in [Praxisrezepte](RECIPES.md).
   In-Memory-History vorliegt; ältere Turns werden als „alt“ markiert.
 - **Bewusste Entscheidung — Single-User:** Der DB-Recall ist *absichtlich*
   session-übergreifend. SmartPilot ist für Single-User-Instanzen gedacht (ein
-  Haushalt, ein `AUTH_TOKEN`), daher teilen sich alle Personen dasselbe
+  Haushalt, ein Token-Satz), daher teilen sich alle Personen dasselbe
   Gedächtnis. Für Mehrbenutzer-Betrieb müsste `recentAgentTurns` auf
   `session_id` gefiltert werden; die „alt“-Markierung mildert Verwechslungen ab.
 - Steuerung über Settings `memory_turns`, `memory_minutes` und
