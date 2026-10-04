@@ -1026,9 +1026,27 @@ function statusChip(status) {
   const [cls, label] = map[status] ?? ['chip', String(status)];
   return `<span class="${cls}">${label}</span>`;
 }
+const KIND_LABELS = { server: 'Server', function: 'Funktion', action: 'Vorgang', index: 'Index' };
+const FIELD_LABELS = {
+  command: 'Kommando', args: 'Argumente', env: 'Umgebungsvariablen', npm_spec: 'Paket (npm)', url: 'URL',
+  auth_token: 'Token', transport: 'Transport', inventory_prompt: 'Inventory-Prompt', side_effect: 'Wirkung auf Index',
+  enabled: 'Aktiv', name: 'Name', description: 'Beschreibung', template: 'Vorlage/Template', parameters: 'Parameter',
+  budget: 'Budget', mode: 'Modus', trigger_phrases: 'Trigger-Phrasen', fuzzy_threshold: 'Fuzzy-Schwelle',
+  system_prompt: 'System-Prompt', function_ref: 'Funktion', function_args: 'Funktions-Args', tools: 'Tools',
+};
+function labelField(f) { return FIELD_LABELS[f] ?? f; }
 function fmtVal(v) {
   if (v === null || v === undefined || v === '') return '(leer)';
   return typeof v === 'object' ? JSON.stringify(v) : String(v);
+}
+// Kurze Werte inline "alt → neu"; lange Werte einklappbar (Template/Prompt).
+function diffValue(from, to) {
+  const a = fmtVal(from);
+  const b = fmtVal(to);
+  const long = a.length > 80 || b.length > 80 || a.includes('\n') || b.includes('\n');
+  if (!long) return `<code>${escHtml(a)}</code> → <code>${escHtml(b)}</code>`;
+  const short = (s) => escHtml(s.length > 80 ? `${s.slice(0, 80)}…` : s);
+  return `<details><summary>${short(a)} → ${short(b)} (${a.length}/${b.length} Zeichen)</summary><pre class="pkg-docs">alt:  ${escHtml(a)}\n\nneu:  ${escHtml(b)}</pre></details>`;
 }
 
 // Semantischer Versionsvergleich (nur Ziffernteile; robust gegen fehlende Teile).
@@ -1072,8 +1090,19 @@ function renderPackages() {
     const reg = pkgState.registry.find((r) => r.id === p.id);
     const update = reg && cmpVersion(p.version, reg.version) < 0;
     const chip = update ? ` <span class="chip update">Update verfügbar: v${escHtml(reg.version)}</span>` : '';
-    const items = (p.items ?? []).map((i) => `<li>${escHtml(i.kind)}: ${escHtml(i.name)}</li>`).join('');
-    return `<div class="pkg-installed-item"><div><strong>${escHtml(p.id)}</strong> v${escHtml(p.version)}${chip} <span class="pkg-version">${escHtml(p.source)}</span><div class="field-help">${escHtml(p.installed_at)}</div></div><div class="toolbar"><button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button><button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button><button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button></div><details><summary>Enthält</summary><ul>${items}</ul></details></div>`;
+    const itemRows = (p.items ?? []).map((i) => `<li><span class="kind">${escHtml(KIND_LABELS[i.kind] ?? i.kind)}</span> ${escHtml(i.name)}</li>`).join('');
+    return `<div class="pkg-installed-item">
+      <div class="pkg-card-head">
+        <div class="pkg-card-title"><strong>${escHtml(p.id)}</strong> <span class="pkg-version">v${escHtml(p.version)}</span>${chip} <span class="pkg-version">${escHtml(p.source)}</span></div>
+        <div class="pkg-actions">
+          <button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button>
+          <button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button>
+          <button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button>
+        </div>
+      </div>
+      <div class="field-help">${escHtml(p.installed_at)}</div>
+      <details class="pkg-items"><summary>Enthält (${(p.items ?? []).length})</summary><ul>${itemRows}</ul></details>
+    </div>`;
   });
   $('pkg-installed').innerHTML = instList.length ? instList.join('') : '<div class="field-help">Noch keine Pakete installiert.</div>';
   for (const b of document.querySelectorAll('#pkg-available [data-install]')) b.onclick = () => showInstallForm(b.dataset.install, false);
@@ -1092,12 +1121,16 @@ function renderPackages() {
   };
 }
 
-function paramForm(manifest) {
-  const fields = (manifest.params ?? []).map((p) => {
-    const type = p.secret ? 'password' : 'text';
-    return `<label>${escHtml(p.label)}${p.required ? ' *' : ''}</label><input data-param="${escHtml(p.key)}" type="text" placeholder="${escHtml(p.placeholder ?? p.default ?? '')}" value="${escHtml(p.default && !p.secret ? p.default : '')}">`;
+function paramForm(manifest, current = {}) {
+  return (manifest.params ?? []).map((p) => {
+    const isSet = current[p.key] != null && current[p.key] !== '';
+    if (p.secret) {
+      const ph = isSet ? '(gesetzt – leer lassen zum Behalten)' : (p.placeholder ?? '');
+      return `<label>${escHtml(p.label)}${p.required && !isSet ? ' *' : ''}</label><input data-param="${escHtml(p.key)}" type="password" placeholder="${escHtml(ph)}" value="">`;
+    }
+    const val = isSet ? current[p.key] : (p.default ?? '');
+    return `<label>${escHtml(p.label)}${p.required ? ' *' : ''}</label><input data-param="${escHtml(p.key)}" type="text" placeholder="${escHtml(p.placeholder ?? p.default ?? '')}" value="${escHtml(val)}">`;
   }).join('');
-  return fields;
 }
 
 async function showInstallForm(id, manifestFromImport) {
@@ -1106,20 +1139,26 @@ async function showInstallForm(id, manifestFromImport) {
     if (!preview) preview = await api(`/packages/manifest/${encodeURIComponent(id)}`);
     pkgState.selected = { id, preview };
     const m = preview.manifest;
-    // Bei bereits installierten Paketen: lokal geaenderte Zeilen zum Entscheiden anzeigen.
-    const installed = pkgState.installed.some((p) => p.id === id);
-    let conflicts = [];
-    if (installed) {
-      try { conflicts = (await api(`/packages/${encodeURIComponent(id)}/conflicts`)).conflicts ?? []; } catch { conflicts = []; }
-    }
+    const instRow = pkgState.installed.find((p) => p.id === id) ?? null;
+    const installed = !!instRow;
+    let currentParams = {};
+    if (instRow && instRow.params) { try { currentParams = JSON.parse(instRow.params); } catch { currentParams = {}; } }
     // Diff-Vorschau (kein Schreiben): zeigt vor dem Speichern, was sich aendert.
     let diff = { diffs: [], restartRequired: false, npmServers: [] };
     try { diff = await api(`/packages/${encodeURIComponent(id)}/diff`, { method: 'POST', body: {} }); } catch { diff = { diffs: [], restartRequired: false, npmServers: [] }; }
-    const changed = (diff.diffs ?? []).filter((d) => d.status !== 'unchanged');
-    const diffHtml = changed.length ? `
-      <div class="pkg-items"><strong>Änderungen gegenüber dem installierten Stand:</strong>
-        <ul>${changed.map((d) => `<li>${escHtml(d.key)} ${statusChip(d.status)}${d.fields?.length ? `<div class="field-help">${d.fields.map((f) => `${escHtml(f.field)}: ${escHtml(fmtVal(f.from))} → ${escHtml(fmtVal(f.to))}`).join('<br>')}</div>` : ''}</li>`).join('')}</ul>
-      </div>` : '';
+    const allDiffs = diff.diffs ?? [];
+    // Konflikte: bevorzugt mit Feld-Diffs aus der Vorschau, sonst aus /conflicts.
+    let conflicts = allDiffs.filter((d) => d.status === 'conflict');
+    if (!conflicts.length && installed) {
+      let names = [];
+      try { names = (await api(`/packages/${encodeURIComponent(id)}/conflicts`)).conflicts ?? []; } catch { names = []; }
+      conflicts = names.map((k) => ({ key: k, kind: String(k).split(':')[0], name: String(k).split(':')[1], fields: [] }));
+    }
+    const changed = allDiffs.filter((d) => d.status !== 'unchanged' && d.status !== 'conflict');
+    const diffItem = (d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${escHtml(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${escHtml(d.name)}</strong> ${statusChip(d.status)}</div>${d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${escHtml(labelField(f.field))}</span> ${diffValue(f.from, f.to)}</li>`).join('')}</ul>` : ''}</li>`;
+    const diffHtml = changed.length
+      ? `<div class="diff-block"><h4>Änderungen gegenüber installiert <span class="chip update">${changed.length}</span></h4><ul class="diff-list">${changed.map(diffItem).join('')}</ul></div>`
+      : (installed ? '<div class="diff-block"><h4>Änderungen gegenüber installiert</h4><div class="field-help">Keine inhaltlichen Änderungen — bereits auf Registry-Stand.</div></div>' : '');
     const restartHtml = diff.restartRequired
       ? `<div class="error-text pkg-danger">⚠️ Container-Neustart erforderlich nach dem Speichern: npm-Paket${(diff.npmServers ?? []).length ? ` (${(diff.npmServers).map(escHtml).join(', ')})` : ''} wird erst beim nächsten Start provisioniert (z. B. <code>./compose.sh restart</code>).</div>`
       : '';
@@ -1135,12 +1174,13 @@ async function showInstallForm(id, manifestFromImport) {
     const metaHtml = meta ? `<p class="field-help">${meta}</p>` : '';
     const securityHtml = `<p class="field-help">Sicherheit: ${preview.dangerous ? '⚠️ führt Shell-Befehle aus (Bestätigung nötig)' : (preview.infoItems ?? []).length ? 'ruft externe Dienste auf (Info)' : 'nur lesend / unkritisch'}</p>`;
     const changelogHtml = m.changelog ? `<details><summary>Changelog</summary><pre class="pkg-docs">${escHtml(m.changelog)}</pre></details>` : '';
+    const conflictFields = (d) => d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${escHtml(labelField(f.field))}</span> lokal <code>${escHtml(fmtVal(f.from))}</code> → Paket <code>${escHtml(fmtVal(f.to))}</code></li>`).join('')}</ul>` : '';
     const conflictsHtml = conflicts.length ? `
-      <div class="pkg-items pkg-conflicts">
-        <strong>Lokale Änderungen erkannt:</strong>
-        <p class="field-help">Diese Zeilen hast du nach der Installation bearbeitet. Standard ist, deine lokale Version zu behalten; wähle „Paket-Version übernehmen", um sie durch das Paket zu ersetzen.</p>
-        <ul>${conflicts.map((c) => `<li>${escHtml(c)}
-          <select data-decision="${escHtml(c)}">
+      <div class="diff-block pkg-conflicts">
+        <h4>Lokale Änderungen erkannt <span class="chip update">${conflicts.length}</span></h4>
+        <p class="field-help">Standard: deine lokale Version behalten. Wähle „Paket-Version übernehmen", um sie durch das Paket zu ersetzen.</p>
+        <ul class="diff-list">${conflicts.map((d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${escHtml(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${escHtml(d.name)}</strong></div>${conflictFields(d)}
+          <select data-decision="${escHtml(d.key)}">
             <option value="keep">Lokale Änderung behalten</option>
             <option value="take">Paket-Version übernehmen</option>
           </select></li>`).join('')}</ul>
@@ -1159,7 +1199,7 @@ async function showInstallForm(id, manifestFromImport) {
       <div class="pkg-items"><strong>Enthält:</strong><ul>${items}</ul></div>
       ${preview.setupDocs ? `<details><summary>Einrichtung Gegenseite</summary><pre class="pkg-docs">${escHtml(preview.setupDocs)}</pre></details>` : ''}
       ${changelogHtml}
-      <div class="form-grid">${paramForm(m)}</div>
+      <div class="form-grid">${paramForm(m, currentParams)}</div>
       <div class="toolbar">
         <button id="pkg-install-go" class="btn primary">${installed ? 'Aktualisieren' : 'Installieren'}</button>
         <button id="pkg-install-cancel" class="btn">Abbrechen</button>

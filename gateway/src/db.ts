@@ -53,6 +53,7 @@ export {
   uninstallPackage,
   conflictItems,
   packageDiff,
+  existingParams,
   type InstalledPackageRow,
   type PackageItemRow,
   type PackageReport,

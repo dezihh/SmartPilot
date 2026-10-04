@@ -11,6 +11,7 @@ import {
   listAllPackageItems,
   conflictItems,
   packageDiff,
+  existingParams,
 } from '../src/db/packages.js';
 import { packagesRoutes } from '../src/routes/packages.js';
 import { config } from '../src/config.js';
@@ -373,6 +374,56 @@ test('packageDiff: Status changed + Felder; secrets maskiert', () => {
 function db_cleanup(id: string): void {
   uninstallPackage(id);
 }
+
+const PARAM_MANIFEST = {
+  ...OK_MANIFEST,
+  id: 'reinstall-test',
+  params: [
+    { key: 'base_url', label: 'Basis-URL', required: true },
+    { key: 'api_key', label: 'API-Key', secret: true, required: true },
+  ],
+  servers: [{ name: 'Reinstall Srv', transport: 'stdio' as const, command: 'node_modules/.bin/x', env: { BASE_URL: '${base_url}', API_KEY: '${api_key}' } }],
+  functions: [],
+  indexes: [],
+  allowTools: [],
+};
+
+test('existingParams: nicht-geheim aus params, Secret aus Server-Env', () => {
+  installPackage(PARAM_MANIFEST, { source: 'import', dangerousAck: true, values: { base_url: 'http://h', api_key: 'secret123' } });
+  const cur = existingParams('reinstall-test', PARAM_MANIFEST);
+  assert.equal(cur.base_url, 'http://h', 'nicht-geheimer Wert aus packages.params');
+  assert.equal(cur.api_key, 'secret123', 'Secret aus Server-Env zurueckgemappt');
+  getDb().prepare("DELETE FROM mcp_servers WHERE name='Reinstall Srv'").run();
+  db_cleanup('reinstall-test');
+});
+
+test('Reinstall ohne erneute Parameter bleibt erhalten; Neu ohne Wert scheitert', async () => {
+  const app = express();
+  app.use(express.json({ limit: '1mb' }));
+  app.use(packagesRoutes);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
+  const url = (id: string): string => `http://127.0.0.1:${port}/admin/api/packages/${id}/install`;
+  try {
+    const first = await fetch(url('reinstall-test'), { method: 'POST', headers: auth, body: JSON.stringify({ manifest: PARAM_MANIFEST, params: { base_url: 'http://h', api_key: 'secret123' }, dangerousAck: true }) });
+    assert.equal(first.status, 200);
+    // Reinstall ohne params: bestehende Werte werden uebernommen.
+    const again = await fetch(url('reinstall-test'), { method: 'POST', headers: auth, body: JSON.stringify({ manifest: PARAM_MANIFEST, dangerousAck: true }) });
+    assert.equal(again.status, 200, 'Reinstall ohne erneute Eingabe');
+    const env = (getDb().prepare("SELECT env FROM mcp_servers WHERE name='Reinstall Srv'").get() as { env: string }).env;
+    assert.match(env, /secret123/, 'Secret bleibt erhalten');
+    // Neuinstallation ohne Pflichtwert scheitert weiterhin.
+    const fresh = await fetch(url('fresh-test'), { method: 'POST', headers: auth, body: JSON.stringify({ manifest: { ...PARAM_MANIFEST, id: 'fresh-test' }, dangerousAck: true }) });
+    assert.equal(fresh.status, 400);
+    const body = (await fresh.json()) as { error?: string };
+    assert.match(body.error ?? '', /erforderlich/);
+  } finally {
+    getDb().prepare("DELETE FROM mcp_servers WHERE name='Reinstall Srv'").run();
+    db_cleanup('reinstall-test');
+    server.close();
+  }
+});
 
 test('Install: zu altes Gateway wird abgelehnt (minGatewayVersion)', async () => {
   const app = express();

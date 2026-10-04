@@ -22,6 +22,28 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.5] – 2026-10-04
+
+### Geändert / Behoben (UX der Wartungsseite)
+
+- **Reinstall ohne erneute Parametereingabe:** Das Install-Formular ist mit den
+  bestehenden Werten vorbelegt; Secrets bleiben erhalten (Feld „(gesetzt – leer
+  lassen zum Behalten)"). `existingParams()` rekonstruiert die Werte (nicht-geheim
+  aus `packages.params`, Secrets aus den aufgelösten Server-Feldern) und der
+  Install-Route füllt leere Felder auf. Nur eine echte Neuinstallation ohne Wert
+  meldet weiterhin „erforderlich".
+- **Konflikte mit Feld-Diff:** Der Dialog zeigt je Konflikt „lokal … → Paket …"
+  (aus `packageDiff`, Secrets maskiert); die Entscheidung keep/take steht direkt
+  daneben.
+- **Diff-Vorschau lesbar:** Nur relevante (geänderte/neue/konfliktäre) Items;
+  lange Werte (Template/Prompt) sind eingeklappt (`<details>`); verständliche
+  Feldnamen statt Rohschlüssel; einheitliche Chips.
+- **„Installierte Pakete" als Karten:** Artefakte klar getrennt, Kopfzeile mit
+  Name/Version/Chips, Items darunter; die drei Aktionen (Testen, Neu installieren,
+  Entfernen) stehen in einer Zeile (mit Umbruch auf schmalen Ansichten).
+- **Optik:** Karten-Look, konsistente Abstände/Chips/Buttons, Hervorhebung von
+  Konflikten/Updates.
+
 ## [0.3.4] – 2026-10-04
 
 ### Hinzugefügt
@@ -476,7 +498,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.5
 [0.3.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.4
 [0.3.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.3
 [0.3.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.2

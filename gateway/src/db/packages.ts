@@ -189,6 +189,56 @@ export function packageDiff(m: PackageManifest): DiffItem[] {
   return out;
 }
 
+const ONLY_PLACEHOLDER = /^\$\{([a-z0-9_]+)\}$/;
+function placeholderKey(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const m = v.trim().match(ONLY_PLACEHOLDER);
+  return m?.[1] ?? null;
+}
+
+// Bestehende Parameterwerte einer installierten Instanz rekonstruieren, damit
+// ein Reinstall sie ohne erneute Eingabe beibehalten kann. Nicht-geheime Werte
+// kommen aus packages.params; Secrets werden aus den aufgeloesten Server-Feldern
+// (env/auth_token/url/command) zurueckgemappt (Feld == "${param}").
+export function existingParams(id: string, m: PackageManifest): Record<string, string> {
+  const out: Record<string, string> = {};
+  const pkg = getInstalledPackage(id);
+  const secretKeys = new Set((m.params ?? []).filter((p) => p.secret).map((p) => p.key));
+  if (pkg?.params) {
+    try {
+      const stored = JSON.parse(pkg.params) as Record<string, string>;
+      for (const [k, v] of Object.entries(stored)) {
+        if (!secretKeys.has(k) && v && v !== '(gesetzt)') out[k] = v;
+      }
+    } catch {
+      // defekte params: ignorieren
+    }
+  }
+  // Nur Server, die dieses Paket installiert hat (kein Rueckgriff auf
+  // gleichnamige Server anderer Pakete).
+  const ownedServers = new Set(listPackageItems(id).filter((i) => i.kind === 'server').map((i) => i.name));
+  for (const s of m.servers ?? []) {
+    if (!ownedServers.has(s.name)) continue;
+    const row = getDb()
+      .prepare('SELECT url, auth_token, command, env FROM mcp_servers WHERE name = ?')
+      .get(s.name) as { url: string | null; auth_token: string | null; command: string | null; env: string | null } | undefined;
+    if (!row) continue;
+    const map = (raw: unknown, resolved: string | null): void => {
+      const key = placeholderKey(raw);
+      if (key && resolved) out[key] = resolved;
+    };
+    map(s.url, row.url);
+    map(s.auth_token, row.auth_token);
+    map(s.command, row.command);
+    if (s.env) {
+      let renv: Record<string, string> = {};
+      try { renv = row.env ? (JSON.parse(row.env) as Record<string, string>) : {}; } catch { renv = {}; }
+      for (const [k, v] of Object.entries(s.env)) map(v, renv[k] ?? null);
+    }
+  }
+  return out;
+}
+
 // Install = Upsert (mehrfach installieren ueberschreibt/aktualisiert).
 // Provenienz in packages + package_items. dangerAck: bei shell()-Templates
 // erforderlich. decisions: pro Item 'take' (Paket-Inhalt uebernehmen) oder

@@ -8,6 +8,7 @@ import {
   uninstallPackage,
   conflictItems,
   packageDiff,
+  existingParams,
   parseManifest,
   manifestDangerous,
   manifestItems,
@@ -157,7 +158,22 @@ packagesRoutes.post('/admin/api/packages/:id/install', requireAdminAuth, async (
     if (!meetsMinVersion(GATEWAY_VERSION, manifest.minGatewayVersion)) {
       return res.status(400).json({ error: `Paket ${manifest.id} benoetigt Gateway >= ${manifest.minGatewayVersion} (installiert: ${GATEWAY_VERSION}). Bitte zuerst das Gateway aktualisieren.` });
     }
-    const values = paramValues(manifest, body.params ?? {});
+    // Reinstall: leere Felder mit den bestehenden Werten (inkl. Secrets)
+    // auffuellen -> keine erneute Eingabe noetig. Neuinstallation ohne Wert
+    // wirft weiterhin "erforderlich".
+    const provided = body.params ?? {};
+    const current = existingParams(manifest.id, manifest);
+    const merged: Record<string, string> = {};
+    for (const p of manifest.params ?? []) {
+      const v = provided[p.key];
+      const keep = current[p.key];
+      if (v == null || String(v).trim() === '') {
+        if (keep) merged[p.key] = keep;
+      } else {
+        merged[p.key] = String(v);
+      }
+    }
+    const values = paramValues(manifest, merged);
     const report = installPackage(manifest, {
       source: body.manifest ? 'import' : 'registry',
       registryUrl: body.manifest ? null : registryUrl(),

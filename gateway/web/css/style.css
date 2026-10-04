@@ -218,15 +218,41 @@ td.actions { text-align: right; white-space: nowrap; }
 .pkg-list { display: grid; gap: 8px; margin-top: 8px; }
 .pkg-list > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--border, #ddd); border-radius: 6px; padding: 8px 12px; }
 .pkg-version { color: var(--muted, #666); font-size: 0.85em; margin-left: 6px; }
-.chip { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.78em; font-weight: 600; vertical-align: middle; }
-.chip.ok { background: #e6f4ea; color: #1e7e34; }
-.chip.update { background: #fff3cd; color: #8a6100; border: 1px solid #ffe08a; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.78em; font-weight: 600; vertical-align: middle; background: rgba(255, 255, 255, 0.08); color: var(--muted, #aaa); }
+.chip.ok { background: rgba(46, 204, 113, 0.18); color: #7fe0a5; }
+.chip.update { background: rgba(241, 196, 15, 0.18); color: #ffd45e; }
 .pkg-id { color: var(--muted, #888); font-size: 0.8em; margin-left: 6px; font-family: ui-monospace, monospace; }
 .pkg-danger { border-left: 3px solid #c0392b; padding: 6px 10px; margin: 8px 0; }
 .pkg-items ul { margin: 4px 0 0 18px; }
 .pkg-docs { font-family: ui-monospace, monospace; font-size: 0.85em; white-space: pre-wrap; }
 .pkg-installed-item ul { margin: 4px 0 8px 18px; color: var(--muted, #666); }
 .pkg-url-label { align-self: center; }
+
+/* Installierte Pakete: klare Karten-Trennung + Aktionszeile */
+#pkg-installed { display: grid; gap: 12px; }
+.pkg-installed-item { border: 1px solid var(--border, #ddd); border-radius: 8px; padding: 12px 14px; background: rgba(255, 255, 255, 0.02); }
+.pkg-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pkg-card-title { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pkg-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pkg-actions .btn { white-space: nowrap; }
+.pkg-items > summary { cursor: pointer; color: var(--muted, #999); margin-top: 6px; }
+.pkg-items ul { list-style: none; margin: 6px 0 0; padding: 0; }
+.pkg-items li { padding: 1px 0; }
+
+/* Diff-/Konfliktblöcke in der Vorschau */
+.diff-block { border: 1px solid var(--border, #ddd); border-radius: 8px; padding: 10px 12px; margin: 10px 0; background: rgba(255, 255, 255, 0.02); }
+.diff-block h4 { margin: 0 0 8px; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+.diff-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.diff-item { border-top: 1px solid rgba(255, 255, 255, 0.07); padding-top: 8px; }
+.diff-item:first-child { border-top: none; padding-top: 0; }
+.diff-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.diff-item-head .kind, .pkg-items .kind { font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #888); }
+.diff-fields { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; }
+.diff-fields li { font-size: 0.9em; }
+.diff-field-name { color: var(--muted, #999); margin-right: 4px; }
+.diff-fields code { background: rgba(255, 255, 255, 0.08); padding: 0 4px; border-radius: 4px; font-size: 0.92em; }
+.pkg-conflicts { border-color: rgba(241, 196, 15, 0.5); background: rgba(241, 196, 15, 0.06); }
+.pkg-conflicts select { margin-top: 6px; max-width: 100%; }
 
 /* Links im Inhalt: dezentes Akzentblau statt Browser-Blau */
 main a { color: #7fb5f7; text-decoration: none; border-bottom: 1px solid rgba(127, 181, 247, 0.35); }
