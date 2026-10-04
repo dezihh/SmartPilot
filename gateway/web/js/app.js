@@ -1123,8 +1123,9 @@ async function showInstallForm(id, manifestFromImport) {
             <option value="take">Paket-Version übernehmen</option>
           </select></li>`).join('')}</ul>
       </div>` : '';
-    $('pkg-install-form').classList.remove('hidden');
-    $('pkg-install-form').innerHTML = `
+    const formEl = $('pkg-install-form');
+    formEl.classList.remove('hidden');
+    formEl.innerHTML = `
       <h3>${escHtml(m.name)} <span class="pkg-version">v${escHtml(m.version)}</span></h3>
       <p class="field-help">${escHtml(m.description ?? '')}</p>
       ${metaHtml}
@@ -1140,6 +1141,10 @@ async function showInstallForm(id, manifestFromImport) {
         <button id="pkg-install-go" class="btn primary">${installed ? 'Aktualisieren' : 'Installieren'}</button>
         <button id="pkg-install-cancel" class="btn">Abbrechen</button>
       </div>`;
+    // Formular in den Blick scrollen: „Neu installieren" aus der Liste
+    // „Installierte Pakete" oeffnet es sonst im oberen Card ausserhalb des
+    // sichtbaren Bereichs - das wirkt, als passiere nichts.
+    formEl.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
     $('pkg-install-go').onclick = async () => {
       const params = {};
       for (const input of $('pkg-install-form').querySelectorAll('[data-param]')) params[input.dataset.param] = input.value;

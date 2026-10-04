@@ -22,6 +22,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.3] – 2026-10-04
+
+### Behoben
+
+- **„Neu installieren" in der Paketübersicht wirkte wie ohne Funktion:** Der Klick
+  öffnete das Bestätigungsformular, das aber im Card „Installationspakete"
+  (unterhalb der verfügbaren Liste bzw. oberhalb der installierten Liste) außerhalb
+  des sichtbaren Bereichs lag. Das Formular wird jetzt nach dem Öffnen in den Blick
+  gescrollt.
+
 ## [0.3.2] – 2026-10-04
 
 ### Hinzugefügt
@@ -443,7 +453,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.3
 [0.3.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.2
 [0.3.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.0
