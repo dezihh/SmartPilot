@@ -28,7 +28,7 @@ function seedLegacyReports(): void {
 test('Legacy-Bereinigung laeuft einmalig (Migration) und schont spaetere Reports', () => {
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(getSchemaVersion(), 3, 'frischer Start auf Zielversion');
+  assert.equal(getSchemaVersion(), 4, 'frischer Start auf Zielversion');
 
   // Bestands-DB simulieren: Reparatur-Migration steht noch aus (Version 1),
   // Marker entfernen, Legacy-Muster anlegen.
@@ -39,7 +39,7 @@ test('Legacy-Bereinigung laeuft einmalig (Migration) und schont spaetere Reports
   // Migration 2 nachziehen: einmalige Bereinigung greift.
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(getSchemaVersion(), 3);
+  assert.equal(getSchemaVersion(), 4);
   assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'boerse_portfolio'"), 0, 'Legacy-Funktion wird entfernt');
   assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'boerse'"), 0, 'Legacy-Vorgang wird entfernt');
   const hs = getDb().prepare("SELECT template FROM tpl_functions WHERE name = 'hausstatus_gw'").get() as { template: string };

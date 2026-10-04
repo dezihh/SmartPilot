@@ -7,6 +7,23 @@ export function hashContent(kind: string, name: string, content: unknown): strin
   return createHash('sha256').update(JSON.stringify({ kind, name, content })).digest('hex').slice(0, 16);
 }
 
+// args normalisieren: leeres Array, "[]" und null/undefined sind gleichwertig
+// (=> gleicher Hash). Verhindert Scheinkonflikte, wenn die Bestandszeile "[]"
+// traegt, das Manifest aber kein args-Feld hat (serverContent -> null).
+export function normalizeArgs(raw: unknown): unknown {
+  if (raw === null || raw === undefined) return null;
+  if (Array.isArray(raw)) return raw.length === 0 ? null : JSON.stringify(raw);
+  const s = String(raw).trim();
+  if (s === '' || s === '[]') return null;
+  try {
+    const parsed = JSON.parse(s) as unknown;
+    if (Array.isArray(parsed) && parsed.length === 0) return null;
+  } catch {
+    // kein JSON: unveraendert lassen
+  }
+  return raw;
+}
+
 export interface ServerHashRow {
   name: unknown;
   url: unknown;
@@ -26,7 +43,7 @@ export interface ServerHashRow {
 export function serverContentNew(row: ServerHashRow): Record<string, unknown> {
   return {
     name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
-    command: row.command, args: row.args, env: row.env, npm_spec: row.npm_spec,
+    command: row.command, args: normalizeArgs(row.args), env: row.env, npm_spec: row.npm_spec,
     inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
   };
 }
@@ -35,7 +52,7 @@ export function serverContentNew(row: ServerHashRow): Record<string, unknown> {
 export function serverContentOld(row: ServerHashRow): Record<string, unknown> {
   return {
     name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
-    command: row.command, args: row.args, env: row.env,
+    command: row.command, args: normalizeArgs(row.args), env: row.env,
     inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
   };
 }

@@ -52,10 +52,13 @@ export {
   installPackage,
   uninstallPackage,
   conflictItems,
+  packageDiff,
   type InstalledPackageRow,
   type PackageItemRow,
   type PackageReport,
   type UninstallReport,
+  type DiffItem,
+  type DiffField,
 } from './db/packages.js';
 export {
   parseManifest,

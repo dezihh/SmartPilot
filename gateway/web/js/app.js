@@ -1020,6 +1020,17 @@ let pkgState = { registry: [], installed: [], selected: null, preview: null, lan
 
 function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+// Diff-Status als Chip + Wert-Darstellung (leer/Objekt).
+function statusChip(status) {
+  const map = { new: ['chip ok', 'neu'], changed: ['chip update', 'geändert'], unchanged: ['chip', 'unverändert'], conflict: ['chip update', 'Konflikt (lokal)'] };
+  const [cls, label] = map[status] ?? ['chip', String(status)];
+  return `<span class="${cls}">${label}</span>`;
+}
+function fmtVal(v) {
+  if (v === null || v === undefined || v === '') return '(leer)';
+  return typeof v === 'object' ? JSON.stringify(v) : String(v);
+}
+
 // Semantischer Versionsvergleich (nur Ziffernteile; robust gegen fehlende Teile).
 function cmpVersion(a, b) {
   const pa = String(a ?? '').split('.').map((n) => parseInt(n, 10) || 0);
@@ -1101,6 +1112,17 @@ async function showInstallForm(id, manifestFromImport) {
     if (installed) {
       try { conflicts = (await api(`/packages/${encodeURIComponent(id)}/conflicts`)).conflicts ?? []; } catch { conflicts = []; }
     }
+    // Diff-Vorschau (kein Schreiben): zeigt vor dem Speichern, was sich aendert.
+    let diff = { diffs: [], restartRequired: false, npmServers: [] };
+    try { diff = await api(`/packages/${encodeURIComponent(id)}/diff`, { method: 'POST', body: {} }); } catch { diff = { diffs: [], restartRequired: false, npmServers: [] }; }
+    const changed = (diff.diffs ?? []).filter((d) => d.status !== 'unchanged');
+    const diffHtml = changed.length ? `
+      <div class="pkg-items"><strong>Änderungen gegenüber dem installierten Stand:</strong>
+        <ul>${changed.map((d) => `<li>${escHtml(d.key)} ${statusChip(d.status)}${d.fields?.length ? `<div class="field-help">${d.fields.map((f) => `${escHtml(f.field)}: ${escHtml(fmtVal(f.from))} → ${escHtml(fmtVal(f.to))}`).join('<br>')}</div>` : ''}</li>`).join('')}</ul>
+      </div>` : '';
+    const restartHtml = diff.restartRequired
+      ? `<div class="error-text pkg-danger">⚠️ Container-Neustart erforderlich nach dem Speichern: npm-Paket${(diff.npmServers ?? []).length ? ` (${(diff.npmServers).map(escHtml).join(', ')})` : ''} wird erst beim nächsten Start provisioniert (z. B. <code>./compose.sh restart</code>).</div>`
+      : '';
     const danger = preview.dangerous ? `<div class="error-text pkg-danger">⚠️ Gefährliche Aktion: ${(preview.dangerousItems ?? []).map((i) => escHtml(i)).join(' · ')}</div>` : '';
     const info = (preview.infoItems ?? []).length ? `<div class="field-help">${(preview.infoItems ?? []).map((i) => escHtml(i)).join(' · ')}</div>` : '';
     const items = (preview.items ?? []).map((i) => `<li>${escHtml(i.kind)}: ${escHtml(i.name)}</li>`).join('');
@@ -1133,6 +1155,7 @@ async function showInstallForm(id, manifestFromImport) {
       ${m.requires ? `<p class="field-help"><strong>Benötigt:</strong> ${escHtml(m.requires)}</p>` : ''}
       ${danger}${info}
       ${conflictsHtml}
+      ${restartHtml}${diffHtml}
       <div class="pkg-items"><strong>Enthält:</strong><ul>${items}</ul></div>
       ${preview.setupDocs ? `<details><summary>Einrichtung Gegenseite</summary><pre class="pkg-docs">${escHtml(preview.setupDocs)}</pre></details>` : ''}
       ${changelogHtml}
@@ -1155,7 +1178,12 @@ async function showInstallForm(id, manifestFromImport) {
         if (manifestFromImport) body.manifest = manifestFromImport.manifest;
         const r = await api(`/packages/${encodeURIComponent(id)}/install`, { method: 'POST', body });
         const rep = r.report;
-        alert(`Angelegt: ${rep.created.length}\nAktualisiert: ${rep.updated.length}\nBehalten: ${rep.kept?.length ?? 0}\n${rep.infoItems?.length ? 'Info: ' + rep.infoItems.join(' · ') : ''}`);
+        let msg = `Angelegt: ${rep.created.length}\nAktualisiert: ${rep.updated.length}\nBehalten: ${rep.kept?.length ?? 0}`;
+        if (rep.infoItems?.length) msg += `\nInfo: ${rep.infoItems.join(' · ')}`;
+        if (rep.restartRequired) {
+          msg += `\n\n⚠️ Container-Neustart erforderlich, damit das npm-Paket provisioniert wird${(rep.npmServers ?? []).length ? ` (${rep.npmServers.join(', ')})` : ''}. z. B. ./compose.sh restart`;
+        }
+        alert(msg);
         showInstallFormClose();
         loadMaintenance();
       } catch (e) { alert(e.message); }

@@ -95,6 +95,23 @@ export interface PackageReport {
   dangerous: boolean;
   dangerousItems: string[];
   infoItems: string[];
+  /** true, wenn ein stdio-Server ein npm_spec mitbringt -> Container-Neustart noetig. */
+  restartRequired: boolean;
+  /** Namen der stdio-Server mit npm_spec. */
+  npmServers: string[];
+}
+
+export interface DiffField {
+  field: string;
+  from: unknown;
+  to: unknown;
+}
+export interface DiffItem {
+  key: string;
+  kind: string;
+  name: string;
+  status: 'new' | 'changed' | 'unchanged' | 'conflict';
+  fields: DiffField[];
 }
 
 class DryRunSignal extends Error {}
@@ -120,6 +137,56 @@ export function conflictItems(packageId: string): string[] {
     if (hashContent(item.kind, item.name, content) !== item.content_hash) conflicts.push(`${item.kind}:${item.name}`);
   }
   return conflicts;
+}
+
+const MASKED_DIFF_FIELDS = new Set(['auth_token', 'env']);
+function isParamDependent(v: unknown): boolean {
+  return typeof v === 'string' && v.includes('${');
+}
+
+// Feld-Diff Ziel (Manifest) vs aktueller DB-Stand. Felder mit ${...} werden
+// uebersprungen (Wert kommt erst aus den Parametern); Secrets werden maskiert.
+function diffFields(target: Record<string, unknown>, current: Record<string, unknown>): DiffField[] {
+  const out: DiffField[] = [];
+  for (const field of Object.keys(target)) {
+    const to = target[field];
+    const from = current[field];
+    if (isParamDependent(to) || isParamDependent(from)) continue;
+    if (JSON.stringify(to) === JSON.stringify(from)) continue;
+    const mask = MASKED_DIFF_FIELDS.has(field);
+    out.push({ field, from: mask && from != null ? '***' : from, to: mask && to != null ? '***' : to });
+  }
+  return out;
+}
+
+// Vorschau (kein Schreiben): je Item Status + geaenderte Felder.
+export function packageDiff(m: PackageManifest): DiffItem[] {
+  const conflicts = new Set(conflictItems(m.id));
+  const out: DiffItem[] = [];
+  const add = (kind: 'server' | 'function' | 'action', name: string, target: Record<string, unknown>, current: Record<string, unknown> | null): void => {
+    const key = `${kind}:${name}`;
+    if (current == null) {
+      out.push({ key, kind, name, status: 'new', fields: diffFields(target, {}) });
+      return;
+    }
+    const fields = diffFields(target, current);
+    const status: DiffItem['status'] = conflicts.has(key) ? 'conflict' : fields.length ? 'changed' : 'unchanged';
+    out.push({ key, kind, name, status, fields });
+  };
+  for (const s of m.servers ?? []) add('server', s.name, serverContent(s), serverRowContent(s.name));
+  for (const f of m.functions ?? []) add('function', f.name, functionContent(f), functionRowContent(f.name));
+  for (const a of m.actions ?? []) add('action', a.name, actionContent(a), actionRowContent(a.name));
+  for (const ix of m.indexes ?? []) {
+    const key = ix.key ? `entity_index_${ix.key}` : 'entity_index';
+    const stored = getSetting(key);
+    let current: unknown = null;
+    if (stored !== undefined) {
+      try { current = JSON.parse(stored); } catch { current = stored; }
+    }
+    const status: DiffItem['status'] = current == null ? 'new' : JSON.stringify(ix.config) === JSON.stringify(current) ? 'unchanged' : 'changed';
+    out.push({ key: `index:${key}`, kind: 'index', name: key, status, fields: [] });
+  }
+  return out;
 }
 
 // Install = Upsert (mehrfach installieren ueberschreibt/aktualisiert).
@@ -153,9 +220,13 @@ export function installPackage(
   const conflictSet = new Set(conflicts);
   const keep = (key: string): boolean =>
     decisions[key] === 'keep' || (decisions[key] !== 'take' && conflictSet.has(key));
+  const npmServers = (applied.servers ?? [])
+    .filter((s) => s.transport === 'stdio' && s.npmSpec)
+    .map((s) => s.name);
   const report: PackageReport = {
     created: [], updated: [], unchanged: [], kept: [], conflicts,
     dangerous: danger.dangerous, dangerousItems: danger.items, infoItems: danger.info,
+    restartRequired: npmServers.length > 0, npmServers,
   };
 
   const run = (): void => {

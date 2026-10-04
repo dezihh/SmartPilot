@@ -10,6 +10,7 @@ import {
   listPackageItems,
   listAllPackageItems,
   conflictItems,
+  packageDiff,
 } from '../src/db/packages.js';
 import { packagesRoutes } from '../src/routes/packages.js';
 import { config } from '../src/config.js';
@@ -327,6 +328,51 @@ test('Vertrauens-/Sprachfelder: semver-Vergleich + Manifest-Validierung', () => 
   assert.equal(validateManifest({ ...OK_MANIFEST, language: 'DEUTSCH' }).ok, false);
   assert.equal(validateManifest({ ...OK_MANIFEST, minGatewayVersion: 'v1' }).ok, false);
 });
+
+test('args-Normalisierung: "[]" == null -> kein Scheinkonflikt; echte Aenderung bleibt', () => {
+  const pkg = { ...OK_MANIFEST, id: 'args-norm', servers: [{ name: 'SearXNG-Test', transport: 'stdio' as const, command: 'node_modules/.bin/mcp-searxng' }], functions: [], indexes: [], allowTools: [] };
+  installPackage(pkg, { source: 'import', dangerousAck: true });
+  // Bestandszeile "[]" simulieren (wie aus alter Admin-UI-Installation).
+  getDb().prepare("UPDATE mcp_servers SET args='[]' WHERE name='SearXNG-Test'").run();
+  assert.deepEqual(conflictItems('args-norm'), [], 'leeres args darf keinen Konflikt ergeben');
+  // Echte lokale Aenderung bleibt Konflikt.
+  getDb().prepare("UPDATE mcp_servers SET command='custom' WHERE name='SearXNG-Test'").run();
+  assert.deepEqual(conflictItems('args-norm'), ['server:SearXNG-Test']);
+  getDb().prepare("DELETE FROM mcp_servers WHERE name='SearXNG-Test'").run();
+  db_cleanup('args-norm');
+});
+
+test('restartRequired: stdio mit npm_spec -> Hinweis, sonst nicht', () => {
+  const withNpm = { ...OK_MANIFEST, id: 'npm-test', servers: [{ name: 'NPM Test', transport: 'stdio' as const, command: 'node_modules/.bin/x', npmSpec: 'x@1.0.0' }], functions: [], indexes: [], allowTools: [] };
+  const r = installPackage(withNpm, { source: 'import', dangerousAck: true });
+  assert.equal(r.restartRequired, true);
+  assert.deepEqual(r.npmServers, ['NPM Test']);
+  const withoutNpm = { ...OK_MANIFEST, id: 'npm-test2', servers: [{ name: 'HTTP Test', transport: 'http' as const, url: 'http://x' }], functions: [], indexes: [], allowTools: [] };
+  const r2 = installPackage(withoutNpm, { source: 'import', dangerousAck: true });
+  assert.equal(r2.restartRequired, false);
+  getDb().prepare("DELETE FROM mcp_servers WHERE name IN ('NPM Test','HTTP Test')").run();
+  db_cleanup('npm-test'); db_cleanup('npm-test2');
+});
+
+test('packageDiff: Status changed + Felder; secrets maskiert', () => {
+  const pkg = { ...OK_MANIFEST, id: 'diff-test', servers: [{ name: 'Diff Srv', transport: 'stdio' as const, command: 'node_modules/.bin/a', npmSpec: 'a@1.0.0', auth_token: 'secret-a' }], functions: [], indexes: [], allowTools: [] };
+  installPackage(pkg, { source: 'import', dangerousAck: true });
+  const target = { ...pkg, version: '1.0.1', servers: [{ name: 'Diff Srv', transport: 'stdio' as const, command: 'node_modules/.bin/b', npmSpec: 'a@2.0.0', auth_token: 'secret-b' }] };
+  const srv = packageDiff(target).find((d) => d.key === 'server:Diff Srv');
+  assert.equal(srv?.status, 'changed');
+  const fields = (srv?.fields ?? []).map((f) => f.field).sort();
+  assert.ok(fields.includes('command') && fields.includes('npm_spec') && fields.includes('auth_token'));
+  const tokenField = srv?.fields.find((f) => f.field === 'auth_token');
+  assert.equal(tokenField?.from, '***');
+  assert.equal(tokenField?.to, '***');
+  getDb().prepare("DELETE FROM mcp_servers WHERE name='Diff Srv'").run();
+  db_cleanup('diff-test');
+});
+
+// Paket-Reste entfernen (Item-Hashes + Paket-Zeile).
+function db_cleanup(id: string): void {
+  uninstallPackage(id);
+}
 
 test('Install: zu altes Gateway wird abgelehnt (minGatewayVersion)', async () => {
   const app = express();

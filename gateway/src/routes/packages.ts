@@ -7,6 +7,7 @@ import {
   listAllPackageItems,
   uninstallPackage,
   conflictItems,
+  packageDiff,
   parseManifest,
   manifestDangerous,
   manifestItems,
@@ -206,6 +207,27 @@ packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAdminAuth, (req, 
     res.json({ conflicts: conflictItems(String(req.params.id ?? '')) });
   } catch (e) {
     res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
+});
+
+// Vorschau-Diff: welche Items/Felder wuerde ein Install aendern (kein Schreiben).
+packagesRoutes.post('/admin/api/packages/:id/diff', requireAdminAuth, async (req, res) => {
+  try {
+    const body = req.body as { manifest?: unknown };
+    let manifest: PackageManifest;
+    if (body.manifest) {
+      const parsed = parseManifest(JSON.stringify(body.manifest));
+      if (!parsed.ok) throw new Error(parsed.errors.join('; '));
+      manifest = parsed.manifest;
+    } else {
+      manifest = await fetchManifest(String(req.params.id ?? ''));
+    }
+    const npmServers = (manifest.servers ?? [])
+      .filter((s) => s.transport === 'stdio' && s.npmSpec)
+      .map((s) => s.name);
+    res.json({ diffs: packageDiff(manifest), restartRequired: npmServers.length > 0, npmServers });
+  } catch (e) {
+    res.status(502).json({ error: `Diff nicht moeglich (${String(e instanceof Error ? e.message : e)})` });
   }
 });
 

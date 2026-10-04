@@ -578,10 +578,11 @@ Kombinationen (z. B. "News und dann Hausstatus"): jeder Teil nutzt das jeweils z
 
 }
 
-// Migration 3: package_items-Hashes auf die ab v0.3.0 erweiterte Server-Feldform
-// (inkl. npm_spec) rebasen. Nur wenn die Zeile nachweislich unveraendert ist
-// (Alt-Form-Hash == gespeicherter Hash), wird der Hash fortgeschrieben - sonst
-// bleibt eine echte lokale Aenderung als Konflikt erhalten.
+// Migration 3/4: package_items-Hashes rebasen. Version 3 hebt auf die ab v0.3.0
+// erweiterte Server-Feldform (inkl. npm_spec); Version 4 zieht zusaetzlich die
+// args-Normalisierung ("[]" == null) nach. Nur wenn die Zeile nachweislich
+// unveraendert ist (Alt-Form-Hash == gespeicherter Hash), wird der Hash
+// fortgeschrieben - sonst bleibt eine echte lokale Aenderung als Konflikt erhalten.
 function applyHashRebase(db: Database.Database): void {
   const items = db
     .prepare("SELECT package_id, name, content_hash FROM package_items WHERE kind = 'server'")
@@ -605,6 +606,7 @@ const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
   { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },
+  { version: 4, name: 'rebase-package-item-hashes-args', up: applyHashRebase },
 ];
 
 export function getDb(): Database.Database {

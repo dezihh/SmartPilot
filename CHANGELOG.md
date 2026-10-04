@@ -22,6 +22,29 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.4] – 2026-10-04
+
+### Hinzugefügt
+
+- **Diff-Vorschau im Install-/Update-Dialog:** Ein neuer Endpoint
+  `POST /admin/api/packages/:id/diff` (kein Schreiben) liefert je Item den Status
+  (neu / geändert / unverändert / Konflikt lokal) und die geänderten Felder als
+  alt → neu; Secret-Felder (`auth_token`, `env`) werden maskiert. Der Dialog zeigt
+  das vor dem Speichern.
+- **Neustart-Hinweis nach Paket-Install:** Bringt ein Paket ein stdio-`npm_spec`
+  mit, weist der Dialog vor dem Speichern und die Meldung nach dem Install auf den
+  nötigen Container-Neustart hin (Provisioner läuft beim Start). Ohne `npm_spec`
+  kein Hinweis.
+
+### Behoben
+
+- **Scheinkonflikt bei `args` (`'[]'` vs. `null`)** (Finding aus der Praxis):
+  Die Bestandszeile trug `args='[]'`, das Manifest ohne `args` ergibt `null` —
+  dadurch galt eine unveränderte Zeile (z. B. `searxng`) dauerhaft als Konflikt.
+  `args` wird jetzt einheitlich normalisiert (`'[]'`/leer/`null` gleich); Migration 4
+  hebt nachweislich unveränderte Item-Hashes entsprechend. Echte lokale Änderungen
+  bleiben Konflikt.
+
 ## [0.3.3] – 2026-10-04
 
 ### Behoben
@@ -453,7 +476,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.4
 [0.3.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.3
 [0.3.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.2
 [0.3.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.1

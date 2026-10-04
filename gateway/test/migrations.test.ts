@@ -12,7 +12,7 @@ import { conflictItems } from '../src/db/packages.js';
 import { hashContent, serverContentOld } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
-const TARGET = 3;
+const TARGET = 4;
 
 test('Runner: wendet Migrationen der Reihe nach an, stoppt+rollt bei Fehler zurueck', () => {
   const db = new Database(':memory:');
@@ -91,5 +91,26 @@ test('Migration 3: rebased Server-Item-Hash, echte lokale Aenderung bleibt Konfl
   const conflicts = conflictItems('brave-search');
   assert.equal(conflicts.includes('server:Brave'), false, 'saubere Zeile nach Rebase ohne Konflikt');
   assert.deepEqual(conflicts, ['server:Lokal'], 'lokal geaenderte Zeile bleibt Konflikt');
+  closeDb();
+});
+
+test('Migration 4: args "[]" wird auf null normalisiert (kein Scheinkonflikt)', () => {
+  const p = tmpDb('mig-args');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  // Bestandszeile wie nach alter Admin-UI-Installation: args='[]', Manifest ohne args.
+  db.prepare(
+    "INSERT INTO mcp_servers (name,url,auth_token,transport,command,args,env,npm_spec,inventory_prompt,side_effect,enabled) VALUES ('SearXNG','','','stdio','node_modules/.bin/mcp-searxng','[]','{\"SEARXNG_URL\":\"http://x\"}',NULL,NULL,'read',1)"
+  ).run();
+  const row = db.prepare("SELECT * FROM mcp_servers WHERE name = 'SearXNG'").get() as Parameters<typeof serverContentOld>[0];
+  const oldHash = hashContent('server', 'SearXNG', serverContentOld(row));
+  db.prepare("INSERT INTO packages (id, version, source) VALUES ('searxng', '1.0.2', 'registry')").run();
+  db.prepare("INSERT INTO package_items (package_id, kind, name, row_id, content_hash) VALUES ('searxng','server','SearXNG',NULL,?)").run(oldHash);
+
+  db.pragma('user_version = 3'); // Migration 4 ausstehend
+  closeDb();
+  initDb(p);
+  assert.deepEqual(conflictItems('searxng'), [], 'args-Normalisierung verhindert Scheinkonflikt');
   closeDb();
 });
