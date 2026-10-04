@@ -22,6 +22,25 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.2] – 2026-10-04
+
+### Hinzugefügt
+
+- **`packages/<lang>/index.json` wird generiert:** `scripts/build-registry-index.mjs`
+  erzeugt das Listing deterministisch aus den Manifesten (Version immer aus dem
+  Manifest). Neuer Workflow **Registry CI** lässt die CI rot werden, wenn Index
+  und Manifeste divergieren (`--check`).
+- **„Update verfügbar"-Badge in der Paketübersicht:** Die Admin-UI vergleicht die
+  installierte Version mit der Registry-Version und zeigt bei einer älteren
+  Installation „Update verfügbar: vX.Y.Z" (in der verfügbaren und der
+  installierten Liste). Gleiche Version → „installiert"; nicht installiert → kein
+  Chip.
+
+### Geändert
+
+- `index.json` an die Manifeste angeglichen (u. a. `brave-search` 1.1.1 → 1.1.2,
+  Zusammenfassungen aus dem Manifest).
+
 ## [0.3.1] – 2026-10-04
 
 ### Behoben
@@ -424,7 +443,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.2
 [0.3.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.0
 [0.2.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.1

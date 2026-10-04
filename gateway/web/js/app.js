@@ -1020,6 +1020,17 @@ let pkgState = { registry: [], installed: [], selected: null, preview: null, lan
 
 function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+// Semantischer Versionsvergleich (nur Ziffernteile; robust gegen fehlende Teile).
+function cmpVersion(a, b) {
+  const pa = String(a ?? '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b ?? '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 async function loadMaintenance() {
   try {
     const data = await api('/packages');
@@ -1034,17 +1045,26 @@ async function loadMaintenance() {
 }
 
 function renderPackages() {
-  const installedIds = new Set(pkgState.installed.map((p) => p.id));
+  const installedById = new Map(pkgState.installed.map((p) => [p.id, p]));
   const avail = pkgState.registry.map((p) => {
-    const inst = installedIds.has(p.id) ? '<span class="chip ok">installiert</span>' : '';
-    return `<div class="pkg-item"><div><strong>${escHtml(p.name)}</strong> <span class="pkg-version">v${escHtml(p.version)}</span> <span class="pkg-id">${escHtml(p.id)}</span><div class="field-help">${escHtml(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${escHtml(pkgState.language ?? 'de')}/${escHtml(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${escHtml(p.id)}">${installedIds.has(p.id) ? 'Neu installieren' : 'Installieren'}</button></div>`;
+    const inst = installedById.get(p.id);
+    const update = inst && cmpVersion(inst.version, p.version) < 0;
+    const chip = !inst
+      ? ''
+      : update
+        ? `<span class="chip update">Update verfügbar: v${escHtml(p.version)}</span>`
+        : '<span class="chip ok">installiert</span>';
+    return `<div class="pkg-item"><div><strong>${escHtml(p.name)}</strong> <span class="pkg-version">v${escHtml(p.version)}</span> <span class="pkg-id">${escHtml(p.id)}</span> ${chip}<div class="field-help">${escHtml(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${escHtml(pkgState.language ?? 'de')}/${escHtml(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${escHtml(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
   });
   $('pkg-available').innerHTML = avail.length ? avail.join('') : '<div class="field-help">Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.</div>';
-  const inst = pkgState.installed.map((p) => {
+  const instList = pkgState.installed.map((p) => {
+    const reg = pkgState.registry.find((r) => r.id === p.id);
+    const update = reg && cmpVersion(p.version, reg.version) < 0;
+    const chip = update ? ` <span class="chip update">Update verfügbar: v${escHtml(reg.version)}</span>` : '';
     const items = (p.items ?? []).map((i) => `<li>${escHtml(i.kind)}: ${escHtml(i.name)}</li>`).join('');
-    return `<div class="pkg-installed-item"><div><strong>${escHtml(p.id)}</strong> v${escHtml(p.version)} <span class="pkg-version">${escHtml(p.source)}</span><div class="field-help">${escHtml(p.installed_at)}</div></div><div class="toolbar"><button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button><button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button><button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button></div><details><summary>Enthält</summary><ul>${items}</ul></details></div>`;
+    return `<div class="pkg-installed-item"><div><strong>${escHtml(p.id)}</strong> v${escHtml(p.version)}${chip} <span class="pkg-version">${escHtml(p.source)}</span><div class="field-help">${escHtml(p.installed_at)}</div></div><div class="toolbar"><button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button><button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button><button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button></div><details><summary>Enthält</summary><ul>${items}</ul></details></div>`;
   });
-  $('pkg-installed').innerHTML = inst.length ? inst.join('') : '<div class="field-help">Noch keine Pakete installiert.</div>';
+  $('pkg-installed').innerHTML = instList.length ? instList.join('') : '<div class="field-help">Noch keine Pakete installiert.</div>';
   for (const b of document.querySelectorAll('#pkg-available [data-install]')) b.onclick = () => showInstallForm(b.dataset.install, false);
   for (const b of document.querySelectorAll('[data-reinstall]')) b.onclick = () => showInstallForm(b.dataset.reinstall, null);
   for (const b of document.querySelectorAll('[data-testpkg]')) b.onclick = () => testPackage(b.dataset.testpkg);

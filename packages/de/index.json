@@ -4,61 +4,61 @@
     {
       "id": "home-assistant",
       "name": "Home Assistant Anbindung",
-      "summary": "MCP-Server (ha-mcp), Entity-Index (alle HA-States) und Schalten-Kaskade",
+      "summary": "MCP-Server (ha-mcp), Entity-Index (alle HA-States) und Schalten-Kaskade.",
       "version": "1.0.3"
     },
     {
       "id": "music-assistant",
       "name": "Music Assistant Anbindung",
-      "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade",
+      "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
       "version": "1.1.3"
     },
     {
       "id": "searxng",
       "name": "Websuche SearXNG",
-      "summary": "Metasuche ueber eine selbst gehostete SearXNG-Instanz (stdio-Bruecke)",
+      "summary": "Metasuche ueber eine selbst gehostete SearXNG-Instanz (stdio-Bruecke mcp-searxng).",
       "version": "1.0.3"
     },
     {
       "id": "brave-search",
       "name": "Websuche Brave",
-      "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion",
-      "version": "1.1.1"
+      "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion (Suche + Feed-Lese in einem Call).",
+      "version": "1.1.2"
     },
     {
       "id": "system-info",
       "name": "System-Info (Shell)",
-      "summary": "Gateway-Uptime und CPU-Typ via shell() - gefaehrliche Aktion",
+      "summary": "Gateway-Uptime und CPU-Typ via shell() - als gefaehrliche Aktion markiert.",
       "version": "1.0.2"
     },
     {
       "id": "open-meteo-wetter",
       "name": "Wetter (Open-Meteo)",
-      "summary": "Aktuelles Wetter und 3-Tage-Vorhersage via Open-Meteo, koordinaten-basiert",
+      "summary": "Aktuelles Wetter und 3-Tage-Vorhersage via Open-Meteo (oeffentliche API, ohne Key), Koordinaten-Parameter.",
       "version": "1.0.1"
     },
     {
       "id": "autobahn",
       "name": "Autobahn-Verkehr",
-      "summary": "Baustellen und Verkehrsmeldungen der Autobahnen (oeffentliche API, ohne Key)",
+      "summary": "Baustellen und Verkehrsmeldungen der Autobahnen (oeffentliche Autobahn-App-API, ohne Key) mit Geo-Filter.",
       "version": "1.0.1"
     },
     {
       "id": "beispiel-home-assistant",
       "name": "Beispiel: Home Assistant",
-      "summary": "Beispiel-Rezept: generischer Hausstatus aus sun.sun und zone.home (deterministisch)",
+      "summary": "Beispiel-Rezept: generischer Hausstatus aus sun.sun und zone.home.",
       "version": "1.0.0"
     },
     {
       "id": "beispiel-http",
       "name": "Beispiel: HTTP",
-      "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über http()",
+      "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über öffentliche APIs.",
       "version": "1.0.0"
     },
     {
       "id": "beispiel-llm",
       "name": "Beispiel: LLM-Vorgang",
-      "summary": "Beispiel-Rezept: reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge)",
+      "summary": "Beispiel-Rezept: ein reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge).",
       "version": "1.0.0"
     }
   ]

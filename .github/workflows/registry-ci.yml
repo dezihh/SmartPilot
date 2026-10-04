@@ -1,0 +1,34 @@
+name: Registry CI
+
+# Prueft, dass packages/<lang>/index.json mit den Manifesten synchron ist.
+# Der Index wird aus den Manifesten generiert; Drift laesst die CI rot werden.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'scripts/build-registry-index.mjs'
+      - '.github/workflows/registry-ci.yml'
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'scripts/build-registry-index.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Registry-Index gegen Manifeste pruefen
+        run: node scripts/build-registry-index.mjs --check

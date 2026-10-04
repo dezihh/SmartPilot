@@ -218,6 +218,9 @@ td.actions { text-align: right; white-space: nowrap; }
 .pkg-list { display: grid; gap: 8px; margin-top: 8px; }
 .pkg-list > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid var(--border, #ddd); border-radius: 6px; padding: 8px 12px; }
 .pkg-version { color: var(--muted, #666); font-size: 0.85em; margin-left: 6px; }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.78em; font-weight: 600; vertical-align: middle; }
+.chip.ok { background: #e6f4ea; color: #1e7e34; }
+.chip.update { background: #fff3cd; color: #8a6100; border: 1px solid #ffe08a; }
 .pkg-id { color: var(--muted, #888); font-size: 0.8em; margin-left: 6px; font-family: ui-monospace, monospace; }
 .pkg-danger { border-left: 3px solid #c0392b; padding: 6px 10px; margin: 8px 0; }
 .pkg-items ul { margin: 4px 0 0 18px; }
