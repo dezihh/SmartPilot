@@ -1,6 +1,6 @@
 {
   "id": "brave-search",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "name": "Websuche Brave",
   "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion (Suche + Feed-Lese in einem Call).",
   "description": "Legt den Registry-Eintrag fuer die Brave-Search-stdio-Bruecke (offizielles @brave/brave-search-mcp-server-Paket) an, legt die Funktion recherche an (Websuche mit count 5 + optionaler /rss-Feed-Lese mit langer Auswertungs-Regel) und haekt die Werkzeuge in der Allowlist an. Zweck der Funktion: 'aktuelles bei <Quelle>' = Inhalte VON der Quelle, nicht UEBER das Unternehmen.",
@@ -22,11 +22,8 @@
     {
       "name": "Brave",
       "transport": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@brave/brave-search-mcp-server"
-      ],
+      "command": "node_modules/.bin/brave-search-mcp-server",
+      "npmSpec": "@brave/brave-search-mcp-server@2.1.4",
       "env": {
         "BRAVE_API_KEY": "${brave_api_key}"
       },
@@ -67,5 +64,5 @@
     "fn_recherche"
   ],
   "setupDocs": "Server-Seite:\n\n1. Search-API-Key bei https://brave.com/search/api erzeugen (Free-Tier reicht fuer den Anfang).\n2. Key beim Install eintragen (landet verschluesselt-frei nur in der Registry-Zeile, nicht in Logs).\nDetails: https://github.com/brave/brave-search-mcp-server",
-  "changelog": "1.1.1: Auswertungs-Regel geschaerft - Namen/Zahlen nur aus den Treffern, Treffer schlagen Vorwissen.\n1.1.0: recherche nutzt die Kaskade - primaer searxng_web_search, nur bei leerem Ergebnis brave_web_search (Fallback).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, recherche-Funktion, Allowlist)."
+  "changelog": "1.1.2: stdio-Server nutzt den provisionierten Bin (node_modules/.bin/brave-search-mcp-server) statt Laufzeit-npx; npmSpec deklariert (Provisioner installiert einmalig, kein 15-s-Kaltstart-Timeout).\n1.1.1: Auswertungs-Regel geschaerft - Namen/Zahlen nur aus den Treffern, Treffer schlagen Vorwissen.\n1.1.0: recherche nutzt die Kaskade - primaer searxng_web_search, nur bei leerem Ergebnis brave_web_search (Fallback).\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (stdio-Bruecke, recherche-Funktion, Allowlist)."
 }

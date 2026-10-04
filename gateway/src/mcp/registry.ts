@@ -1,7 +1,24 @@
+import { existsSync } from 'node:fs';
+import { isAbsolute, join, resolve } from 'node:path';
 import { listMcpServers } from '../db.js';
+import { config } from '../config.js';
 import type { SideEffect, ToolDef } from '../types.js';
 import { McpClient, type McpTransport } from './client.js';
 import { McpStdioClient } from './stdio.js';
+
+// stdio-Command aufloesen: Ein relativer `node_modules/.bin/<bin>` zeigt im
+// Betrieb auf das Image-/Dev-Volume; fehlt er dort, auf das provisionierte
+// Volume (data/mcp_modules), in dem der Provisioner die npm-Pakete ablegt.
+export function resolveStdioCommand(command: string): string {
+  if (isAbsolute(command)) return command;
+  const rel = command.replace(/^\.\//, '');
+  if (!rel.startsWith('node_modules/.bin/')) return command;
+  const inApp = resolve(process.cwd(), rel);
+  if (existsSync(inApp)) return inApp;
+  const provisioned = join(config.mcpModulesDir, rel);
+  if (existsSync(provisioned)) return provisioned;
+  return command;
+}
 
 export interface McpServerContext {
   id: number;
@@ -59,9 +76,10 @@ function parseJsonObject(raw: string | null): Record<string, string> {
 function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null }): McpTransport {
   if (row.transport === 'stdio') {
     return new McpStdioClient({
-      command: row.command ?? '',
+      command: resolveStdioCommand(row.command ?? ''),
       args: parseJsonArray(row.args),
       env: parseJsonObject(row.env),
+      initTimeoutMs: config.mcpInitTimeoutMs,
     });
   }
   return new McpClient(row.url, row.auth_token);

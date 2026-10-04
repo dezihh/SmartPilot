@@ -67,6 +67,7 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
     command,
     args,
     env,
+    npm_spec: transport === 'stdio' && body.npm_spec ? String(body.npm_spec).trim() || null : null,
     inventory_prompt: body.inventory_prompt == null ? null : String(body.inventory_prompt).trim() || null,
     side_effect: body.side_effect === 'read' ? 'read' : 'write',
     enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,

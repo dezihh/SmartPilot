@@ -104,6 +104,7 @@ db.exec(`
     command TEXT,
     args TEXT,
     env TEXT,
+    npm_spec TEXT,
     side_effect TEXT NOT NULL DEFAULT 'write',
     enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -206,6 +207,7 @@ for (const stmt of [
   'ALTER TABLE mcp_servers ADD COLUMN command TEXT',
   'ALTER TABLE mcp_servers ADD COLUMN args TEXT',
   'ALTER TABLE mcp_servers ADD COLUMN env TEXT',
+  'ALTER TABLE mcp_servers ADD COLUMN npm_spec TEXT',
   'ALTER TABLE actions ADD COLUMN function_ref TEXT',
   'ALTER TABLE actions ADD COLUMN function_args TEXT',
   'ALTER TABLE tpl_functions ADD COLUMN parameters TEXT',

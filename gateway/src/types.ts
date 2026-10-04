@@ -55,6 +55,8 @@ export interface McpServerRow {
   command: string | null;
   args: string | null;
   env: string | null;
+  /** npm-Paket zum Provisionieren des stdio-Servers (z. B. "@scope/bin@1.2.3"). */
+  npm_spec: string | null;
   inventory_prompt: string | null;
   side_effect: SideEffect;
   enabled: number;

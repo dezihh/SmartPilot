@@ -9,6 +9,7 @@ export interface McpServerInput {
   command: string | null;
   args: string | null;
   env: string | null;
+  npm_spec?: string | null;
   inventory_prompt: string | null;
   side_effect?: SideEffect;
   enabled: number;
@@ -30,10 +31,10 @@ export function getMcpServer(id: number): McpServerRow | undefined {
 
 export function createMcpServer(data: McpServerInput): McpServerRow {
   const info = getDb().prepare(
-      `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, inventory_prompt, side_effect, enabled)
-       VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @inventory_prompt, @side_effect, @enabled)`
+      `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, npm_spec, inventory_prompt, side_effect, enabled)
+       VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @npm_spec, @inventory_prompt, @side_effect, @enabled)`
     )
-    .run({ ...data, side_effect: data.side_effect ?? 'write' });
+    .run({ ...data, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write' });
   return getMcpServer(Number(info.lastInsertRowid)) as McpServerRow;
 }
 
@@ -44,8 +45,8 @@ export function updateMcpServer(id: number, data: McpServerInput): McpServerRow 
   getDb().prepare(
     `UPDATE mcp_servers SET name = @name, url = @url,
      auth_token = COALESCE(@auth_token, auth_token), transport = @transport,
-     command = @command, args = @args, env = COALESCE(@env, env), inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
-  ).run({ ...data, side_effect: data.side_effect ?? 'write', id });
+     command = @command, args = @args, env = COALESCE(@env, env), npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
+  ).run({ ...data, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write', id });
   return getMcpServer(id);
 }
 

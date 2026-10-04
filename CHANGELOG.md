@@ -12,6 +12,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **DB-gestütztes Provisioning der stdio-MCP-Artefakte:** Manifeste deklarieren
+  das npm-Paket über `npmSpec` (neues Feld an `mcp_servers.npm_spec`); das Gateway
+  installiert es beim Start einmalig in ein persistentes Volume
+  (`data/mcp_modules`) und entfernt nicht mehr benötigte Pakete (Prune). Brave
+  startet damit ohne Laufzeit-`npx` — kein 15-s-Init-Timeout mehr. Neue Anbieter
+  sind reine Registry-Einträge; `MCP_MODULES_DIR` und `MCP_INIT_TIMEOUT_MS` sind
+  konfigurierbar.
+
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es

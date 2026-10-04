@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 const CURRENT_DB_PATH = './data/smartpilot.db';
 const LEGACY_DB_PATH = './data/meinhelfer.db';
@@ -45,6 +46,15 @@ export const config = {
   adminToken: req('ADMIN_TOKEN'),
   apiToken: req('API_TOKEN'),
   dbPath: resolveDbPath(process.env.DB_PATH, existsSync),
+  // Persistentes Volume fuer provisionierte stdio-MCP-Artefakte (npm-Pakete).
+  // Default neben der DB, damit beide zusammen persistieren.
+  mcpModulesDir:
+    process.env.MCP_MODULES_DIR?.trim() ||
+    join(dirname(resolveDbPath(process.env.DB_PATH, existsSync)), 'mcp_modules'),
+  // Zeitlimit fuer den stdio-MCP-Init (initialize/listTools). Der Provisioner
+  // stellt Pakete vorab bereit; ein hoeheres Limit faengt kalte Erstinstallation
+  // ohne Laufzeit-npx ab.
+  mcpInitTimeoutMs: envPositiveNumber(process.env.MCP_INIT_TIMEOUT_MS, 15_000),
   basePath: normalizeBasePath(process.env.BASE_PATH),
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),

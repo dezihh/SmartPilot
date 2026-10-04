@@ -21,6 +21,8 @@ export interface StdioConfig {
   command: string;
   args: string[];
   env: Record<string, string>;
+  /** Zeitlimit fuer initialize/listTools (Default 15s). */
+  initTimeoutMs?: number;
 }
 
 export class McpStdioClient implements McpTransport {
@@ -133,16 +135,17 @@ export class McpStdioClient implements McpTransport {
   }
 
   async init(): Promise<void> {
+    const t = this.config.initTimeoutMs ?? 15_000;
     await this.rpc('initialize', {
       protocolVersion: '2025-03-26',
       capabilities: {},
       clientInfo: { name: 'smartpilot', version: '0.1.0' },
-    });
+    }, false, t);
     await this.rpc('notifications/initialized', {}, true);
   }
 
   async listTools(): Promise<ToolDef[]> {
-    const res = await this.rpc('tools/list', {});
+    const res = await this.rpc('tools/list', {}, false, this.config.initTimeoutMs ?? 15_000);
     if (res?.error) throw new Error(`MCP tools/list: ${res.error.message}`);
     const result = res?.result as { tools?: ToolDef[] } | undefined;
     return result?.tools ?? [];

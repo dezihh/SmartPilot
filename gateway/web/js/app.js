@@ -749,7 +749,7 @@ function toggleMcpTransportFields(transport) {
   for (const id of ['mcp-url-label', 'mcp-url', 'mcp-token-label', 'mcp-token']) {
     $(id).classList.toggle('hidden', stdio);
   }
-  for (const id of ['mcp-command-label', 'mcp-command', 'mcp-args-label', 'mcp-args', 'mcp-env-label', 'mcp-env']) {
+  for (const id of ['mcp-command-label', 'mcp-command', 'mcp-args-label', 'mcp-args', 'mcp-env-label', 'mcp-env', 'mcp-npm-spec-label', 'mcp-npm-spec']) {
     $(id).classList.toggle('hidden', !stdio);
   }
   $('mcp-stdio-hint').classList.toggle('hidden', !stdio);
@@ -775,6 +775,7 @@ function openServerEditor(id) {
   } catch { envText = ''; }
   $('mcp-args').value = argsText;
   $('mcp-env').value = envText;
+  $('mcp-npm-spec').value = s?.npm_spec ?? '';
   $('mcp-inventory-prompt').value = s?.inventory_prompt ?? '';
   $('mcp-side-effect').value = s?.side_effect ?? 'write';
   $('mcp-enabled').checked = s ? !!s.enabled : true;
@@ -795,6 +796,7 @@ async function saveServer() {
     payload.command = $('mcp-command').value.trim();
     payload.args = $('mcp-args').value;
     payload.env = $('mcp-env').value;
+    payload.npm_spec = $('mcp-npm-spec').value.trim();
     payload.url = '';
   } else {
     payload.url = $('mcp-url').value.trim();

@@ -23,6 +23,8 @@ export interface PackageServer {
   command?: string;
   args?: string[];
   env?: Record<string, string>;
+  /** npm-Paket, das der Provisioner fuer den stdio-Server bereitstellt. */
+  npmSpec?: string;
   inventory_prompt?: string;
   sideEffect?: SideEffect;
   enabled?: boolean;
@@ -143,6 +145,7 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
         if (s?.transport !== 'http' && s?.transport !== 'stdio') errors.push(`server "${s?.name}": transport muss http oder stdio sein`);
         if (s?.transport === 'http' && !s.url) errors.push(`server "${s.name}": url erforderlich`);
         if (s?.transport === 'stdio' && !s.command) errors.push(`server "${s.name}": command erforderlich`);
+        if (s?.npmSpec !== undefined && (typeof s.npmSpec !== 'string' || !s.npmSpec.trim())) errors.push(`server "${s.name}": npmSpec muss ein nicht-leerer String sein`);
         if (s?.sideEffect !== undefined && s.sideEffect !== 'read' && s.sideEffect !== 'write') errors.push(`server "${s.name}": sideEffect muss read oder write sein`);
       }
     }

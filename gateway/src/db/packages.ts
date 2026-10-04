@@ -52,6 +52,7 @@ function serverContent(s: PackageServer): Record<string, unknown> {
     command: s.transport === 'stdio' ? (s.command ?? '') : null,
     args: s.transport === 'stdio' && s.args?.length ? JSON.stringify(s.args) : null,
     env: s.transport === 'stdio' && s.env ? JSON.stringify(s.env) : null,
+    npm_spec: s.transport === 'stdio' ? (s.npmSpec ?? null) : null,
     inventory_prompt: s.inventory_prompt ?? null,
     side_effect: s.sideEffect === 'read' ? 'read' : 'write',
     enabled: s.enabled === false ? 0 : 1,
@@ -172,14 +173,14 @@ export function installPackage(
       } else if (existing) {
         db.prepare(
           `UPDATE mcp_servers SET name = @name, url = @url, auth_token = @auth_token, transport = @transport,
-           command = @command, args = @args, env = @env, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled
+           command = @command, args = @args, env = @env, npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled
            WHERE id = @id`
         ).run({ ...content, id: existing.id });
         report.updated.push(key);
       } else {
         db.prepare(
-          `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, inventory_prompt, side_effect, enabled)
-           VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @inventory_prompt, @side_effect, @enabled)`
+          `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, npm_spec, inventory_prompt, side_effect, enabled)
+           VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @npm_spec, @inventory_prompt, @side_effect, @enabled)`
         ).run(content);
         report.created.push(key);
       }
@@ -287,7 +288,7 @@ function serverRowContent(name: string): Record<string, unknown> | null {
   if (!row) return null;
   return {
     name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
-    command: row.command, args: row.args, env: row.env, inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
+    command: row.command, args: row.args, env: row.env, npm_spec: row.npm_spec, inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
   };
 }
 
