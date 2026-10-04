@@ -9,6 +9,10 @@ const BASE = process.env.GATEWAY ?? 'http://localhost:8331';
 const TOKEN = process.env.ADMIN_TOKEN ?? ''; // Admin
 const QUERY = process.env.API_TOKEN ?? ''; // Adapter-API
 const TTL = Number(process.env.TTL ?? 120000);
+// Admin liegt optional unter BASE_PATH (Gateway-Konfiguration); die Adapter-API
+// (/api/...) bleibt auf der Wurzel.
+const BASE_PATH = (process.env.BASE_PATH ?? '').replace(/\/+$/, '');
+const ADMIN = `${BASE_PATH}/admin`;
 
 const results = [];
 let passed = 0;
@@ -78,11 +82,11 @@ async function main() {
     check('  /api/query mit falschem Bearer → 401', wrongAuth.status === 401, `HTTP ${wrongAuth.status}`);
     const adminOnQuery = await post('/api/query', { text: 'test' }, TOKEN);
     check('  /api/query mit ADMIN_TOKEN → 401 (Split)', adminOnQuery.status === 401, `HTTP ${adminOnQuery.status}`);
-    const adminNoCookie = await get('/admin/', TOKEN);
+    const adminNoCookie = await get(`${ADMIN}/`, TOKEN);
     check('  /admin ohne Session → 4xx', adminNoCookie.status >= 400, `HTTP ${adminNoCookie.status}`);
-    const loginWrong = await post('/admin/login', { token: 'falsch' }, '');
+    const loginWrong = await post(`${ADMIN}/login`, { token: 'falsch' }, '');
     check('  /admin/login falscher Token → 401', loginWrong.status === 401, `HTTP ${loginWrong.status}`);
-    const loginOk = await post('/admin/login', { token: TOKEN }, '');
+    const loginOk = await post(`${ADMIN}/login`, { token: TOKEN }, '');
     check('  /admin/login korrekter Token → 200', loginOk.status === 200, `HTTP ${loginOk.status}`);
     console.log('');
   }
@@ -139,14 +143,14 @@ async function main() {
   // ---- 5. Token-Logging & Kontext ------------------------------------------
   {
     console.log('Token-Logging & Kontext:');
-    const usage = await get('/admin/api/usage', TOKEN);
+    const usage = await get(`${ADMIN}/api/usage`, TOKEN);
     check('  /admin/api/usage liefert Daten', usage.status === 200 && typeof usage.json.usage === 'object', `HTTP ${usage.status}`);
     if (usage.json?.usage) {
       const u = usage.json.usage;
       check('    Tokens gesamt > 0', (u.totalTokens ?? 0) > 0, `totalTokens=${u.totalTokens}`);
       check('    prompt+completion erfasst', (u.promptTokens ?? 0) > 0 && (u.completionTokens ?? 0) > 0, `p=${u.promptTokens} c=${u.completionTokens}`);
     }
-    const logs = await get('/admin/api/logs?limit=5', TOKEN);
+    const logs = await get(`${ADMIN}/api/logs?limit=5`, TOKEN);
     const hasTokens = (logs.json.logs ?? []).some((l) => (l.prompt_tokens ?? 0) + (l.completion_tokens ?? 0) > 0);
     check('  Logs enthalten Token-Spalten', hasTokens, 'kein Eintrag mit Tokens in letzten 5');
     console.log('');

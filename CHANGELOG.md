@@ -22,6 +22,32 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.1] – 2026-10-04
+
+### Behoben
+
+- **Paket-Update auf Bestands-DBs wurde als „lokale Änderung" verworfen
+  (Blocker):** Der in `package_items` gespeicherte Hash stammte aus der
+  v0.2.1-Feldform (ohne `npm_spec`); seit v0.3.0 floss `npm_spec` in die
+  Neuberechnung ein, daher galt jede Bestands-Server-Zeile dauerhaft als Konflikt
+  und ein normaler `install` (z. B. Brave) überschrieb sie nicht — der 15-s-`npx`-
+  Timeout blieb. Migration 3 rebased die Server-Item-Hashes auf die neue
+  Feldform, **nur** wenn die Zeile nachweislich unverändert ist; echte lokale
+  Änderungen bleiben Konflikt.
+- **`npmSpec`-Versionsbump löste kein Reinstall aus:** Der Provisioner verglich
+  nur Paketnamen; jetzt vergleicht er Name → Version-Range und installiert bei
+  Versionsänderung neu.
+- **Prune entfernte nur `package.json`:** Nach Änderungen läuft zusätzlich
+  `npm prune`, damit entfernte Pakete auch physisch aus `node_modules/`
+  verschwinden.
+- **Leerer Provisioner-Lauf:** Ohne Specs und ohne vorhandenes Volume wird jetzt
+  sauber übersprungen (kein `npm`-Aufruf, keine `package.json`).
+
+### Geändert
+
+- Smoke-Test berücksichtigt `BASE_PATH` für die Admin-Aufrufe (`/admin` liegt
+  optional unter Prefix, `/api` bleibt auf der Wurzel).
+
 ## [0.3.0] – 2026-10-04
 
 ### Hinzugefügt
@@ -398,7 +424,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.0
 [0.2.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.1
 [0.2.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.0

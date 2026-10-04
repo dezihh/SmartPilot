@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_PROMPT, SEED_SETTINGS } from './seeds.js';
 import { runMigrations, type Migration } from './migrations/runner.js';
 import { backupDatabase } from './migrations/backup.js';
+import { hashContent, serverContentOld, serverContentNew, type ServerHashRow } from './itemHash.js';
 
 // DB-Handle + Migrationen: getDb() lazily nach initDb(path) - so ist die DB
 // in Tests injizierbar (Temp-File) und im Runtime-Setup einmalig initialisiert.
@@ -577,9 +578,33 @@ Kombinationen (z. B. "News und dann Hausstatus"): jeder Teil nutzt das jeweils z
 
 }
 
+// Migration 3: package_items-Hashes auf die ab v0.3.0 erweiterte Server-Feldform
+// (inkl. npm_spec) rebasen. Nur wenn die Zeile nachweislich unveraendert ist
+// (Alt-Form-Hash == gespeicherter Hash), wird der Hash fortgeschrieben - sonst
+// bleibt eine echte lokale Aenderung als Konflikt erhalten.
+function applyHashRebase(db: Database.Database): void {
+  const items = db
+    .prepare("SELECT package_id, name, content_hash FROM package_items WHERE kind = 'server'")
+    .all() as { package_id: string; name: string; content_hash: string }[];
+  for (const it of items) {
+    const row = db.prepare('SELECT * FROM mcp_servers WHERE name = ?').get(it.name) as ServerHashRow | undefined;
+    if (!row) continue;
+    const oldHash = hashContent('server', it.name, serverContentOld(row));
+    if (oldHash !== it.content_hash) continue; // echte lokale Aenderung: nicht anfassen
+    const newHash = hashContent('server', it.name, serverContentNew(row));
+    if (newHash === it.content_hash) continue;
+    db.prepare("UPDATE package_items SET content_hash = ? WHERE package_id = ? AND kind = 'server' AND name = ?").run(
+      newHash,
+      it.package_id,
+      it.name
+    );
+  }
+}
+
 const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
+  { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },
 ];
 
 export function getDb(): Database.Database {

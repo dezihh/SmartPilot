@@ -1,13 +1,18 @@
 // Migrationsrunner: Reihenfolge, Rollback bei Fehler, versionierte Bestands-DBs
-// (PRAGMA user_version) und automatische Sicherung vor der Migration.
+// (PRAGMA user_version), automatische Sicherung vor der Migration und der
+// v3-Hash-Rebase fuer package_items (npm_spec).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
-import { initDb, closeDb, getSchemaVersion } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion } from '../src/db/schema.js';
+import { conflictItems } from '../src/db/packages.js';
+import { hashContent, serverContentOld } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
+
+const TARGET = 3;
 
 test('Runner: wendet Migrationen der Reihe nach an, stoppt+rollt bei Fehler zurueck', () => {
   const db = new Database(':memory:');
@@ -39,7 +44,7 @@ test('initDb: frischer Start setzt die Zielversion (kein Backup)', () => {
   const p = tmpDb('mig-fresh');
   closeDb();
   initDb(p);
-  assert.equal(getSchemaVersion(), 2);
+  assert.equal(getSchemaVersion(), TARGET);
   assert.equal(existsSync(join(dirname(p), 'backups')), false, 'frische DB ohne Backup');
   closeDb();
 });
@@ -49,12 +54,42 @@ test('initDb: Bestands-DB wird auf die Zielversion gehoben und gesichert', () =>
   closeDb();
   initDb(p); // Zielversion erzeugen
   closeDb();
-  // Bestands-DB simulieren: Datei existiert, aber Version 1 (Migration 2 steht aus).
+  // Bestands-DB simulieren: Datei existiert, aber Version 1 (Migrationen 2+3 aus).
   const raw = new Database(p);
   raw.pragma('user_version = 1');
   raw.close();
   initDb(p);
-  assert.equal(getSchemaVersion(), 2, 'sequenziell auf Zielversion');
+  assert.equal(getSchemaVersion(), TARGET, 'sequenziell auf Zielversion');
   assert.equal(existsSync(join(dirname(p), 'backups')), true, 'Backup vor Migration angelegt');
+  closeDb();
+});
+
+test('Migration 3: rebased Server-Item-Hash, echte lokale Aenderung bleibt Konflikt', () => {
+  const p = tmpDb('mig-rebase');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  // Saubere Bestandszeile (v0.2.1-Install, npm_spec NULL) + lokal geaenderte Zeile.
+  db.prepare(
+    "INSERT INTO mcp_servers (name,url,auth_token,transport,command,args,env,npm_spec,inventory_prompt,side_effect,enabled) VALUES ('Brave','','','stdio','npx','[\"-y\",\"x\"]',NULL,NULL,NULL,'read',1)"
+  ).run();
+  db.prepare(
+    "INSERT INTO mcp_servers (name,url,auth_token,transport,command,args,env,npm_spec,inventory_prompt,side_effect,enabled) VALUES ('Lokal','','','stdio','custom-cmd',NULL,NULL,NULL,NULL,'read',1)"
+  ).run();
+  const brave = db.prepare("SELECT * FROM mcp_servers WHERE name = 'Brave'").get() as Parameters<typeof serverContentOld>[0];
+  const oldHash = hashContent('server', 'Brave', serverContentOld(brave));
+
+  db.prepare("INSERT INTO packages (id, version, source) VALUES ('brave-search', '1.1.1', 'registry')").run();
+  db.prepare("INSERT INTO package_items (package_id, kind, name, row_id, content_hash) VALUES ('brave-search','server','Brave',NULL,?)").run(oldHash);
+  // Lokal geaenderte Zeile: gespeicherter Hash passt NICHT zur Alt-Form.
+  db.prepare("INSERT INTO package_items (package_id, kind, name, row_id, content_hash) VALUES ('brave-search','server','Lokal',NULL,'deadbeefdeadbeef')").run();
+
+  db.pragma('user_version = 2'); // Migration 3 ausstehend
+  closeDb();
+  initDb(p);
+
+  const conflicts = conflictItems('brave-search');
+  assert.equal(conflicts.includes('server:Brave'), false, 'saubere Zeile nach Rebase ohne Konflikt');
+  assert.deepEqual(conflicts, ['server:Lokal'], 'lokal geaenderte Zeile bleibt Konflikt');
   closeDb();
 });

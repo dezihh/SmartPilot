@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { getDb } from './schema.js';
 import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
+import { hashContent, serverContentNew, type ServerHashRow } from './itemHash.js';
 
 export interface InstalledPackageRow {
   id: string;
@@ -36,10 +36,6 @@ export function listPackageItems(id: string): PackageItemRow[] {
 
 export function listAllPackageItems(): PackageItemRow[] {
   return getDb().prepare('SELECT * FROM package_items ORDER BY package_id, kind, name').all() as PackageItemRow[];
-}
-
-function hashContent(kind: string, name: string, content: unknown): string {
-  return createHash('sha256').update(JSON.stringify({ kind, name, content })).digest('hex').slice(0, 16);
 }
 
 // Server-Row-Content aus Manifest-Server (fuer Hash + Upsert identisch).
@@ -284,12 +280,9 @@ function recordItem(packageId: string, kind: string, name: string, rowId: number
 }
 
 function serverRowContent(name: string): Record<string, unknown> | null {
-  const row = getDb().prepare('SELECT * FROM mcp_servers WHERE name = ?').get(name) as Record<string, unknown> | undefined;
+  const row = getDb().prepare('SELECT * FROM mcp_servers WHERE name = ?').get(name) as ServerHashRow | undefined;
   if (!row) return null;
-  return {
-    name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
-    command: row.command, args: row.args, env: row.env, npm_spec: row.npm_spec, inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
-  };
+  return serverContentNew(row);
 }
 
 function functionRowContent(name: string): Record<string, unknown> | null {

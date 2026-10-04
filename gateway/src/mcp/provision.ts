@@ -47,22 +47,36 @@ function readDependencies(dir: string): Record<string, string> {
   }
 }
 
+// Vergleich der deklarierten Abhaengigkeiten ueber Name -> Version-Range (nicht
+// nur ueber Namen): eine Versionsaenderung im npmSpec loest einen Reinstall aus.
+function sameDependencies(a: Record<string, string>, b: Record<string, string>): boolean {
+  const ak = Object.keys(a).sort();
+  const bk = Object.keys(b).sort();
+  if (ak.length !== bk.length || ak.some((k, i) => k !== bk[i])) return false;
+  return ak.every((k) => a[k] === b[k]);
+}
+
 // Idempotent: sind die deklarierten Pakete unveraendert vorhanden, wird kein
-// npm install ausgefuehrt. Aenderungen (neu/entfernt) werden in package.json
-// geschrieben; ein `npm install` gleicht node_modules ab (installiert fehlende,
-// entfernt ueberzaehlige = Prune).
-export function provisionMcpServers(opts: { specs: string[]; dir: string; runInstall: InstallRunner }): ProvisionReport {
+// npm install ausgefuehrt. Aenderungen (neu/entfernt/Version) werden in
+// package.json geschrieben; `npm install` installiert fehlende, `npm prune`
+// (runPrune) entfernt ueberzaehlige Pakete physisch.
+export function provisionMcpServers(opts: {
+  specs: string[];
+  dir: string;
+  runInstall: InstallRunner;
+  runPrune?: InstallRunner;
+}): ProvisionReport {
   const desired = [...new Set(opts.specs.map((s) => s.trim()).filter(Boolean))].sort();
   const desiredNames = desired.map(specName).sort();
   const report: ProvisionReport = { desired, installed: [], removed: [], skipped: false, failed: [] };
 
-  mkdirSync(opts.dir, { recursive: true });
   const currentDeps = readDependencies(opts.dir);
   const currentNames = Object.keys(currentDeps).sort();
   report.removed = currentNames.filter((n) => !desiredNames.includes(n));
 
-  const sameDeps = currentNames.length === desiredNames.length && desiredNames.every((n, i) => n === currentNames[i]);
-  if (sameDeps && existsSync(join(opts.dir, 'node_modules'))) {
+  // Nichts zu tun: keine Specs und keine Artefakte im Volume -> kein npm-Aufruf,
+  // keine package.json.
+  if (desired.length === 0 && currentNames.length === 0) {
     report.skipped = true;
     return report;
   }
@@ -72,6 +86,14 @@ export function provisionMcpServers(opts: { specs: string[]; dir: string; runIns
     const name = specName(spec);
     dependencies[name] = spec.slice(name.length).replace(/^@/, '') || '*';
   }
+
+  const sameDeps = sameDependencies(currentDeps, dependencies);
+  if (sameDeps && existsSync(join(opts.dir, 'node_modules'))) {
+    report.skipped = true;
+    return report;
+  }
+
+  mkdirSync(opts.dir, { recursive: true });
   writeFileSync(
     join(opts.dir, 'package.json'),
     JSON.stringify(
@@ -89,6 +111,8 @@ export function provisionMcpServers(opts: { specs: string[]; dir: string; runIns
 
   try {
     opts.runInstall(opts.dir, desired);
+    // Ueberzaehlige Pakete nach einem Entfernen physisch loeschen.
+    if (report.removed.length > 0 && opts.runPrune) opts.runPrune(opts.dir, []);
   } catch (e) {
     report.failed.push({ spec: desired.join(', '), error: e instanceof Error ? e.message : String(e) });
     return report;
@@ -108,4 +132,16 @@ export const npmInstallRunner: InstallRunner = (dir) => {
   });
   if (res.error) throw res.error;
   if (res.status !== 0) throw new Error(`npm install fehlgeschlagen (Exit ${res.status ?? 'unbekannt'})`);
+};
+
+// Entfernt nicht mehr deklarierte Pakete physisch aus node_modules/.bin.
+export const npmPruneRunner: InstallRunner = (dir) => {
+  const res = spawnSync('npm', ['prune', '--no-audit', '--no-fund'], {
+    cwd: dir,
+    stdio: 'inherit',
+    timeout: 300_000,
+    env: process.env,
+  });
+  if (res.error) throw res.error;
+  if (res.status !== 0) throw new Error(`npm prune fehlgeschlagen (Exit ${res.status ?? 'unbekannt'})`);
 };

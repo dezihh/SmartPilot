@@ -1,6 +1,6 @@
 import { config } from './config.js';
 import { listMcpServers } from './db.js';
-import { provisionMcpServers, npmInstallRunner } from './mcp/provision.js';
+import { provisionMcpServers, npmInstallRunner, npmPruneRunner } from './mcp/provision.js';
 import { chatCompletion } from './llm/client.js';
 import { createApp } from './app.js';
 
@@ -11,7 +11,12 @@ try {
   const specs = listMcpServers(true, true)
     .filter((r) => r.transport === 'stdio' && r.npm_spec)
     .map((r) => r.npm_spec as string);
-  const report = provisionMcpServers({ specs, dir: config.mcpModulesDir, runInstall: npmInstallRunner });
+  const report = provisionMcpServers({
+    specs,
+    dir: config.mcpModulesDir,
+    runInstall: npmInstallRunner,
+    runPrune: npmPruneRunner,
+  });
   if (report.installed.length) console.log(`MCP-Artefakte provisioniert: ${report.installed.join(', ')}`);
   if (report.removed.length) console.log(`MCP-Artefakte entfernt: ${report.removed.join(', ')}`);
   if (report.failed.length) console.warn('MCP-Provisionierung fehlgeschlagen:', report.failed);
