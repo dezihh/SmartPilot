@@ -5,7 +5,7 @@ import { initDb } from './db/schema.js';
 // Temp-Pfad und ohne Seed - initDb(path) ohne 2. Argument).
 initDb(config.dbPath, true);
 
-export { initDb, getDb } from './db/schema.js';
+export { initDb, getDb, getSchemaVersion } from './db/schema.js';
 export {
   parseAction,
   listActions,

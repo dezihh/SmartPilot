@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { createSession, requestAuthorized, bearerToken, cookieFor, requireAdminAuth } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { config } from './config.js';
+import { getSchemaVersion } from './db.js';
 import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
 import { mcpRoutes } from './routes/mcp.js';
@@ -19,7 +20,13 @@ export function createApp(): Express {
 
   // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).
   app.get('/healthz', (_req, res) => {
-    res.json({ ok: true });
+    let schemaVersion: number | null = null;
+    try {
+      schemaVersion = getSchemaVersion();
+    } catch {
+      // DB noch nicht initialisiert - Liveness bleibt ok.
+    }
+    res.json({ ok: true, schema_version: schemaVersion });
   });
 
   const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash

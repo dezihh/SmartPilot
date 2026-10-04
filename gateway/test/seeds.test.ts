@@ -93,6 +93,7 @@ test('Hilfe-Migration haertet die alte Seed-Formulierung, ohne den Rest zu verwe
   const oldSeed =
     'Hilfe-Anfrage: Beantworte das NUR aus dem Tool-Inventory (Nachschlagewerk unten) - KEINE Tool-Aufrufe. Eigener Zusatz. {agent_inventory}';
   getDb().prepare("UPDATE actions SET system_prompt = ? WHERE name = 'hilfe'").run(oldSeed);
+  getDb().pragma('user_version = 1'); // Reparatur-Migration erneut ausstehend machen
   closeDb();
   initDb(FRESH_DB, true);
   const sp = (getDb().prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt: string }).system_prompt;
@@ -106,6 +107,7 @@ test('Hilfe-Migration laesst Nutzer-Edit mit Seed-Marker unangetastet (F-D2)', (
   freshInit();
   const edited = 'Hilfe-Anfrage: eigene Fassung. Chat-Modus: starte chat modus / beenden. {agent_inventory}';
   getDb().prepare("UPDATE actions SET system_prompt = ? WHERE name = 'hilfe'").run(edited);
+  getDb().pragma('user_version = 1'); // Reparatur-Migration erneut ausstehend machen
   closeDb();
   initDb(FRESH_DB, true);
   const sp = (getDb().prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt: string }).system_prompt;

@@ -12,16 +12,6 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
-### Hinzugefügt
-
-- **DB-gestütztes Provisioning der stdio-MCP-Artefakte:** Manifeste deklarieren
-  das npm-Paket über `npmSpec` (neues Feld an `mcp_servers.npm_spec`); das Gateway
-  installiert es beim Start einmalig in ein persistentes Volume
-  (`data/mcp_modules`) und entfernt nicht mehr benötigte Pakete (Prune). Brave
-  startet damit ohne Laufzeit-`npx` — kein 15-s-Init-Timeout mehr. Neue Anbieter
-  sind reine Registry-Einträge; `MCP_MODULES_DIR` und `MCP_INIT_TIMEOUT_MS` sind
-  konfigurierbar.
-
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es
@@ -31,6 +21,25 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Signaturen bzw. eine geprüfte Paket-Registry (Ausbau laut
 
   [packages/README.md](packages/README.md))
+
+## [0.3.0] – 2026-10-04
+
+### Hinzugefügt
+
+- **DB-gestütztes Provisioning der stdio-MCP-Artefakte:** Manifeste deklarieren
+  das npm-Paket über `npmSpec` (neues Feld an `mcp_servers.npm_spec`); das Gateway
+  installiert es beim Start einmalig in ein persistentes Volume
+  (`data/mcp_modules`) und entfernt nicht mehr benötigte Pakete (Prune). Brave
+  startet damit ohne Laufzeit-`npx` — kein 15-s-Init-Timeout mehr. Neue Anbieter
+  sind reine Registry-Einträge; `MCP_MODULES_DIR` und `MCP_INIT_TIMEOUT_MS` sind
+  konfigurierbar.
+- **DB-Versionierung mit gestückelten Migrationen:** `PRAGMA user_version` plus
+  ein forward-only-Runner (`src/db/migrations/`), der ausstehende Schritte der
+  Reihe nach in je eigener Transaktion anwendet. Die bisherigen Inline-Migrationen
+  und die einmalige Legacy-Bereinigung sind nummerierte Schritte. Vor der ersten
+  Migration einer Bestands-DB wird die Datei inkl. `-wal`/`-shm` nach
+  `data/backups/<ts>/` gesichert (WAL-Checkpoint). Die aktuelle `schema_version`
+  ist in `/healthz` sichtbar.
 
 ## [0.2.1] – 2026-10-02
 
@@ -389,7 +398,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.0
 [0.2.1]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.1
 [0.2.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.2.0
 [0.1.8]: https://github.com/dezihh/SmartPilot/releases/tag/v0.1.8

@@ -1,9 +1,9 @@
-// v0.2.0-Legacy-Bereinigung darf nur EINMAL laufen (Marker in `settings`):
-// sonst werden instanzspezifische Reports bei JEDEM Prozessstart geloescht bzw.
-// ueberschrieben. Regression fuer v0.2.1 (Datenverlust-Fund).
+// Die v0.2.0-Legacy-Bereinigung ist jetzt Teil der versionierten Migration 2
+// und laeuft damit nur EINMAL (PRAGMA user_version): instanzspezifische Reports
+// werden nicht bei jedem Start geloescht/ueberschrieben.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initDb, closeDb, getDb } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion } from '../src/db/schema.js';
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('legacy-cleanup');
@@ -25,21 +25,25 @@ function seedLegacyReports(): void {
   ).run("{{ index.state('sensor.evcc_battery_soc') }}");
 }
 
-test('Legacy-Bereinigung laeuft nur einmal und schont spaetere Reports', () => {
+test('Legacy-Bereinigung laeuft einmalig (Migration) und schont spaetere Reports', () => {
   closeDb();
   initDb(DB_PATH, true);
+  assert.equal(getSchemaVersion(), 2, 'frischer Start auf Zielversion');
 
-  // Bestands-DB simulieren: Marker entfernen, Legacy-Muster anlegen.
+  // Bestands-DB simulieren: Reparatur-Migration steht noch aus (Version 1),
+  // Marker entfernen, Legacy-Muster anlegen.
   getDb().prepare('DELETE FROM settings WHERE key = ?').run(CLEANUP_KEY);
+  getDb().pragma('user_version = 1');
   seedLegacyReports();
 
-  // 1. Start: einmalige Bereinigung greift.
+  // Migration 2 nachziehen: einmalige Bereinigung greift.
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'boerse_portfolio'"), 0, 'Legacy-Funktion wird beim ersten Lauf entfernt');
-  assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'boerse'"), 0, 'Legacy-Vorgang wird beim ersten Lauf entfernt');
+  assert.equal(getSchemaVersion(), 2);
+  assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'boerse_portfolio'"), 0, 'Legacy-Funktion wird entfernt');
+  assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'boerse'"), 0, 'Legacy-Vorgang wird entfernt');
   const hs = getDb().prepare("SELECT template FROM tpl_functions WHERE name = 'hausstatus_gw'").get() as { template: string };
-  assert.ok(!hs.template.includes('sensor.evcc'), 'hausstatus_gw wird beim ersten Lauf generisch');
+  assert.ok(!hs.template.includes('sensor.evcc'), 'hausstatus_gw wird generisch');
   assert.equal(
     (getDb().prepare('SELECT value FROM settings WHERE key = ?').get(CLEANUP_KEY) as { value: string }).value,
     '1',
@@ -49,13 +53,13 @@ test('Legacy-Bereinigung laeuft nur einmal und schont spaetere Reports', () => {
   // Nutzer stellt gleichnamige Reports wieder her.
   seedLegacyReports();
 
-  // 2. Start: darf NICHT mehr aufraeumen (Marker vorhanden).
+  // Erneuter Start: keine Migration mehr -> Reports bleiben erhalten.
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'boerse_portfolio'"), 1, 'Report bleibt nach zweitem Start erhalten');
-  assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'boerse'"), 1, 'Vorgang bleibt nach zweitem Start erhalten');
+  assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'boerse_portfolio'"), 1, 'Report bleibt erhalten');
+  assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'boerse'"), 1, 'Vorgang bleibt erhalten');
   const hs2 = getDb().prepare("SELECT template FROM tpl_functions WHERE name = 'hausstatus_gw'").get() as { template: string };
-  assert.ok(hs2.template.includes('sensor.evcc'), 'hausstatus_gw bleibt nach zweitem Start unveraendert');
+  assert.ok(hs2.template.includes('sensor.evcc'), 'hausstatus_gw bleibt unveraendert');
 
   closeDb();
 });

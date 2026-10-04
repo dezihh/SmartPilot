@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_PROMPT } from './seeds.js';
+import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_PROMPT, SEED_SETTINGS } from './seeds.js';
+import { runMigrations, type Migration } from './migrations/runner.js';
+import { backupDatabase } from './migrations/backup.js';
 
 // DB-Handle + Migrationen: getDb() lazily nach initDb(path) - so ist die DB
 // in Tests injizierbar (Temp-File) und im Runtime-Setup einmalig initialisiert.
@@ -16,27 +18,47 @@ export function closeDb(): void {
   }
 }
 
-// Referenz-Defaults der Grundeinstellungen (eine Quelle fuer Init-Seed,
-// Frisch-Install-Fill und 'Defaults wiederherstellen' in der Web-UI).
-export const SEED_SETTINGS: [string, string][] = [
-  ['assistant_name', 'Dein SmartPilot'],
-  ['fuzzy_global', '1'],
-  ['session_followup', 'beides'],
-  ['session_keywords', 'zusammenfassung,neuigkeiten,liste,bericht,news,tipps,hintergründe'],
-  ['debug_logging', '0'],
-  ['memory_turns', '4'],
-  ['memory_minutes', '30'],
-];
+// Referenz-Defaults der Grundeinstellungen: eine Quelle in seeds.ts; hier nur
+// re-exportiert (settings.ts/Admin-UI importieren sie aus schema).
+export { SEED_SETTINGS };
 
 export function initDb(path: string, withReferenceSeed = false): void {
   if (_db) return;
   mkdirSync(dirname(path), { recursive: true });
+  const existed = existsSync(path);
   const db = new Database(path);
   db.pragma('journal_mode = WAL');
+  const current = db.pragma('user_version', { simple: true }) as number;
+  const target = MIGRATIONS[MIGRATIONS.length - 1]!.version;
+  runMigrations(db, MIGRATIONS, () => {
+    // Nur eine Bestands-DB (Datei existierte bereits) vor dem ersten Schritt
+    // sichern - eine frisch angelegte DB braucht kein Backup.
+    if (existed && current < target) {
+      try {
+        backupDatabase(db, path);
+      } catch (e) {
+        console.warn('DB-Backup vor Migration fehlgeschlagen:', e);
+      }
+    }
+  });
+  if (withReferenceSeed) applyReferenceSeed(db);
+  _db = db;
+}
 
-// Migrationen in einer Transaktion: ein Abbruch laesst kein halb migriertes
-// Schema zurueck (F-26).
-db.transaction(() => {
+// Referenz-Seed fuer frische Installationen: statische Agent-Prompts + die
+// generische Hilfe-Action. INSERT OR IGNORE - bestehende Edits bleiben.
+function applyReferenceSeed(db: Database.Database): void {
+  db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_system', SEED_AGENT_SYSTEM);
+  db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_inventory', SEED_AGENT_INVENTORY);
+  db.prepare(
+    `INSERT OR IGNORE INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
+     VALUES ('hilfe', 'llm', ?, 0.85, ?, NULL, NULL, NULL, '[]', 1)`
+  ).run(SEED_HELP_TRIGGERS, SEED_HELP_PROMPT);
+}
+
+// Migration 1 (Basis-Schema): Tabellen und Spalten - idempotent, damit frische
+// und Bestands-DBs denselben Weg gehen.
+function applySchema(db: Database.Database): void {
 // Migration: actions um handler_config + search_summary-Mode erweitern (idempotent)
 {
   const cols = (db.prepare('PRAGMA table_info(actions)').all() as { name: string }[]).map((c) => c.name);
@@ -92,7 +114,6 @@ db.transaction(() => {
     `);
   }
 }
-})();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mcp_servers (
@@ -236,19 +257,11 @@ for (const stmt of [
   }
 }
 
-// Fresh-Install-Fill: die statischen Agent-Prompts und die generische Hilfe-
-// Action. Domaenen-spezifisches (Systeme/MCP-Server, Funktionen, weitere
-// Vorgaenge, Index-Quellen) wird bewusst NICHT geseedet - es gehoert in die
-// aktive Konfiguration. INSERT OR IGNORE - bestehende Datenbanken (und
-// User-Edits) bleiben unangetastet.
-if (withReferenceSeed) {
-  db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_system', SEED_AGENT_SYSTEM);
-  db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_inventory', SEED_AGENT_INVENTORY);
-  db.prepare(
-    `INSERT OR IGNORE INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
-     VALUES ('hilfe', 'llm', ?, 0.85, ?, NULL, NULL, NULL, '[]', 1)`
-  ).run(SEED_HELP_TRIGGERS, SEED_HELP_PROMPT);
 }
+
+// Migration 2 (Daten/Prompts): idempotente Reparaturen an Bestandsdaten, die
+// einmalige Legacy-Bereinigung und die Referenz-Settings.
+function applyRepairs(db: Database.Database): void {
 
 // (Die frueheren Inline-Seed-Bloecke fuer agent_system/agent_inventory sind
 // entfernt - eine Quelle: SEED_AGENT_SYSTEM/SEED_AGENT_INVENTORY in seeds.ts.
@@ -562,10 +575,19 @@ Kombinationen (z. B. "News und dann Hausstatus"): jeder Teil nutzt das jeweils z
   }
 }
 
-  _db = db;
 }
+
+const MIGRATIONS: Migration[] = [
+  { version: 1, name: 'base-schema', up: applySchema },
+  { version: 2, name: 'data-repairs', up: applyRepairs },
+];
 
 export function getDb(): Database.Database {
   if (!_db) throw new Error('DB nicht initialisiert - initDb(path) zuerst rufen');
   return _db;
+}
+
+// Aktuelle Schema-Version der geladenen DB (fuer /healthz und Admin-UI).
+export function getSchemaVersion(): number {
+  return getDb().pragma('user_version', { simple: true }) as number;
 }

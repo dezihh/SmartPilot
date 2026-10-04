@@ -1,3 +1,15 @@
+// Referenz-Defaults der Grundeinstellungen (eine Quelle fuer Init-Seed,
+// Frisch-Install-Fill und 'Defaults wiederherstellen' in der Web-UI).
+export const SEED_SETTINGS: [string, string][] = [
+  ['assistant_name', 'Dein SmartPilot'],
+  ['fuzzy_global', '1'],
+  ['session_followup', 'beides'],
+  ['session_keywords', 'zusammenfassung,neuigkeiten,liste,bericht,news,tipps,hintergründe'],
+  ['debug_logging', '0'],
+  ['memory_turns', '4'],
+  ['memory_minutes', '30'],
+];
+
 // Referenz-Texte fuer FRISCHE Installationen (Stand 22.09.2026, Besprochen):
 // die beiden statischen Agent-Prompts und die generische Hilfe-Action.
 // initDb(path, true) fuellt sie per INSERT OR IGNORE - bestehende Datenbanken
