@@ -22,6 +22,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.6] – 2026-11-01
+
+### Behoben (Paket `music-assistant` 1.1.4)
+
+- **Echo-Wiedergabe über den falschen Player:** Wurde ein Echo als
+  HA-Kopie (`media_player.*`, Alexa Media Player) angesteuert, blockierte
+  Amazon den direkten Stream („Direct music streaming isn't supported").
+  Der Agent nutzt für Musik jetzt ausschließlich MA-native Player
+  (`player_id` = Gerätename, z. B. `Echo Wohnzimmer`) und meidet
+  `media_player.*` sowie `ha_call_service`; `ma_default_player` mit
+  HA-Kopie wird ignoriert.
+
 ## [0.3.5] – 2026-10-04
 
 ### Geändert / Behoben (UX der Wartungsseite)
@@ -498,7 +510,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.6...HEAD
+[0.3.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.6
 [0.3.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.5
 [0.3.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.4
 [0.3.3]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.3

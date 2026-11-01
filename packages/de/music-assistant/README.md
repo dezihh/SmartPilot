@@ -45,3 +45,15 @@ gleichzeitig spielen, fragt er nach. Wer einen festen Standard will, setzt
 `ma_default_player` (z. B. die player_id der Hauptanlage). Wiedergabe-Steuerung
 läuft über die `queue_id` (via `queue_get_active_queue`), Lautstärke/Ein-Aus
 über die `player_id`.
+
+## Echo-Geräte
+
+MA-native Echo-Player haben als `player_id` den **Gerätenamen**
+(z. B. `Echo Wohnzimmer`) und laufen über den MA-Alexa-Provider (eigener Skill,
+AudioPlayer). Genau diese Player für Musik verwenden.
+
+IDs mit `media_player.` sind **HA-Kopien** (Alexa Media Player). Amazon erlaubt
+dort keinen direkten Musik-Stream; der Echo antwortet mit „Direct music
+streaming isn't supported". Solche IDs niemals an Wiedergabe-/Queue-/Volume-
+Tools geben und für Musik nie `ha_call_service`/`media_player.play_media`
+nutzen. Steht in `ma_default_player` eine HA-Kopie, wird sie ignoriert.
