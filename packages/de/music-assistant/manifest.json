@@ -1,6 +1,6 @@
 {
   "id": "music-assistant",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "name": "Music Assistant Anbindung",
   "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
   "description": "Legt den Registry-Eintrag fuer das ma-provider-mcp-Plugin (Streamable HTTP unter /mcp/v1) an, bringt die Wiedergabe-Kaskade samt ASR-Falscherkennungs-Regel als Agent-Inventory-Prompt mit (generisch: wenn kein Geraet genannt ist, wird der gerade spielende Player gewaehlt - optional per Parameter fest vorgebbar) und legt die Funktion ma_players an (Player-Liste mit player_id/Status/Lautstaerke in einem Call, HA-Kopien ausgeblendet). Echo-Wiedergabe laeuft ausschliesslich ueber die MA-nativen Player (player_id = Geraetename); media_player.*-Kopien (Alexa Media Player) sind fuer Musik gesperrt.",
@@ -55,11 +55,27 @@
     }
   ],
   "allowTools": [
-    "search_tools",
-    "get_tool_schema",
-    "call_tool",
+    "library_search_tracks",
+    "library_search_albums",
+    "library_search_artists",
+    "library_list_library_playlists",
+    "library_list_library_radio",
+    "queue_get_active_queue",
+    "playback_play_media",
+    "playback_pause",
+    "playback_resume",
+    "playback_play_pause",
+    "playback_stop",
+    "playback_next_track",
+    "playback_previous_track",
+    "players_list_players",
+    "players_set_power",
+    "volume_volume_set",
+    "volume_volume_up",
+    "volume_volume_down",
+    "volume_volume_mute",
     "fn_ma_players"
   ],
   "setupDocs": "Server-Seite:\n\n1. Music Assistant laeuft.\n2. MA-Einstellungen -> Plugins -> MCP Server aktivieren (github.com/trudenboy/ma-provider-mcp). Das Plugin haengt sich in den MA-Webserver (/mcp/v1) - kein Extra-Port.\n3. Token: im Config-Panel 'Open Connect Wizard' - Wizard fragt Network oder Localhost (Network waehlen) und den AI-Client (beliebig, z. B. Claude); er erzeugt ein Client-Token (MCP - <Client>) und zeigt einen Snippet (URL + Bearer-Header) - daraus NUR den Token (Wert nach 'Bearer ') kopieren und in SmartPilot als ma_token einfuegen. Widerrufbar unter Profil -> Long-lived access tokens; alternativ dort selbst minten (Profil mit control-Rechten, z. B. 'Home control').\n\nURL (ma_url): vollstaendig MIT Schema und ggf. Port. Direkt am MA-Webserver: http://<host>:8095/mcp/v1. Hinter Reverse-Proxy mit TLS: https://<host>/mcp/v1.\n\nOptional: Parameter ma_default_player (z. B. die player_id der Hauptanlage) festlegen - dann steuern Befehle ohne genanntes Geraet immer diesen Player. Bleibt er leer, wird generisch der gerade spielende Player verwendet.\n\nEcho-Geraete: MA-native Echo-Player haben als player_id den Geraetenamen (z. B. 'Echo Wohnzimmer'). IDs mit 'media_player.' sind HA-Kopien (Alexa Media Player); Amazon blockiert dort direkten Musik-Stream ('Direct music streaming isn't supported'). Fuer Musik immer den MA-nativen Player verwenden - niemals ha_call_service/media_player.play_media.\nDetails: https://github.com/trudenboy/ma-provider-mcp",
-  "changelog": "1.1.4: Echo-Wiedergabe nur ueber MA-native Player (player_id = Geraetename); media_player.*-HA-Kopien und ha_call_service fuer Musik ausdruecklich gesperrt (Amazon blockiert direkten Stream, Echo meldet 'Direct music streaming isn't supported'). ma_default_player-Warnung bei HA-Kopie.\n1.1.3: Note - lauter/leiser nutzen relative Lautstaerke (volume_volume_up/down) statt absoluter Werte.\n1.1.2: Note - fester Standard-Player hat absoluten Vorrang vor der generischen Wahl (auch wenn ein anderer Player gerade spielt).\n1.1.1: Note mit expliziter Befehlszuordnung (naechster Titel -> playback_next_track, weiter/fortsetzen -> playback_resume usw.).\n1.1.0: Parameter ma_url (vollstaendige MCP-URL) ersetzt ma_host/ma_port - Update-sicher und fuer https/Reverse-Proxy geeignet (verhindert, dass ein Paket-Update eine manuell gesetzte https-URL ueberschreibt).\n1.0.4: fn_ma_players blendet HA-Kopien (media_player.*) aus; Note ergaenzt um Tie-Break (bei mehreren spielenden den mit gesetzter Lautstaerke) und generische Player-Wahl praezisiert.\n1.0.3: Generische Player-Wahl statt festem Geraet - ohne Geraeteangabe wird der gerade spielende Player verwendet; optionaler Parameter ma_default_player; Steuercalls nutzen queue_id (via queue_get_active_queue), Lautstaerke/Ein-Aus player_id.\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (Server, Kaskaden-/Falscherkennungs-Prompt, ma_players, Allowlist)."
+  "changelog": "1.1.5: allowTools auf die aktuellen MA-Tool-Namen umgestellt - das MA-MCP bietet kein search_tools/get_tool_schema/call_tool mehr, dadurch hatte der Agent keine Wiedergabe-Tools. Jetzt direkt: library_search_*, queue_get_active_queue, playback_*, players_list_players/set_power, volume_*.\n1.1.4: Echo-Wiedergabe nur ueber MA-native Player (player_id = Geraetename); media_player.*-HA-Kopien und ha_call_service fuer Musik ausdruecklich gesperrt (Amazon blockiert direkten Stream, Echo meldet 'Direct music streaming isn't supported'). ma_default_player-Warnung bei HA-Kopie.\n1.1.3: Note - lauter/leiser nutzen relative Lautstaerke (volume_volume_up/down) statt absoluter Werte.\n1.1.2: Note - fester Standard-Player hat absoluten Vorrang vor der generischen Wahl (auch wenn ein anderer Player gerade spielt).\n1.1.1: Note mit expliziter Befehlszuordnung (naechster Titel -> playback_next_track, weiter/fortsetzen -> playback_resume usw.).\n1.1.0: Parameter ma_url (vollstaendige MCP-URL) ersetzt ma_host/ma_port - Update-sicher und fuer https/Reverse-Proxy geeignet (verhindert, dass ein Paket-Update eine manuell gesetzte https-URL ueberschreibt).\n1.0.4: fn_ma_players blendet HA-Kopien (media_player.*) aus; Note ergaenzt um Tie-Break (bei mehreren spielenden den mit gesetzter Lautstaerke) und generische Player-Wahl praezisiert.\n1.0.3: Generische Player-Wahl statt festem Geraet - ohne Geraeteangabe wird der gerade spielende Player verwendet; optionaler Parameter ma_default_player; Steuercalls nutzen queue_id (via queue_get_active_queue), Lautstaerke/Ein-Aus player_id.\n1.0.2: Registry-Layout packages/de/<id>/; Manifest um Vertrauens-/Sprachfelder (author, license, language, homepage, minGatewayVersion) und sideEffect ergaenzt.\n1.0.1: Platzhalter-Syntax korrigiert (ueberzaehlige schliessende Klammer in ${...}).\n1.0.0: Erste Fassung (Server, Kaskaden-/Falscherkennungs-Prompt, ma_players, Allowlist)."
 }

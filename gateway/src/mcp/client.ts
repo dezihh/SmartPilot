@@ -24,7 +24,8 @@ export class McpClient implements McpTransport {
   private async rpc(
     method: string,
     params: unknown,
-    notify = false
+    notify = false,
+    allowReinit = true
   ): Promise<{ result?: unknown; error?: { code: number; message: string } } | null> {
     const id = notify ? undefined : this.nextId++;
     const body: Record<string, unknown> = { jsonrpc: '2.0', method, params };
@@ -46,6 +47,19 @@ export class McpClient implements McpTransport {
     if (notify) return null;
     if (!res.ok) {
       const text = await res.text();
+      // Server-Neustart/Idle-Timeout: die alte MCP-Session ist ungueltig
+      // (404 "Session not found"). Einmal neu initialisieren und wiederholen,
+      // sonst bleiben alle Tools bis zum Cache-Refresh (~5 min) kaputt.
+      if (
+        allowReinit &&
+        method !== 'initialize' &&
+        res.status === 404 &&
+        /session (not found|expired)|no valid session/i.test(text)
+      ) {
+        this.sessionId = null;
+        await this.init();
+        return this.rpc(method, params, notify, false);
+      }
       throw new Error(`MCP ${res.status}: ${text.slice(0, 200)}`);
     }
     const contentType = res.headers.get('content-type') ?? '';

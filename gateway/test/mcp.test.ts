@@ -142,6 +142,33 @@ test('callTool: RPC-Error wirft mit Tool-Namen', async () => {
   await assert.rejects(() => client.callTool('tool_x', {}), /tool_x.*kaputt|kaputt/);
 });
 
+test('callTool: abgelaufene MCP-Session wird einmal neu initialisiert', async () => {
+  stubFetch();
+  let inits = 0;
+  let calls = 0;
+  handler = (_url, body) => {
+    if (body.method === 'initialize') {
+      inits++;
+      return { headers: { 'mcp-session-id': `sess-${inits}` }, json: { jsonrpc: '2.0', id: 1, result: {} } };
+    }
+    if (body.method === 'notifications/initialized') return { status: 202 };
+    calls++;
+    if (calls === 1) {
+      return {
+        status: 404,
+        json: { jsonrpc: '2.0', id: 'server-error', error: { code: -32600, message: 'Session not found' } },
+      };
+    }
+    return rpcRes({ content: [{ type: 'text', text: 'ok' }] });
+  };
+  const client = new McpClient('https://mcp.example.org/rpc', null);
+  await client.init();
+  const result = (await client.callTool('tool_x', {})) as { content?: { text?: string }[] };
+  assert.equal(inits, 2, 'nach Session-Verlust einmal neu initialisiert');
+  assert.equal(calls, 2, 'Tool-Aufruf einmal wiederholt');
+  assert.equal(result.content?.[0]?.text, 'ok');
+});
+
 test('callTool: isError=true im Result wird als Fehler geworfen (F-13)', async () => {
   stubFetch();
   handler = () => rpcRes({ isError: true, content: [{ type: 'text', text: 'schreibfehler' }] });

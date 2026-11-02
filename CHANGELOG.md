@@ -22,6 +22,27 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.3.7] – 2026-11-01
+
+### Behoben (Paket `music-assistant` 1.1.5)
+
+- **Keine Wiedergabe-Werkzeuge für den Agenten:** Das MA-MCP bietet kein
+  `search_tools`/`get_tool_schema`/`call_tool` mehr. Die Paket-Allowlist lief
+  dadurch leer, der Agent meldete „keine Wiedergabe-Funktion". `allowTools`
+  listet jetzt die echten Tool-Namen: `library_search_*`,
+  `library_list_library_playlists/radio`, `queue_get_active_queue`,
+  `playback_*`, `players_list_players/set_power`, `volume_*` sowie
+  `fn_ma_players`.
+
+### Geändert (Paket `home-assistant` 1.0.4)
+
+- **Musik nur über Music Assistant:** Der Server-Prompt sperrt
+  `ha_call_service`/`media_player.play_media` und andere `media_player.*`-
+  Entities für Musik/Radio/Audio — auch bei Entities wie „Echo Wohnzimmer"
+  (HA-Kopien, Amazon blockiert den direkten Stream). Musik läuft
+  ausschließlich über `fn_ma_players` + `library_search_*`/`playback_*`;
+  `fn_find_entities` wird für Player-Namen nicht mehr genutzt.
+
 ## [0.3.6] – 2026-11-01
 
 ### Behoben (Paket `music-assistant` 1.1.4)
@@ -510,7 +531,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.6...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.7
 [0.3.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.6
 [0.3.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.5
 [0.3.4]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.4
