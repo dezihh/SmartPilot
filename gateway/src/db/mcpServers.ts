@@ -9,6 +9,7 @@ export interface McpServerInput {
   command: string | null;
   args: string | null;
   env: string | null;
+  headers?: string | null;
   npm_spec?: string | null;
   inventory_prompt: string | null;
   side_effect?: SideEffect;
@@ -22,7 +23,7 @@ export function listMcpServers(enabledOnly: boolean, reveal = false): McpServerR
   // Secrets (auth_token UND env) standardmaessig fuer die Admin-API maskieren;
   // nur interne Nutzer (MCP-Aufbau, Backup mit explizitem Wunsch) fordern
   // Klartext an (F-09/F-34).
-  return reveal ? rows : rows.map((r) => ({ ...r, auth_token: null, env: null }));
+  return reveal ? rows : rows.map((r) => ({ ...r, auth_token: null, env: null, headers: null }));
 }
 
 export function getMcpServer(id: number): McpServerRow | undefined {
@@ -31,10 +32,10 @@ export function getMcpServer(id: number): McpServerRow | undefined {
 
 export function createMcpServer(data: McpServerInput): McpServerRow {
   const info = getDb().prepare(
-      `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, npm_spec, inventory_prompt, side_effect, enabled)
-       VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @npm_spec, @inventory_prompt, @side_effect, @enabled)`
+      `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, headers, npm_spec, inventory_prompt, side_effect, enabled)
+       VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @headers, @npm_spec, @inventory_prompt, @side_effect, @enabled)`
     )
-    .run({ ...data, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write' });
+    .run({ ...data, headers: data.headers ?? null, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write' });
   return getMcpServer(Number(info.lastInsertRowid)) as McpServerRow;
 }
 
@@ -45,8 +46,8 @@ export function updateMcpServer(id: number, data: McpServerInput): McpServerRow 
   getDb().prepare(
     `UPDATE mcp_servers SET name = @name, url = @url,
      auth_token = COALESCE(@auth_token, auth_token), transport = @transport,
-     command = @command, args = @args, env = COALESCE(@env, env), npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
-  ).run({ ...data, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write', id });
+     command = @command, args = @args, env = COALESCE(@env, env), headers = COALESCE(@headers, headers), npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
+  ).run({ ...data, headers: data.headers ?? null, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write', id });
   return getMcpServer(id);
 }
 

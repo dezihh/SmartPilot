@@ -4,7 +4,7 @@ import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
 import { setPrompt, setSetting, deleteSetting } from '../src/db/settings.js';
 import { createMcpServer, deleteMcpServer } from '../src/db/mcpServers.js';
-import { buildInventoryPrompt } from '../src/core/inventory.js';
+import { agentFnAllowlist, buildInventoryPrompt } from '../src/core/inventory.js';
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('inventory');
@@ -74,6 +74,21 @@ test('Allowlist filtert Werkzeug-Zeilen (agent_tools)', () => {
     const out = buildInventoryPrompt();
     assert.match(out, /fn_recherche/);
     assert.doesNotMatch(out, /fn_ma_players/);
+  } finally {
+    deleteSetting('agent_tools');
+  }
+});
+
+test('agent_tools: Werkzeugnamen bleiben case-sensitiv', () => {
+  setSetting('agent_tools', 'EndpointList, snapshotContainersList, fn_recherche');
+  try {
+    assert.deepEqual(agentFnAllowlist(), ['EndpointList', 'snapshotContainersList', 'fn_recherche']);
+  } finally {
+    deleteSetting('agent_tools');
+  }
+  setSetting('agent_tools', 'KEINE');
+  try {
+    assert.deepEqual(agentFnAllowlist(), []);
   } finally {
     deleteSetting('agent_tools');
   }

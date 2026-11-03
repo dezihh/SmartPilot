@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { listMcpServers } from '../db.js';
 import { config } from '../config.js';
+import { parseHeaders } from '../core/normalize.js';
 import type { SideEffect, ToolDef } from '../types.js';
 import { McpClient, type McpTransport } from './client.js';
 import { McpStdioClient } from './stdio.js';
@@ -73,7 +74,7 @@ function parseJsonObject(raw: string | null): Record<string, string> {
   }
 }
 
-function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null }): McpTransport {
+function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null; headers?: string | null }): McpTransport {
   if (row.transport === 'stdio') {
     return new McpStdioClient({
       command: resolveStdioCommand(row.command ?? ''),
@@ -82,7 +83,7 @@ function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_toke
       initTimeoutMs: config.mcpInitTimeoutMs,
     });
   }
-  return new McpClient(row.url, row.auth_token);
+  return new McpClient(row.url, row.auth_token, { headers: parseHeaders(row.headers ?? null) });
 }
 
 export { createClient };

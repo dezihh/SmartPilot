@@ -112,6 +112,24 @@ test('rpc: Bearer-Header und mcp-session-id werden gesendet', async () => {
   assert.equal(capturedHeaders['mcp-session-id'], 'sess-2');
 });
 
+test('rpc: zusätzliche HTTP-Header werden gesendet', async () => {
+  stubFetch();
+  let capturedHeaders: Record<string, string> = {};
+  handler = () => ({ headers: { 'mcp-session-id': 'sess-h' }, json: rpcRes({ tools: [] }).json });
+  const client = new McpClient('https://mcp.example.org/rpc', null, {
+    headers: { 'X-Portainer-API-Key': 'ptr_test' },
+  });
+  const spyFetch = globalThis.fetch as (url: string | URL, init?: RequestInit) => Promise<Response>;
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    capturedHeaders = Object.fromEntries(
+      Object.entries((init?.headers as Record<string, string>) ?? {})
+    );
+    return spyFetch(url, init);
+  }) as typeof fetch;
+  await client.init();
+  assert.equal(capturedHeaders['X-Portainer-API-Key'], 'ptr_test');
+});
+
 test('listTools: JSON-Antwort liefert Tools', async () => {
   stubFetch();
   handler = () => rpcRes({ tools: [{ name: 'tool_a', description: 'A' }] });
@@ -186,7 +204,7 @@ test('callTool: isError=true ohne Text meldet generischen Fehler (F-13)', async 
 test('rpc: haengender Server wird nach Timeout abgebrochen', async () => {
   stubFetch();
   handler = () => ({ hang: true });
-  const client = new McpClient('https://mcp.example.org/rpc', null, 100);
+  const client = new McpClient('https://mcp.example.org/rpc', null, { timeoutMs: 100 });
   await assert.rejects(() => client.listTools(), /aborted|AbortError|Timeout/);
   assert.ok(lastSignal, 'AbortSignal wurde uebergeben');
 });

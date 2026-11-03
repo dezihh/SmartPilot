@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeActionInput, normalizeFunctionInput } from '../src/core/normalize.js';
+import { normalizeActionInput, normalizeFunctionInput, normalizeHeaders, parseHeaders } from '../src/core/normalize.js';
 
 test('Action: raw-Trigger-Array landet als JSON-String', () => {
   const out = normalizeActionInput({ name: 'hausstatus', mode: 'deterministic', trigger_phrases: ['hausstatus'] });
@@ -36,6 +36,39 @@ test('Action: ungültiger Modus wirft', () => {
 test('Action: function_args-Objekt wird JSON-String', () => {
   const out = normalizeActionInput({ name: 'a', mode: 'hybrid', function_args: { group: 'all' } });
   assert.equal(out.function_args, '{"group":"all"}');
+});
+
+test('Headers: Zeilenformat wird zu JSON', () => {
+  assert.equal(normalizeHeaders('X-Portainer-API-Key: ptr_abc'), '{"X-Portainer-API-Key":"ptr_abc"}');
+  assert.equal(
+    normalizeHeaders('A: 1\n# Kommentar\nB: zwei'),
+    '{"A":"1","B":"zwei"}'
+  );
+});
+
+test('Headers: Objekt und JSON werden akzeptiert', () => {
+  assert.equal(normalizeHeaders({ A: '1' }), '{"A":"1"}');
+  assert.equal(normalizeHeaders('{"A":"1"}'), '{"A":"1"}');
+});
+
+test('Headers: leer = null (bestehenden Wert behalten)', () => {
+  assert.equal(normalizeHeaders(undefined), null);
+  assert.equal(normalizeHeaders(''), null);
+  assert.equal(normalizeHeaders('   '), null);
+  assert.equal(normalizeHeaders({}), null);
+});
+
+test('Headers: ungültige Namen und Zeilenumbrüche werfen', () => {
+  assert.throws(() => normalizeHeaders('X Bad: 1'), /ungültiger Name/);
+  assert.throws(() => normalizeHeaders({ 'X-Test': 'a\nb' }), /Zeilenumbruch/);
+  assert.throws(() => normalizeHeaders('kein-doppelpunkt'), /Name: Wert/);
+});
+
+test('parseHeaders: kaputtes JSON und Fremdtypen -> {}', () => {
+  assert.deepEqual(parseHeaders(null), {});
+  assert.deepEqual(parseHeaders('kaputt'), {});
+  assert.deepEqual(parseHeaders('[1,2]'), {});
+  assert.deepEqual(parseHeaders('{"X":"1"}'), { X: '1' });
 });
 
 test('Funktion: Namens-Regex', () => {

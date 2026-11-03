@@ -251,7 +251,7 @@ Schema in `db/schema.ts` (Init + idempotente Migrationen inline):
 
 | Tabelle | Inhalt |
 |---|---|
-| `mcp_servers` | MCP-Registry (Name, URL, Token, `transport` http/stdio + command/args/env, `inventory_prompt`, `side_effect`, aktiv) |
+| `mcp_servers` | MCP-Registry (Name, URL, Token, `headers` als zusaetzliche HTTP-Header, `transport` http/stdio + command/args/env, `inventory_prompt`, `side_effect`, aktiv) |
 | `actions` | Vorgänge: `mode` (deterministic/llm/hybrid), Trigger, `system_prompt`, `function_ref` + `function_args`, `tools`, Flags |
 | `tpl_functions` | Funktions-Registry: `template`, Parameter-Schema, `budget`, `inventory_prompt`, `side_effect` |
 | `prompts` | `agent_system`, `agent_inventory` |

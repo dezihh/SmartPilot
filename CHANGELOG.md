@@ -22,6 +22,23 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
   [packages/README.md](packages/README.md))
 
+## [0.4.0] – 2026-11-03
+
+### Hinzugefügt
+
+- **Zusätzliche HTTP-Header für MCP-Server:** `mcp_servers.headers` (JSON)
+  sendet konfigurierbare Header mit, etwa `X-Portainer-API-Key` für das
+  offizielle Portainer-MCP. Die Admin-UI akzeptiert `Name: Wert`-Zeilen;
+  leer bedeutet „bestehenden Wert behalten“. Werte werden in der Admin-API
+  maskiert.
+
+### Behoben
+
+- **Agent-Allowlist beachtet Groß-/Kleinschreibung:** MCP-Werkzeugnamen wie
+  `EndpointList` wurden beim Einlesen der Allowlist kleingeschrieben und
+  dadurch nicht gefunden. Die Namensliste bleibt jetzt im Originalcase;
+  nur die Sonderwerte `alle`/`keine` werden case-insensitiv erkannt.
+
 ## [0.3.7] – 2026-11-01
 
 ### Behoben (Paket `music-assistant` 1.1.5)
@@ -532,6 +549,7 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
 [Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.3.7...HEAD
+[0.4.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.4.0
 [0.3.7]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.7
 [0.3.6]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.6
 [0.3.5]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.5

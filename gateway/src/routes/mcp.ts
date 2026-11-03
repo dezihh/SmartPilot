@@ -15,6 +15,7 @@ import {
   type McpServerInput,
 } from '../db.js';
 import { createClient, getMcpContext, invalidateMcpCache } from '../mcp/registry.js';
+import { normalizeHeaders } from '../core/normalize.js';
 export const mcpRoutes = Router();
 
 function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
@@ -67,6 +68,7 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
     command,
     args,
     env,
+    headers: transport === 'http' ? normalizeHeaders(body.headers) : null,
     npm_spec: transport === 'stdio' && body.npm_spec ? String(body.npm_spec).trim() || null : null,
     inventory_prompt: body.inventory_prompt == null ? null : String(body.inventory_prompt).trim() || null,
     side_effect: body.side_effect === 'read' ? 'read' : 'write',

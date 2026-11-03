@@ -15,11 +15,17 @@ export class McpClient implements McpTransport {
   private nextId = 1;
   private sessionId: string | null = null;
 
+  private readonly timeoutMs: number;
+  private readonly extraHeaders: Record<string, string>;
+
   constructor(
     private url: string,
     private token: string | null,
-    private timeoutMs: number = MCP_TIMEOUT_MS
-  ) {}
+    options: { timeoutMs?: number; headers?: Record<string, string> } = {}
+  ) {
+    this.timeoutMs = options.timeoutMs ?? MCP_TIMEOUT_MS;
+    this.extraHeaders = options.headers ?? {};
+  }
 
   private async rpc(
     method: string,
@@ -33,6 +39,7 @@ export class McpClient implements McpTransport {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
+      ...this.extraHeaders,
     };
     if (this.sessionId) headers['mcp-session-id'] = this.sessionId;
     if (this.token) headers.Authorization = `Bearer ${this.token}`;

@@ -288,6 +288,8 @@
           <input id="mcp-url" type="text" placeholder="https://<home-assistant-host>/api/mcp">
           <label id="mcp-token-label">Bearer-Token (z. B. HA-LLAT, leer = keiner)</label>
           <input id="mcp-token" type="password">
+          <label id="mcp-headers-label">Zusätzliche HTTP-Header (Name: Wert je Zeile, leer = unverändert)</label>
+          <textarea id="mcp-headers" rows="2" placeholder="X-Portainer-API-Key: ptr_…"></textarea>
           <label id="mcp-command-label" class="hidden">Befehl (im Container)</label>
           <input id="mcp-command" type="text" class="hidden" placeholder="node_modules/.bin/mcp-searxng">
           <label id="mcp-args-label" class="hidden">Argumente (Komma-getrennt)</label>

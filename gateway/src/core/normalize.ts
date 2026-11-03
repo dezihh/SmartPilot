@@ -52,6 +52,69 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
   };
 }
 
+const HEADER_NAME_RE = /^[A-Za-z0-9-]{1,64}$/;
+
+/**
+ * Normalisiert zusaetzliche HTTP-Header aus der Admin-API.
+ * Akzeptiert ein Objekt, einen JSON-String oder Zeilen "Name: Wert".
+ * Rueckgabe: JSON-String oder null (leer = bestehenden Wert behalten).
+ */
+export function normalizeHeaders(input: unknown): string | null {
+  if (input === undefined || input === null) return null;
+  let entries: [string, string][];
+  if (typeof input === 'object' && !Array.isArray(input)) {
+    entries = Object.entries(input as Record<string, unknown>).map(([k, v]) => [k, String(v)]);
+  } else if (typeof input === 'string') {
+    const raw = input.trim();
+    if (!raw) return null;
+    if (raw.startsWith('{')) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        throw new Error('headers: ungültiges JSON');
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('headers: JSON-Objekt erwartet');
+      }
+      entries = Object.entries(parsed as Record<string, unknown>).map(([k, v]) => [k, String(v)]);
+    } else {
+      entries = [];
+      for (const line of raw.split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t || t.startsWith('#')) continue;
+        const i = t.indexOf(':');
+        if (i <= 0) throw new Error(`headers: Zeile ohne "Name: Wert": ${t.slice(0, 60)}`);
+        entries.push([t.slice(0, i).trim(), t.slice(i + 1).trim()]);
+      }
+    }
+  } else {
+    throw new Error('headers: Objekt, JSON oder "Name: Wert"-Zeilen erwartet');
+  }
+  const out: Record<string, string> = {};
+  for (const [name, value] of entries) {
+    if (!HEADER_NAME_RE.test(name)) throw new Error(`headers: ungültiger Name "${name}"`);
+    if (/[\r\n]/.test(value)) throw new Error(`headers: Wert für "${name}" enthält Zeilenumbruch`);
+    out[name] = value;
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null;
+}
+
+/** Parst die in der DB gespeicherten Header; ungültige/leere Werte -> {}. */
+export function parseHeaders(raw: string | null): Record<string, string> {
+  try {
+    const parsed = raw ? (JSON.parse(raw) as unknown) : {};
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (HEADER_NAME_RE.test(k) && !/[\r\n]/.test(String(v))) out[k] = String(v);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export function normalizeFunctionInput(body: Record<string, unknown>): FunctionInput {
   const name = String(body.name ?? '').trim();
   if (!/^[a-z0-9_]{2,40}$/.test(name)) {

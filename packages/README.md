@@ -105,6 +105,7 @@ Felder:
 | `url` | bei `http` | Endpunkt, z. B. `http://<host>:<port>/mcp` |
 | `command`, `args`, `env` | bei `stdio` | Befehl im Gateway-Container (z. B. `node_modules/.bin/mcp-searxng`), Argumente, Umgebungsvariablen |
 | `auth_token` | nein | Bearer-Token (HTTP); `${key}` fuer Secrets |
+| `headers` | nein | zusaetzliche HTTP-Header als Objekt (z. B. `{"X-Portainer-API-Key":"…"}`); Secrets per `${key}` |
 | `inventory_prompt` | nein | Kaskaden-/Regeltext fuer den Agenten |
 | `sideEffect` | nein | `read`/`write` (Default `write`) |
 | `enabled` | nein | Default `true` |

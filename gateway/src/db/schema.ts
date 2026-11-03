@@ -602,11 +602,19 @@ function applyHashRebase(db: Database.Database): void {
   }
 }
 
+// Zusaetzliche HTTP-Header fuer MCP-Server: Bestands-DBs nachziehen
+// (Migration 1 legt die Spalte bei Neuinstallationen nicht mehr an).
+function applyMcpHeaders(db: Database.Database): void {
+  const cols = (db.prepare('PRAGMA table_info(mcp_servers)').all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes('headers')) db.exec('ALTER TABLE mcp_servers ADD COLUMN headers TEXT');
+}
+
 const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
   { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },
   { version: 4, name: 'rebase-package-item-hashes-args', up: applyHashRebase },
+  { version: 5, name: 'mcp-server-headers', up: applyMcpHeaders },
 ];
 
 export function getDb(): Database.Database {

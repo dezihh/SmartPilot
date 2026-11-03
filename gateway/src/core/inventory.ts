@@ -20,9 +20,12 @@ function toolNameFor(fn: ParsedFunction): string {
 // Nur fns, die der Agent auch aufrufen darf (agent_tools-Allowlist-Semantik:
 // nicht gesetzt/'alle' = alle, 'keine' = keine, Liste = exakt diese).
 export function agentFnAllowlist(): string[] | null {
-  const raw = (getSetting('agent_tools') ?? '').trim().toLowerCase();
-  if (!raw || raw === 'alle') return null;
-  if (raw === 'keine') return [];
+  const raw = (getSetting('agent_tools') ?? '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw || lower === 'alle') return null;
+  if (lower === 'keine') return [];
+  // Werkzeugnamen sind case-sensitiv (MCP-Tools wie 'EndpointList').
+  // Nur die Sonderwerte 'alle'/'keine' werden case-insensitiv erkannt.
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 

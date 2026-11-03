@@ -12,7 +12,7 @@ import { conflictItems } from '../src/db/packages.js';
 import { hashContent, serverContentOld } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
-const TARGET = 4;
+const TARGET = 5;
 
 test('Runner: wendet Migrationen der Reihe nach an, stoppt+rollt bei Fehler zurueck', () => {
   const db = new Database(':memory:');

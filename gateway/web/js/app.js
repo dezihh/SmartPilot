@@ -746,7 +746,7 @@ function renderServers() {
 
 function toggleMcpTransportFields(transport) {
   const stdio = transport === 'stdio';
-  for (const id of ['mcp-url-label', 'mcp-url', 'mcp-token-label', 'mcp-token']) {
+  for (const id of ['mcp-url-label', 'mcp-url', 'mcp-token-label', 'mcp-token', 'mcp-headers-label', 'mcp-headers']) {
     $(id).classList.toggle('hidden', stdio);
   }
   for (const id of ['mcp-command-label', 'mcp-command', 'mcp-args-label', 'mcp-args', 'mcp-env-label', 'mcp-env', 'mcp-npm-spec-label', 'mcp-npm-spec']) {
@@ -764,6 +764,7 @@ function openServerEditor(id) {
   $('mcp-transport').value = s?.transport ?? 'http';
   $('mcp-url').value = s?.url ?? '';
   $('mcp-token').value = '';
+  $('mcp-headers').value = '';
   $('mcp-command').value = s?.command ?? '';
   let argsText = '';
   let envText = '';
@@ -801,6 +802,7 @@ async function saveServer() {
   } else {
     payload.url = $('mcp-url').value.trim();
     if ($('mcp-token').value) payload.auth_token = $('mcp-token').value;
+    payload.headers = $('mcp-headers').value;
   }
   const id = $('mcp-id').value;
   if (id) await api(`/mcp-servers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
