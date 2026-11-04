@@ -82,16 +82,23 @@ function defaultConfig(): IndexConfig {
     stopwords: new Set([
       'wie', 'ist', 'es', 'im', 'in', 'der', 'den', 'das', 'die', 'von', 'am', 'an', 'um',
       'mein', 'meine', 'mir', 'bitte', 'sag', 'mal', 'derzeit', 'aktuell', 'aktuelle',
-      'gibt', 'gib', 'den', 'dem', 'eine', 'einen', 'und', 'oder', 'für', 'mit',
+      'gibt', 'gib', 'dem', 'eine', 'einen', 'und', 'oder', 'fur', 'mit',
     ]),
   };
 }
 
+// Geparste Configs je Setting+Rohtext cachen: scoreEntries() laeuft pro Suche
+// und darf JSON/RegExp/Stopwords nicht jedes Mal neu aufbauen. Der Rohtext im
+// Key verhindert veraltete Treffer nach Admin-Aenderungen.
+const configCache = new Map<string, { raw: string; cfg: IndexConfig }>();
+
 function loadConfig(key = ''): IndexConfig {
-  const cfg = defaultConfig();
   const settingName = key ? `entity_index_${key}` : 'entity_index';
   const raw = getSetting(settingName);
-  if (!raw) return cfg;
+  if (!raw) return defaultConfig();
+  const cached = configCache.get(settingName);
+  if (cached?.raw === raw) return cached.cfg;
+  const cfg = defaultConfig();
   try {
     const parsed = JSON.parse(raw) as {
       tool?: string;
@@ -120,6 +127,7 @@ function loadConfig(key = ''): IndexConfig {
   } catch (e) {
     console.error(`${settingName}-Setting ungueltig, nutze Defaults:`, e);
   }
+  configCache.set(settingName, { raw, cfg });
   return cfg;
 }
 
@@ -171,7 +179,7 @@ function parseLine(line: string): IndexEntry | null {
   return { id, name, state, unit, area: area === 'None' ? '' : area, attributes };
 }
 
-let cache = new Map<string, { ts: number; entries: IndexEntry[] }>();
+const cache = new Map<string, { ts: number; entries: IndexEntry[] }>();
 // In-Flight-Guard: parallele Kaltabrufe desselben Index teilen sich einen
 // Fetch (sonst mehrfache Tool-Calls). Siehe getIndexSnapshot (F-15).
 const inflight = new Map<string, Promise<IndexEntry[]>>();
@@ -349,12 +357,11 @@ export function scoreEntries(
   indexKey = ''
 ): IndexEntry[] {
   const cfg = loadConfig(indexKey);
-  const stopwords = new Set([...cfg.stopwords].map(fold));
   const terms = query
     .toLowerCase()
     .split(/\s+/)
     .map((t) => cfg.aliases[fold(t)] ?? fold(t))
-    .filter((t) => t.length >= 2 && !stopwords.has(t));
+    .filter((t) => t.length >= 2 && !cfg.stopwords.has(t));
   if (terms.length === 0) return [];
   const metricDomains = new Set<string>();
   for (const hint of cfg.domainHints) {
