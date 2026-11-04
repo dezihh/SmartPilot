@@ -119,9 +119,9 @@ test('Logs + Usage-Summary + recentAgentTurns', () => {
 });
 
 // F-26: Migrationen laufen in einer Transaktion. Dieser Test baut eine Alt-DB
-// ohne handler_config auf (der Pfad, den ein frischer initDb nie durchlaeuft)
+// ohne function_args auf (der Pfad, den ein frischer initDb nie durchlaeuft)
 // und prueft, dass die Migration vollstaendig durchlaeuft und Daten erhaelt.
-test('Migration: Alt-DB ohne handler_config wird migriert, Daten bleiben erhalten', () => {
+test('Migration: Alt-DB ohne function_args wird migriert, Daten bleiben erhalten', () => {
   const oldPath = tmpDb('migration');
   const raw = new Database(oldPath);
   raw.exec(`
@@ -144,9 +144,9 @@ test('Migration: Alt-DB ohne handler_config wird migriert, Daten bleiben erhalte
   closeDb();
   initDb(oldPath, true);
   const cols = (getDb().prepare('PRAGMA table_info(actions)').all() as { name: string }[]).map((c) => c.name);
-  assert.ok(cols.includes('handler_config'), 'handler_config muss ergaenzt sein');
-  const row = getDb().prepare("SELECT function_ref FROM actions WHERE name = 'alt_vorgang'").get() as
-    | { function_ref: string | null }
+  assert.ok(cols.includes('function_args'), 'function_args muss ergaenzt sein');
+  const row = getDb().prepare("SELECT function_ref, function_args FROM actions WHERE name = 'alt_vorgang'").get() as
+    | { function_ref: string | null; function_args: string | null }
     | undefined;
   assert.ok(row, 'Alt-Vorgang darf die Migration nicht verlieren');
 });

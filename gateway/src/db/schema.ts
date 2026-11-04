@@ -59,37 +59,21 @@ function applyReferenceSeed(db: Database.Database): void {
 
 // Migration 1 (Basis-Schema): Tabellen und Spalten - idempotent, damit frische
 // und Bestands-DBs denselben Weg gehen.
-function applySchema(db: Database.Database): void {
-// Migration: actions um handler_config + search_summary-Mode erweitern (idempotent)
-{
-  const cols = (db.prepare('PRAGMA table_info(actions)').all() as { name: string }[]).map((c) => c.name);
-  if (cols.length > 0 && !cols.includes('handler_config')) {
-    db.exec(`
-      DROP TABLE IF EXISTS actions_new;
-      CREATE TABLE actions_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
-        mode TEXT NOT NULL DEFAULT 'llm' CHECK (mode IN ('deterministic','llm','hybrid')),
-        trigger_phrases TEXT,
-        fuzzy_threshold REAL,
-        system_prompt TEXT,
-        template TEXT,
-        tools TEXT,
-        handler_config TEXT,
-        enabled INTEGER NOT NULL DEFAULT 1,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-      INSERT INTO actions_new (id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, tools, enabled, created_at, updated_at)
-        SELECT id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, tools, enabled, created_at, updated_at FROM actions WHERE mode != 'search_summary';
-      DROP TABLE actions;
-      ALTER TABLE actions_new RENAME TO actions;
-    `);
-  }
+// Fuegt eine Spalte nur hinzu, wenn sie fehlt. Ersetzt catch {}-basierte
+// Existenzpruefungen, die auch echte Fehler verschlucken.
+function addColumnIfMissing(db: Database.Database, table: string, column: string, definition: string): void {
+  const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);
+  // Tabelle existiert bei frischer DB noch nicht -> CREATE unten legt sie an.
+  if (cols.length === 0) return;
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
+function applySchema(db: Database.Database): void {
 // Migration: mode-Check-Constraint erneuern, damit search_summary entfaellt (idempotent)
 {
+  // Alte actions-Tabellen koennen function_ref/function_args noch nicht haben.
+  addColumnIfMissing(db, 'actions', 'function_ref', 'TEXT');
+  addColumnIfMissing(db, 'actions', 'function_args', 'TEXT');
   const modeLine = (db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='actions'").get() as { sql?: string })?.sql ?? '';
   if (modeLine.includes('search_summary')) {
     db.exec(`
@@ -102,14 +86,15 @@ function applySchema(db: Database.Database): void {
         fuzzy_threshold REAL,
         system_prompt TEXT,
         template TEXT,
+        function_ref TEXT,
+        function_args TEXT,
         tools TEXT,
-        handler_config TEXT,
         enabled INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
-      INSERT INTO actions_new (id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, tools, handler_config, enabled, created_at, updated_at)
-        SELECT id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, tools, handler_config, enabled, created_at, updated_at FROM actions WHERE mode != 'search_summary';
+      INSERT INTO actions_new (id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, created_at, updated_at)
+        SELECT id, name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, created_at, updated_at FROM actions WHERE mode != 'search_summary';
       DROP TABLE actions;
       ALTER TABLE actions_new RENAME TO actions;
     `);
@@ -141,8 +126,8 @@ db.exec(`
     system_prompt TEXT,
     template TEXT,
     function_ref TEXT,
+    function_args TEXT,
     tools TEXT,
-    handler_config TEXT,
     enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -224,38 +209,26 @@ db.exec(`
   }
 }
 
-for (const stmt of [
-  "ALTER TABLE mcp_servers ADD COLUMN transport TEXT NOT NULL DEFAULT 'http'",
-  'ALTER TABLE mcp_servers ADD COLUMN command TEXT',
-  'ALTER TABLE mcp_servers ADD COLUMN args TEXT',
-  'ALTER TABLE mcp_servers ADD COLUMN env TEXT',
-  'ALTER TABLE mcp_servers ADD COLUMN npm_spec TEXT',
-  'ALTER TABLE actions ADD COLUMN function_ref TEXT',
-  'ALTER TABLE actions ADD COLUMN function_args TEXT',
-  'ALTER TABLE tpl_functions ADD COLUMN parameters TEXT',
-  'ALTER TABLE tpl_functions ADD COLUMN budget INTEGER',
-  'ALTER TABLE tpl_functions ADD COLUMN inventory_prompt TEXT',
-  'ALTER TABLE mcp_servers ADD COLUMN inventory_prompt TEXT',
-  "ALTER TABLE mcp_servers ADD COLUMN side_effect TEXT NOT NULL DEFAULT 'write'",
-  "ALTER TABLE tpl_functions ADD COLUMN side_effect TEXT NOT NULL DEFAULT 'write'",
-]) {
-  try {
-    db.exec(stmt);
-  } catch {
-    // Spalte existiert bereits
-  }
-}
-
-for (const stmt of [
-  'ALTER TABLE logs ADD COLUMN prompt_tokens INTEGER',
-  'ALTER TABLE logs ADD COLUMN completion_tokens INTEGER',
-  'ALTER TABLE logs ADD COLUMN llm_model TEXT',
-]) {
-  try {
-    db.exec(stmt);
-  } catch {
-    // Spalte existiert bereits
-  }
+const additions: Array<[string, string, string]> = [
+  ['mcp_servers', 'transport', "TEXT NOT NULL DEFAULT 'http'"],
+  ['mcp_servers', 'command', 'TEXT'],
+  ['mcp_servers', 'args', 'TEXT'],
+  ['mcp_servers', 'env', 'TEXT'],
+  ['mcp_servers', 'npm_spec', 'TEXT'],
+  ['actions', 'function_ref', 'TEXT'],
+  ['actions', 'function_args', 'TEXT'],
+  ['tpl_functions', 'parameters', 'TEXT'],
+  ['tpl_functions', 'budget', 'INTEGER'],
+  ['tpl_functions', 'inventory_prompt', 'TEXT'],
+  ['mcp_servers', 'inventory_prompt', 'TEXT'],
+  ['mcp_servers', 'side_effect', "TEXT NOT NULL DEFAULT 'write'"],
+  ['tpl_functions', 'side_effect', "TEXT NOT NULL DEFAULT 'write'"],
+  ['logs', 'prompt_tokens', 'INTEGER'],
+  ['logs', 'completion_tokens', 'INTEGER'],
+  ['logs', 'llm_model', 'TEXT'],
+];
+for (const [table, column, definition] of additions) {
+  addColumnIfMissing(db, table, column, definition);
 }
 
 }
