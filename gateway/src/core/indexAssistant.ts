@@ -2,7 +2,7 @@ import { chatCompletion } from '../llm/client.js';
 import type { ChatMessage } from '../llm/client.js';
 import { config } from '../config.js';
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
-import { parseIndexResult, scoreEntries, fmtEntry, type IndexEntry } from './entityIndex.js';
+import { parseIndexResult, scoreEntries, fmtEntry, invalidateIndex, type IndexEntry } from './entityIndex.js';
 import { setSetting } from '../db.js';
 import type { SideEffect } from '../types.js';
 
@@ -234,7 +234,6 @@ export async function applyDraft(draft: IndexDraft, indexKey = ''): Promise<Draf
     ...(draft.aliases && Object.keys(draft.aliases).length > 0 ? { aliases: draft.aliases } : {}),
   };
   setSetting(indexKey ? `entity_index_${indexKey}` : 'entity_index', JSON.stringify(setting));
-  const { invalidateIndex } = await import('./entityIndex.js');
   invalidateIndex();
   return validation;
 }

@@ -27,6 +27,7 @@ import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY } from '../db/seeds.js';
 import { normalizeActionInput, normalizeFunctionInput } from '../core/normalize.js';
 import { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, renderActionTemplate } from '../core/template.js';
 import { assistIndex, applyDraft, type IndexDraft } from '../core/indexAssistant.js';
+import { invalidateIndex } from '../core/entityIndex.js';
 import { getMcpContext } from '../mcp/registry.js';
 export const adminRoutes = Router();
 
@@ -133,7 +134,6 @@ adminRoutes.put('/admin/api/indexes/:key', requireAdminAuth, async (req, res) =>
     return res.status(400).json({ error: 'Config braucht ein "tool"' });
   }
   setSetting(key ? `entity_index_${key}` : 'entity_index', JSON.stringify(obj));
-  const { invalidateIndex } = await import('../core/entityIndex.js');
   invalidateIndex();
   res.json({ ok: true, key });
 });
@@ -144,10 +144,7 @@ adminRoutes.delete('/admin/api/indexes/:key', requireAdminAuth, (req, res) => {
     return res.status(400).json({ error: 'Nur benannte Indexe löschbar (Default-Index leeren statt löschen)' });
   }
   deleteSetting(`entity_index_${key}`);
-  void (async () => {
-    const { invalidateIndex } = await import('../core/entityIndex.js');
-    invalidateIndex();
-  })().catch(() => {});
+  invalidateIndex();
   res.json({ ok: true });
 });
 
