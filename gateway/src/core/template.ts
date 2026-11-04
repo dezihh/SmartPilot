@@ -1,275 +1,21 @@
 import nunjucks from 'nunjucks';
-import { exec } from 'node:child_process';
-import { promises as dns } from 'node:dns';
-import { Agent } from 'undici';
 import type { McpContext } from '../mcp/registry.js';
 import { getIndexSnapshot, listIndexKeys, type IndexEntry } from './entityIndex.js';
 import { findInSnapshot, getFromSnapshot } from './indexTools.js';
 import { getFunctionByName, getSettingNum } from '../db.js';
 import type { AssistantResponse, TraceEvent } from '../types.js';
+import { extractLiterals } from './extract.js';
+import { httpCacheGet, httpCacheSet } from './httpCache.js';
+import { fetchUrl } from './http.js';
+import { runShell } from './shell.js';
+
+export { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, setPinDispatcherFactoryForTests } from './http.js';
+export { isPrivateHost } from './ssrf.js';
 
 const env = new nunjucks.Environment(null, { autoescape: false });
 
-// Shell-Helper: admin-only editierbar (Templates), laeuft im Gateway-Container.
-// Absicherungen: Timeout + Output-Cap, damit ein haengender Befehl die
-// Alexa-Antwort nicht blockiert bzw. den Prompt sprengt.
-const SHELL_TIMEOUT_MS = 5000;
-const SHELL_OUTPUT_CAP = 4000;
-import { extractLiterals, type LiteralCalls } from './extract.js';
-import { httpCacheGet, httpCacheSet } from './httpCache.js';
-
-
-// HTTP-Baustein: generischer GET-Fetch fuer beliebige REST-Endpunkte.
-// Absicherungen: Timeout + Groessencap; JSON wird automatisch geparst,
-// damit Templates direkt auf Felder zugreifen koennen.
-export const HTTP_TIMEOUT_MS = 5000;
-export const HTTP_BODY_CAP = 100_000;
-
-// SSRF-Schutz: dynamische http()-URLs (args-kontaminiert) duerfen niemals ins
-// private Netz zeigen. Literale URLs (Admin-Templates) sind vertrauenswuerdig
-// und bleiben unangetastet (LAN-Dienste wie CGIs muessen funktionieren).
-// Haertung: Der URL-Parser kanonisiert IPv4-Kurzformen (Dezimal/Oktal/Hex);
-// danach werden private IPv4-/IPv6-Bereiche inkl. IPv4-Mapped geprueft.
-function ipv4ToBytes(ip: string): number[] | null {
-  const parts = ip.split('.');
-  if (parts.length !== 4) return null;
-  const out: number[] = [];
-  for (const p of parts) {
-    if (!/^\d{1,3}$/.test(p)) return null;
-    const n = Number(p);
-    if (n > 255) return null;
-    out.push(n);
-  }
-  return out;
-}
-
-function ipv4InRange(bytes: number[], base: string, bits: number): boolean {
-  const b = ipv4ToBytes(base);
-  if (!b) return false;
-  const n = ((bytes[0]! << 24) | (bytes[1]! << 16) | (bytes[2]! << 8) | bytes[3]!) >>> 0;
-  const bn = ((b[0]! << 24) | (b[1]! << 16) | (b[2]! << 8) | b[3]!) >>> 0;
-  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
-  return ((n & mask) >>> 0) === ((bn & mask) >>> 0);
-}
-
-function isPrivateIpv4(ip: string): boolean {
-  const b = ipv4ToBytes(ip);
-  if (!b) return false;
-  return (
-    ipv4InRange(b, '0.0.0.0', 8) ||
-    ipv4InRange(b, '10.0.0.0', 8) ||
-    ipv4InRange(b, '100.64.0.0', 10) ||
-    ipv4InRange(b, '127.0.0.0', 8) ||
-    ipv4InRange(b, '169.254.0.0', 16) ||
-    ipv4InRange(b, '172.16.0.0', 12) ||
-    ipv4InRange(b, '192.0.0.0', 24) ||
-    ipv4InRange(b, '192.168.0.0', 16) ||
-    ipv4InRange(b, '198.18.0.0', 15)
-  );
-}
-
-function expandIpv6(input: string): number[] | null {
-  let ip = input.replace(/^\[|\]$/g, '').toLowerCase().split('%')[0]!;
-  if (!ip.includes(':')) return null;
-  const dotIdx = ip.lastIndexOf('.');
-  if (dotIdx !== -1) {
-    // Eingebettete IPv4-Schreibweise (z. B. ::ffff:127.0.0.1) -> zwei Hextets.
-    const colonIdx = ip.lastIndexOf(':');
-    const v4 = ipv4ToBytes(ip.slice(colonIdx + 1));
-    if (!v4) return null;
-    const hi = ((v4[0]! << 8) | v4[1]!).toString(16);
-    const lo = ((v4[2]! << 8) | v4[3]!).toString(16);
-    ip = `${ip.slice(0, colonIdx + 1)}${hi}:${lo}`;
-  }
-  const parts = ip.split('::');
-  if (parts.length > 2) return null;
-  const head = parts[0] ? parts[0].split(':') : [];
-  const tail = parts.length === 2 ? (parts[1] ? parts[1].split(':') : []) : [];
-  if (parts.length === 1 && head.length !== 8) return null;
-  const missing = 8 - head.length - tail.length;
-  if (missing < 0) return null;
-  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
-  if (groups.length !== 8) return null;
-  const out: number[] = [];
-  for (const g of groups) {
-    if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
-    out.push(parseInt(g, 16));
-  }
-  return out;
-}
-
-function isPrivateIpv6(ip: string): boolean {
-  const g = expandIpv6(ip);
-  if (!g) return false;
-  const [g0, g1, g2, g3, g4, g5, g6, g7] = g;
-  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0 && g6 === 0 && (g7 === 0 || g7 === 1)) return true;
-  if ((g0! & 0xffc0) === 0xfe80) return true; // fe80::/10 Link-Local
-  if ((g0! & 0xfe00) === 0xfc00) return true; // fc00::/7 Unique Local
-  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff) {
-    return isPrivateIpv4(`${(g6! >> 8) & 0xff}.${g6! & 0xff}.${(g7! >> 8) & 0xff}.${g7! & 0xff}`);
-  }
-  return false;
-}
-
-export function isPrivateHost(hostname: string): boolean {
-  let h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  // IPv4-Kurzformen (Dezimal/Oktal/Hex) ueber den URL-Parser kanonisieren.
-  try {
-    const canon = new URL(`http://${h}`).hostname.replace(/^\[|\]$/g, '');
-    if (canon) h = canon;
-  } catch {
-    /* kein parsbarer Host - mit dem Rohwert weiterpruefen */
-  }
-  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal')) return true;
-  if (isPrivateIpv4(h)) return true;
-  if (isPrivateIpv6(h)) return true;
-  return false;
-}
-
-// Body streamend bis zum Cap lesen: eine riesige Antwort darf nicht erst
-// komplett in den Speicher geladen werden (Body-Cap greift sonst zu spaet).
-async function readCapped(res: Response, cap: number): Promise<string> {
-  if (!res.body) return (await res.text()).slice(0, cap);
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let out = '';
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      out += decoder.decode(value, { stream: true });
-      if (out.length >= cap) break;
-    }
-    out += decoder.decode();
-  } catch {
-    /* abgebrochene Verbindung: bisher Gelesenes verwenden */
-  } finally {
-    try {
-      await reader.cancel();
-    } catch {
-      /* ignore */
-    }
-  }
-  return out.slice(0, cap);
-}
-
-// F-07: dynamische Hostnamen vorab aufloesen. null = keine Aufloesung
-// (NXDOMAIN/offline) -> der Aufrufer faellt auf den normalen fetch zurueck.
-async function resolveDynamicHost(hostname: string): Promise<{ address: string; family: number }[] | null> {
-  try {
-    const addrs = await dns.lookup(hostname, { all: true });
-    return addrs.map((a) => ({ address: a.address, family: a.family }));
-  } catch {
-    return null;
-  }
-}
-
-// F-07/N-01: Dispatcher-Factory fuer gepinnte dynamische Requests. Ausgelagert
-// und injizierbar, damit Tests die tatsaechlich verwendete Ziel-IP (nicht nur
-// die Praesenz) pruefen koennen. Default: undici-Agent mit gepinntem lookup.
-interface PinnedDispatcher {
-  close: () => Promise<void>;
-}
-type PinDispatcherFactory = (pin: { address: string; family: number }) => PinnedDispatcher;
-const defaultPinDispatcher = (pin: { address: string; family: number }): PinnedDispatcher =>
-  new Agent({ connect: { lookup: (_h, _o, cb) => cb(null, [pin]) } });
-let pinDispatcherFactory: PinDispatcherFactory = defaultPinDispatcher;
-export function setPinDispatcherFactoryForTests(factory?: PinDispatcherFactory): void {
-  pinDispatcherFactory = factory ?? defaultPinDispatcher;
-}
-
-async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Promise<unknown | null> {
-  const timeoutMs = getSettingNum('http_timeout_ms', HTTP_TIMEOUT_MS);
-  const bodyCap = getSettingNum('http_body_cap', HTTP_BODY_CAP);
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    let target = url;
-    // Dynamische URLs: jede Redirect-Etappe erneut pruefen statt blindem follow,
-    // sonst umgeht ein Redirect die Host-Pruefung.
-    for (let hop = 0; hop <= 3; hop++) {
-      const u = new URL(target);
-      if (dynamic && isPrivateHost(u.hostname)) {
-        trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
-        return null;
-      }
-      // F-07: DNS-Rebinding - oeffentlichen Hostnamen vorab aufloesen, private
-      // Ziele blockieren UND die gepruefte IP im Request pinnen (dispatcher).
-      // So ist ein Rebinding zwischen Pruefung und Verbindungsaufbau wirkungslos.
-      let dispatcher: PinnedDispatcher | undefined;
-      if (dynamic) {
-        const addrs = await resolveDynamicHost(u.hostname);
-        if (addrs && addrs.some((a) => isPrivateHost(a.address))) {
-          trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
-          return null;
-        }
-        const pin = addrs?.[0];
-        if (pin) dispatcher = pinDispatcherFactory(pin);
-      }
-      const init: RequestInit = {
-        signal: controller.signal,
-        redirect: dynamic ? 'manual' : 'follow',
-      };
-      if (dispatcher) (init as { dispatcher?: unknown }).dispatcher = dispatcher;
-      try {
-        const res = await fetch(target, init);
-        if (dynamic && res.status >= 300 && res.status < 400) {
-          const loc = res.headers.get('location');
-          if (!loc) {
-            trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, error: 'Redirect ohne Location' } });
-            return null;
-          }
-          target = new URL(loc, target).toString();
-          continue;
-        }
-        const raw = await readCapped(res, bodyCap);
-        if (!res.ok) {
-          trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, body: raw.slice(0, 200) } });
-          return null;
-        }
-        try {
-          return JSON.parse(raw) as unknown;
-        } catch {
-          return raw;
-        }
-      } finally {
-        if (dispatcher) await dispatcher.close().catch(() => {});
-      }
-    }
-    trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url, error: 'zu viele Redirects' } });
-    return null;
-  } catch (e) {
-    trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url, error: String(e) } });
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 // Verschachtelungstiefe fuer fn()-Aufrufe; verhindert Zyklen und Runaways.
 const FN_MAX_DEPTH = 3;
-
-function runShell(cmd: string, trace: TraceEvent[]): Promise<string | null> {
-  return new Promise((resolve) => {
-    exec(
-      cmd,
-      { timeout: SHELL_TIMEOUT_MS, maxBuffer: 1024 * 1024, windowsHide: true },
-      (err, stdout, stderr) => {
-        if (err) {
-          trace.push({
-            ts: Date.now(),
-            step: 'template.shell.error',
-            detail: { cmd, error: String(err.message).slice(0, 300), stderr: String(stderr).slice(0, 300) },
-          });
-          return resolve(null);
-        }
-        const out = `${stdout}`.trim().slice(0, SHELL_OUTPUT_CAP);
-        trace.push({ ts: Date.now(), step: 'template.shell', detail: { cmd, chars: out.length } });
-        resolve(out);
-      }
-    );
-  });
-}
 
 function findToolExact(
   mcp: McpContext,
@@ -388,7 +134,7 @@ async function preheat(
   active: Set<string>,
   args: Record<string, unknown> = {}
 ): Promise<Record<string, unknown>> {
-  const { usesIndex, states, indexKeys, indexAll, calls, mcpCallDyn, httpCalls, httpDyn, shells, fns, httpUrls } = extractLiterals(template);
+  const { usesIndex, states, indexKeys, indexAll, calls, mcpCallDyn, httpCalls, httpDyn, shells, fns } = extractLiterals(template);
   const stateMap = new Map<string, string | null>();
   const callMap = new Map<string, string | null>();
   const shellMap = new Map<string, string | null>();
@@ -560,10 +306,7 @@ async function preheat(
     shell: (cmd: string): string | null => shellMap.get(cmd) ?? null,
     fn: (name: string): string | null => fnMap.get(name) ?? null,
     http: (url: string): unknown | null => httpMap.get(url) ?? null,
-    now: (() => {
-      const d = new Date();
-      return { hour: d.getHours(), weekday: d.toLocaleDateString('de-DE', { weekday: 'long' }), date: d.toLocaleDateString('de-DE'), time: d.toTimeString().slice(0, 5) };
-    })(),
+    now: nowCtx,
   };
 }
 
@@ -598,7 +341,8 @@ export async function renderActionTemplate(
   trace: TraceEvent[],
   args: Record<string, unknown> = {}
 ): Promise<AssistantResponse> {
-  const out = await renderPlain(template, mcp, trace, 0, new Set(), args);  if (/^<speak[\s>]/i.test(out)) {
+  const out = await renderPlain(template, mcp, trace, 0, new Set(), args);
+  if (/^<speak[\s>]/i.test(out)) {
     return { speech: out, ssml: true };
   }
   if (out.startsWith('{')) {
