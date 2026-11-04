@@ -4,6 +4,10 @@ import type { ActionMode } from '../types.js';
 import type { ActionInput } from '../db/actions.js';
 import type { FunctionInput } from '../db/functions.js';
 
+function enabledFlag(value: unknown): 0 | 1 {
+  return value === false || value === 0 || value === '0' || value === 'false' ? 0 : 1;
+}
+
 export function normalizeActionInput(body: Record<string, unknown>): ActionInput {
   const mode = String(body.mode ?? '');
   if (mode !== 'deterministic' && mode !== 'llm' && mode !== 'hybrid') {
@@ -48,7 +52,7 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     // null (Feld fehlt) = unveraendert/alle Tools.
     tools: tools ? JSON.stringify(tools) : null,
     // GET-Roundtrip liefert enabled als Zahl 0/1 -> 0 muss "aus" bleiben.
-    enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,
+    enabled: enabledFlag(body.enabled),
   };
 }
 
@@ -140,6 +144,6 @@ export function normalizeFunctionInput(body: Record<string, unknown>): FunctionI
     inventory_prompt: body.inventory_prompt == null ? null : String(body.inventory_prompt).trim() || null,
     // Default 'write' (konservativ): nur explizites 'read' verwirft den Index-Cache nicht.
     side_effect: body.side_effect === 'read' ? 'read' : 'write',
-    enabled: body.enabled === false || body.enabled === 0 || body.enabled === '0' || body.enabled === 'false' ? 0 : 1,
+    enabled: enabledFlag(body.enabled),
   };
 }
