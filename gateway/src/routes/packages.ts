@@ -10,6 +10,7 @@ import {
   packageDiff,
   existingParams,
   parseManifest,
+  validateManifest,
   manifestDangerous,
   manifestItems,
   paramValues,
@@ -81,7 +82,7 @@ async function registryEntries(force: boolean): Promise<RegistryEntry[]> {
 async function fetchManifest(id: string): Promise<PackageManifest> {
   const base = registryUrl().replace(/\/$/, '');
   const raw = (await fetchJson(`${base}/${id}/manifest.json`)) as unknown;
-  const parsed = parseManifest(JSON.stringify(raw));
+  const parsed = validateManifest(raw);
   if (!parsed.ok) throw new Error(parsed.errors.join('; '));
   return parsed.manifest;
 }

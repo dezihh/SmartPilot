@@ -18,7 +18,7 @@ export interface McpServerInput {
 
 export function listMcpServers(enabledOnly: boolean, reveal = false): McpServerRow[] {
   const rows = enabledOnly
-    ? (getDb().prepare('SELECT * FROM mcp_servers WHERE enabled = 1').all() as McpServerRow[])
+    ? (getDb().prepare('SELECT * FROM mcp_servers WHERE enabled = 1 ORDER BY name').all() as McpServerRow[])
     : (getDb().prepare('SELECT * FROM mcp_servers ORDER BY name').all() as McpServerRow[]);
   // Secrets (auth_token UND env) standardmaessig fuer die Admin-API maskieren;
   // nur interne Nutzer (MCP-Aufbau, Backup mit explizitem Wunsch) fordern

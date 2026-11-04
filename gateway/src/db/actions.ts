@@ -19,12 +19,9 @@ export function parseAction(row: ActionRow): ParsedAction {
   }
   let functionArgs: Record<string, unknown> | null = null;
   try {
-    if (
-      row.function_args &&
-      typeof (JSON.parse(row.function_args) as unknown) === 'object' &&
-      !Array.isArray(JSON.parse(row.function_args) as unknown)
-    ) {
-      functionArgs = JSON.parse(row.function_args) as Record<string, unknown>;
+    const parsed = row.function_args ? (JSON.parse(row.function_args) as unknown) : null;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      functionArgs = parsed as Record<string, unknown>;
     }
   } catch {
     functionArgs = null;
