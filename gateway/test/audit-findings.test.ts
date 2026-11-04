@@ -26,6 +26,9 @@ const { isPrivateHost } = await import('../src/core/template.js');
 const { chatCompletion } = await import('../src/llm/client.js');
 const { createMcpServer, listMcpServers } = await import('../src/db/mcpServers.js');
 const { addLog, recentAgentTurns } = await import('../src/db/logs.js');
+const { initDb } = await import('../src/db/schema.js');
+// db.ts hat keinen Import-Seiteneffekt mehr: Tests initialisieren explizit.
+initDb(process.env.DB_PATH!, false);
 
 const originalFetch = globalThis.fetch;
 let lastInit: RequestInit | undefined;

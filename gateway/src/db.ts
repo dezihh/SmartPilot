@@ -1,10 +1,5 @@
-import { config } from './config.js';
-import { initDb } from './db/schema.js';
-
-// Runtime-Init mit Referenz-Seed (Tests initialisieren bewusst selbst mit
-// Temp-Pfad und ohne Seed - initDb(path) ohne 2. Argument).
-initDb(config.dbPath, true);
-
+// Reiner Barrel-Export: kein DB-Seiteneffekt beim Import. Der Entrypoint
+// (src/server.ts) initialisiert die DB explizit vor dem ersten Zugriff.
 export { initDb, getDb, getSchemaVersion } from './db/schema.js';
 export {
   parseAction,

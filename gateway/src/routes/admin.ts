@@ -26,9 +26,12 @@ import { SEED_SETTINGS } from '../db/schema.js';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY } from '../db/seeds.js';
 import { normalizeActionInput, normalizeFunctionInput } from '../core/normalize.js';
 import { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, renderActionTemplate } from '../core/template.js';
-import { assistIndex, applyDraft } from '../core/indexAssistant.js';
+import { assistIndex, applyDraft, type IndexDraft } from '../core/indexAssistant.js';
 import { getMcpContext } from '../mcp/registry.js';
 export const adminRoutes = Router();
+
+const INDEX_KEY_RE = /^[a-z0-9_-]{1,30}$/;
+const INDEX_KEY_ERROR = 'Ungültiger Key (a-z 0-9 _ -, max. 30)';
 
 adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (req, res) => {
   res.json({
@@ -119,7 +122,7 @@ adminRoutes.get('/admin/api/indexes', requireAdminAuth, (req, res) => {
 
 adminRoutes.put('/admin/api/indexes/:key', requireAdminAuth, async (req, res) => {
   const key = String(req.params.key ?? '').toLowerCase();
-  if (key && !/^[a-z0-9_]{1,30}$/.test(key)) return res.status(400).json({ error: 'Ungültiger Key (a-z 0-9 _, max. 30)' });
+  if (key && !INDEX_KEY_RE.test(key)) return res.status(400).json({ error: INDEX_KEY_ERROR });
   let obj: Record<string, unknown>;
   try {
     obj = JSON.parse(String(req.body.config ?? '')) as Record<string, unknown>;
@@ -137,7 +140,7 @@ adminRoutes.put('/admin/api/indexes/:key', requireAdminAuth, async (req, res) =>
 
 adminRoutes.delete('/admin/api/indexes/:key', requireAdminAuth, (req, res) => {
   const key = String(req.params.key ?? '').toLowerCase();
-  if (!key || !/^[a-z0-9_]{1,30}$/.test(key)) {
+  if (!key || !INDEX_KEY_RE.test(key)) {
     return res.status(400).json({ error: 'Nur benannte Indexe löschbar (Default-Index leeren statt löschen)' });
   }
   deleteSetting(`entity_index_${key}`);
@@ -174,8 +177,8 @@ adminRoutes.post('/admin/api/index/assist', requireAdminAuth, async (req, res) =
     const goal = String((req.body as { goal?: unknown }).goal ?? '');
     const indexKey = String((req.body as { indexKey?: unknown }).indexKey ?? '')
       .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '');
+      .toLowerCase();
+    if (indexKey && !INDEX_KEY_RE.test(indexKey)) return res.status(400).json({ error: INDEX_KEY_ERROR });
     res.json(await assistIndex(goal, indexKey));
   } catch (e) {
     res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
@@ -184,12 +187,15 @@ adminRoutes.post('/admin/api/index/assist', requireAdminAuth, async (req, res) =
 
 adminRoutes.post('/admin/api/index/apply', requireAdminAuth, async (req, res) => {
   try {
-    const draft = (req.body as { draft?: unknown }).draft as never;
+    const draft = (req.body as { draft?: unknown }).draft;
+    if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
+      return res.status(400).json({ error: 'Draft fehlt' });
+    }
     const indexKey = String((req.body as { indexKey?: unknown }).indexKey ?? '')
       .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '');
-    res.json(await applyDraft(draft, indexKey));
+      .toLowerCase();
+    if (indexKey && !INDEX_KEY_RE.test(indexKey)) return res.status(400).json({ error: INDEX_KEY_ERROR });
+    res.json(await applyDraft(draft as IndexDraft, indexKey));
   } catch (e) {
     res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
   }

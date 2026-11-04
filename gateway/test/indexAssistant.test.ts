@@ -2,6 +2,9 @@
 // Deckt die Draft-Validierung inkl. Read-only-Klassifikation und Fehlerpfade ab.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // config/auth lesen die Umgebung beim Import -> vor dem dynamischen Import setzen.
 process.env.ADMIN_TOKEN = 'test-secret';
@@ -9,18 +12,23 @@ process.env.API_TOKEN = 'test-query-secret';
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
+process.env.DB_PATH = join(mkdtempSync(join(tmpdir(), 'index-assistant-')), 'db.sqlite');
 
 const { validateDraft } = await import('../src/core/indexAssistant.js');
+const { initDb } = await import('../src/db/schema.js');
+// db.ts hat keinen Import-Seiteneffekt mehr: scoreEntries braucht die Settings-DB.
+initDb(process.env.DB_PATH!, false);
 type McpContext = import('../src/mcp/registry.js').McpContext;
 type McpTransport = import('../src/mcp/client.js').McpTransport;
 
 function fakeMcp(
   toolNames: string[],
-  callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>
+  callTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  sideEffect: 'read' | 'write' = 'read'
 ): McpContext {
   const client = { init: async () => {}, listTools: async () => [], callTool } as unknown as McpTransport;
   return {
-    servers: [{ id: 1, name: 'srv', sideEffect: 'read', client, tools: toolNames.map((n) => ({ name: n })) }],
+    servers: [{ id: 1, name: 'srv', sideEffect, client, tools: toolNames.map((n) => ({ name: n })) }],
   } as unknown as McpContext;
 }
 
@@ -51,6 +59,15 @@ test('validateDraft: nicht lesendes Tool wird abgelehnt', async () => {
   assert.match(v.errors.join(' '), /nicht erkennbar lesend/);
 });
 
+test('validateDraft: Server mit sideEffect write wird nicht probeausgefuehrt', async () => {
+  const v = await validateDraft(fakeMcp(['ha_eval_template'], async () => textResult(PIPE5), 'write'), {
+    tool: 'ha_eval_template',
+    args: {},
+  });
+  assert.equal(v.ok, false);
+  assert.match(v.errors.join(' '), /nicht erkennbar lesend/);
+});
+
 test('validateDraft: zu wenige Eintraege', async () => {
   const v = await validateDraft(fakeMcp(['ha_eval_template'], async () => textResult('a.1|R|on||A|\na.2|R|on||B|')), {
     tool: 'ha_eval_template',
@@ -66,7 +83,7 @@ test('validateDraft: Erfolg mit Samples und Fuzzy-Treffern', async () => {
     args: {},
     sampleQueries: ['licht im raum'],
   });
-  assert.equal(v.ok, true);
+  assert.equal(v.ok, true, v.errors.join('; '));
   assert.equal(v.entryCount, 5);
   assert.equal(v.samples.length, 3);
   assert.equal(v.fuzzy.length, 1);

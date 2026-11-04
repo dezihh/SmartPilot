@@ -4,6 +4,7 @@ import { config } from '../config.js';
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
 import { parseIndexResult, scoreEntries, fmtEntry, type IndexEntry } from './entityIndex.js';
 import { setSetting } from '../db.js';
+import type { SideEffect } from '../types.js';
 
 // Index-Assistent (Phase 2): LLM-gestuetztes Einbinden neuer Index-Quellen.
 // Rollenverteilung: Das LLM ENTWERFT ein Draft (Tool + Argumente + Aliase),
@@ -33,18 +34,21 @@ export interface DraftValidation {
 }
 
 // Konservative Klassifikation: nur erkennbar lesende Tools duerfen vom
-// Assistenten probehalber ausgefuehrt werden. Bewusst NUR am Toolnamen:
-// Beschreibungen enthalten Beispiel-Code (z. B. alarm_control_panel in
-// Jinja-Snippets), gegen den Regex-Klassifikation nicht haltbar ist.
-// Beidseitige Letter-Boundaries verhindern Substring-Fehltreffer
+// Assistenten probehalber ausgefuehrt werden. Der Server-sideEffect ist die
+// primaere Quelle; der Namens-Regex bleibt als Schutz gegen falsch als "read"
+// markierte Server. Beschreibungen enthalten Beispiel-Code (z. B.
+// alarm_control_panel in Jinja-Snippets), gegen den Regex-Klassifikation nicht
+// haltbar ist. Beidseitige Letter-Boundaries verhindern Substring-Fehltreffer
 // ("expressions"->press, "IMPORTANT"->import), snake_case bleibt wirksam
 // (ha_call_service).
 const WRITE_HINT_RE =
   /(?<![A-Za-z])(create|set_|update|delete|remove|write|call_service|execute|turn|control|restart|reload|press|toggle|send|add_|save|import|restore|backup)(?![A-Za-z])/i;
 const READ_NAME_RE = /eval|template|get|list|search|overview|state|history|context|read/i;
 
-function isReadOnlyTool(name: string): boolean {
+function isReadOnlyTool(name: string, serverSideEffect: SideEffect | null): boolean {
   if (WRITE_HINT_RE.test(name)) return false;
+  if (serverSideEffect === 'read') return true;
+  if (serverSideEffect === 'write') return false;
   return READ_NAME_RE.test(name);
 }
 
@@ -86,15 +90,17 @@ export async function validateDraft(
   }
   if (errors.length === 0) {
     let client: McpContext['servers'][number]['client'] | null = null;
+    let serverSideEffect: SideEffect | null = null;
     for (const server of mcp.servers) {
       if (server.tools.some((t) => t.name === draft.tool)) {
         client = server.client;
+        serverSideEffect = server.sideEffect;
         break;
       }
     }
     if (!client) {
       errors.push(`Tool ${draft.tool} auf keinem aktivierten MCP-Server gefunden.`);
-    } else if (!isReadOnlyTool(draft.tool)) {
+    } else if (!isReadOnlyTool(draft.tool, serverSideEffect)) {
       errors.push(`Tool ${draft.tool} ist nicht erkennbar lesend - Probeausfuehrung abgelehnt.`);
     } else {
       try {

@@ -368,6 +368,10 @@ test('indexes: PUT/DELETE inkl. Validierung', async () => {
   assert.equal((await call('PUT', '/admin/api/indexes/BAD!', { cookie, body: { config: '{"tool":"x"}' } })).status, 400);
   assert.equal((await call('DELETE', '/admin/api/indexes/ma', { cookie })).status, 200);
   assert.equal((await call('DELETE', '/admin/api/indexes/BAD!', { cookie })).status, 400);
+  // Bindestrich ist erlaubt (Assistent erzeugt solche Keys) und wieder loeschbar.
+  assert.equal((await call('PUT', '/admin/api/indexes/my-key', { cookie, body: { config: '{"tool":"x"}' } })).status, 200);
+  assert.equal((await call('DELETE', '/admin/api/indexes/my-key', { cookie })).status, 200);
+  assert.equal((await call('PUT', `/admin/api/indexes/${'a'.repeat(31)}`, { cookie, body: { config: '{"tool":"x"}' } })).status, 400);
 });
 
 test('functions/preview rendert Template mit args', async () => {
@@ -431,6 +435,7 @@ test('index/assist + index/apply (LLM und MCP gestubbt)', async () => {
     args: null,
     env: null,
     inventory_prompt: null,
+    side_effect: 'read',
     enabled: 1,
   });
   invalidateMcpCache();

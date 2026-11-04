@@ -1,8 +1,13 @@
 import { config } from './config.js';
+import { initDb } from './db/schema.js';
 import { listMcpServers } from './db.js';
 import { provisionMcpServers, npmInstallRunner, npmPruneRunner } from './mcp/provision.js';
 import { chatCompletion } from './llm/client.js';
 import { createApp } from './app.js';
+
+// DB explizit vor dem ersten Zugriff initialisieren (kein Import-Seiteneffekt
+// in db.ts). Tests rufen initDb weiterhin selbst mit Temp-Pfad auf.
+initDb(config.dbPath, true);
 
 // stdio-MCP-Artefakte vor dem Start bereitstellen (persistentes Volume). Fehler
 // blockieren den Start nicht - der betroffene Server bleibt "unavailable" und
