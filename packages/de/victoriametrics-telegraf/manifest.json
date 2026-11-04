@@ -1,0 +1,48 @@
+{
+  "id": "victoriametrics-telegraf",
+  "version": "1.0.0",
+  "name": "VictoriaMetrics/Telegraf Host-Status",
+  "summary": "CPU, RAM, Root-Disk und Uptime eines Hosts aus VictoriaMetrics (Telegraf-Metriken), inklusive Quellen-Label.",
+  "description": "Legt die Funktion vm_host_status an: liest cpu_usage_user, mem_used_percent, disk_used_percent (/) und system_uptime für einen Host aus VictoriaMetrics oder einer Prometheus-kompatiblen TSDB und formatiert einen kurzen Status. Quelle wird als [VictoriaMetrics] ausgewiesen.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "VictoriaMetrics oder Prometheus mit Telegraf-Metriken: cpu_usage_user, mem_used_percent, disk_used_percent, system_uptime. Kein Auth im LAN; der Gateway-Container muss die URL erreichen. Bei Prometheus/node_exporter heißen die Metriken anders und das Template muss angepasst werden.",
+  "minGatewayVersion": "0.3.0",
+  "params": [
+    {
+      "key": "metrics_url",
+      "label": "VictoriaMetrics-Basis-URL (ohne /api/v1/query)",
+      "placeholder": "http://vm:8428",
+      "default": "http://192.168.10.4:8428",
+      "required": true
+    },
+    {
+      "key": "host",
+      "label": "Hostname im Metrik-Label host",
+      "placeholder": "hotel",
+      "default": "hotel",
+      "required": true
+    }
+  ],
+  "functions": [
+    {
+      "name": "vm_host_status",
+      "description": "CPU-, RAM-, Root-Disk-Auslastung und Uptime eines Hosts aus VictoriaMetrics/Telegraf. Quelle: [VictoriaMetrics].",
+      "template": "{%- set cpu = http('${metrics_url}/api/v1/query?query=cpu_usage_user%7Bcpu%3D%22cpu-total%22%2Chost%3D%22${host}%22%7D') -%}\n{%- set ram = http('${metrics_url}/api/v1/query?query=mem_used_percent%7Bhost%3D%22${host}%22%7D') -%}\n{%- set disk = http('${metrics_url}/api/v1/query?query=disk_used_percent%7Bhost%3D%22${host}%22%2Cpath%3D%22%2F%22%7D') -%}\n{%- set up = http('${metrics_url}/api/v1/query?query=system_uptime%7Bhost%3D%22${host}%22%7D') -%}\n{%- set cv = 0 -%}{%- if cpu.data.result | length -%}{%- set cv = cpu.data.result[0].value[1] | float -%}{%- endif -%}\n{%- set rv = 0 -%}{%- if ram.data.result | length -%}{%- set rv = ram.data.result[0].value[1] | float -%}{%- endif -%}\n{%- set dv = 0 -%}{%- if disk.data.result | length -%}{%- set dv = disk.data.result[0].value[1] | float -%}{%- endif -%}\n{%- set uv = 0 -%}{%- if up.data.result | length -%}{%- set uv = up.data.result[0].value[1] | float -%}{%- endif -%}\n[VictoriaMetrics] ${host}: CPU {{ cv | round(1) | replace('.', ',') }} %, RAM {{ rv | round(1) | replace('.', ',') }} %, Disk / {{ dv | round(0) }} %, Uptime {{ (uv / 86400) | round(1) | replace('.', ',') }} Tage",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Server-Metriken (CPU, RAM, Disk /, Uptime) aus VictoriaMetrics/Telegraf: fn_vm_host_status. Quelle [VictoriaMetrics] nennen; nicht mit Home Assistant oder MQTT verwechseln.",
+      "sideEffect": "read"
+    }
+  ],
+  "allowTools": [
+    "fn_vm_host_status"
+  ],
+  "setupDocs": "Parameter metrics_url (ohne /api/v1/query) und host eintragen; die Standardwerte sind Beispiele und müssen angepasst werden. Prüfen mit \"Wie geht es dem Server?\" oder \"Wie voll ist die Platte?\". Die PromQL-Abfragen sind URL-kodiert; das ist Absicht, damit der statische http()-Pfad für private LAN-URLs greift. Für Prometheus/node_exporter die Metriknamen im Template anpassen.",
+  "changelog": "1.0.0: Erste Fassung (Funktion vm_host_status, VictoriaMetrics/Telegraf, Quellen-Label [VictoriaMetrics], Parameter metrics_url und host)."
+}

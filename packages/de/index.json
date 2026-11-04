@@ -60,6 +60,18 @@
       "name": "Beispiel: LLM-Vorgang",
       "summary": "Beispiel-Rezept: ein reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge).",
       "version": "1.0.0"
+    },
+    {
+      "id": "strompreis",
+      "name": "Strompreis (aWATTar/EPEX)",
+      "summary": "Aktueller Börsenstrompreis sowie günstigster und teuerster Slot der nächsten 24 Stunden (aWATTar, ohne Key).",
+      "version": "1.0.0"
+    },
+    {
+      "id": "victoriametrics-telegraf",
+      "name": "VictoriaMetrics/Telegraf Host-Status",
+      "summary": "CPU, RAM, Root-Disk und Uptime eines Hosts aus VictoriaMetrics (Telegraf-Metriken), inklusive Quellen-Label.",
+      "version": "1.0.0"
     }
   ]
 }

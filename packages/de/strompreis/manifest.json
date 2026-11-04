@@ -1,0 +1,33 @@
+{
+  "id": "strompreis",
+  "version": "1.0.0",
+  "name": "Strompreis (aWATTar/EPEX)",
+  "summary": "Aktueller Börsenstrompreis sowie günstigster und teuerster Slot der nächsten 24 Stunden (aWATTar, ohne Key).",
+  "description": "Legt die Funktion strompreis an: aktueller EPEX-Spot-Preis für Deutschland sowie günstigster und teuerster Slot der nächsten 24 Stunden in ct/kWh. Quelle aWATTar, kein Key, Fair-Use 100 Requests/Tag; die Funktion cached 15 Minuten.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Internetzugang des Gateway-Containers zu api.awattar.de. Kein Key, kein Konto. Fair-Use 100 Requests/Tag; die Funktion cached 15 Minuten.",
+  "minGatewayVersion": "0.3.0",
+  "params": [],
+  "functions": [
+    {
+      "name": "strompreis",
+      "description": "Strompreis DE (EPEX Spot via aWATTar) für die nächsten 24 Stunden; aktueller Preis sowie günstigster und teuerster Slot in ct/kWh.",
+      "template": "{%- set p = http('https://api.awattar.de/v1/marketdata', 900000) -%}\n{%- set cur = p.data[0].marketprice -%}\n{%- set mn = 999999 -%}{%- set mx = -999999 -%}{%- set mnt = 0 -%}{%- set mxt = 0 -%}\n{%- for s in p.data -%}\n{%- set v = s.marketprice -%}\n{%- if v < mn -%}{%- set mn = v -%}{%- set mnt = (s.start_timestamp / 1000) + 3600 -%}{%- endif -%}\n{%- if v > mx -%}{%- set mx = v -%}{%- set mxt = (s.start_timestamp / 1000) + 3600 -%}{%- endif -%}\n{%- endfor -%}\n{%- set hmn = ((mnt % 86400) / 3600) | int -%}\n{%- set mmn = (((mnt % 3600) / 60) | int) -%}\n{%- set hmx = ((mxt % 86400) / 3600) | int -%}\n{%- set mmx = (((mxt % 3600) / 60) | int) -%}\nStrompreis DE (aWATTar): aktuell {{ (cur / 10) | round(1) | replace('.', ',') }} ct/kWh; günstigster Slot {{ hmn }}:{% if mmn < 10 %}0{% endif %}{{ mmn }} Uhr mit {{ (mn / 10) | round(1) | replace('.', ',') }} ct/kWh, teuerster Slot {{ hmx }}:{% if mmx < 10 %}0{% endif %}{{ mmx }} Uhr mit {{ (mx / 10) | round(1) | replace('.', ',') }} ct/kWh.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Strompreis DE (aWATTar/EPEX): aktueller Preis sowie günstigster und teuerster Slot der nächsten 24 h in ct/kWh.",
+      "sideEffect": "read"
+    }
+  ],
+  "allowTools": [
+    "fn_strompreis"
+  ],
+  "setupDocs": "Keine Gegenseite nötig. Nach dem Install im Funktionen-Editor prüfen und mit \"Wie teuer ist der Strom gerade?\" testen. Wichtig: Der Wert ist der Börsenpreis (EPEX Spot, EUR/MWh -> ct/kWh), nicht der Endkundenpreis inklusive Netzentgelten, Steuern und Abgaben. Bei 429 (Too Many Requests) den 15-Minuten-Cache nutzen und nicht in kurzen Abständen neu abfragen.",
+  "changelog": "1.0.0: Erste Fassung (Funktion strompreis, aWATTar/EPEX, aktueller Preis plus günstigster/teuerster Slot der nächsten 24 h)."
+}
