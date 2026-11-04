@@ -132,6 +132,20 @@ function activeServerNames(mcp: McpContext, allowlist: string[] | null): string[
   return out;
 }
 
+const TOOL_RESULT_MAX_CHARS = 4000;
+const TOOL_RESULT_JSON_MAX_CHARS = 2000;
+const MAX_SEARCH_RESULTS = 3;
+const LLM_TIMEOUT_RETRY_MS = 7000;
+const MIN_ROUND_TIMEOUT_MS = 5000;
+
+function isTimeoutError(e: unknown): boolean {
+  if (e instanceof Error) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') return true;
+    return /timeout|abort/i.test(e.message);
+  }
+  return /timeout|abort/i.test(String(e));
+}
+
 async function runToolLoop(
   system: string,
   queryText: string,
@@ -152,13 +166,24 @@ async function runToolLoop(
   ];
   const overallDeadline = Date.now() + toolDeadline() * 2;
   const TimeoutAnswer = 'Das hat gerade zu lange gedauert, bitte versuche es gleich noch einmal.';
-  // Budgets: DB-Budgets der Funktionen (budget-Spalte) gewinnen, dann die
-  // Code-Defaults unten. (Das fruehere Setting 'tool_budgets' ist entfernt:
-  // es referenzierte Raw-MCP-Tool-Namen, die nicht mehr im Agent-Katalog sind.)
-  const toolBudgets: Record<string, number> = { fn_find_entities: 2, fn_get_entity: 3 };
-  const budgetFor = (name: string): number | undefined =>
-    budgets.get(name) ?? toolBudgets[name];
   const toolCalls: Record<string, number> = {};
+  const executeRoute = async (
+    route: NonNullable<ReturnType<typeof routes.get>>,
+    args: Record<string, unknown>
+  ): Promise<unknown> => {
+    switch (route.kind) {
+      case 'function': {
+        const resp = await renderFunction(route.name, mcp, trace, args);
+        return { bericht: (resp.ssml ? stripSsmlTags(resp.speech) : resp.speech).slice(0, TOOL_RESULT_MAX_CHARS) };
+      }
+      case 'index_find':
+        return { bericht: await findIndexEntries(String(args.query ?? ''), typeof args.index === 'string' ? args.index : '') };
+      case 'index_get':
+        return { bericht: await getIndexEntry(String(args.key ?? ''), typeof args.index === 'string' ? args.index : '') };
+      case 'mcp':
+        return await route.client.callTool(route.toolName, args);
+    }
+  };
   const runTools = async (message: ChatMessage): Promise<void> => {
     messages.push({
       role: 'assistant',
@@ -173,7 +198,7 @@ async function runToolLoop(
           const route = routes.get(call.function.name);
           if (!route) throw new Error(`unbekanntes Tool: ${call.function.name}`);
           const used = toolCalls[call.function.name] ?? 0;
-          const budget = budgetFor(call.function.name);
+          const budget = budgets.get(call.function.name);
           if (budget !== undefined && used >= budget) {
             result = `Limit erreicht (${call.function.name}: max. ${budget} pro Frage). Antworte JETZT mit den vorhandenen Informationen.`;
             trace.push({
@@ -185,21 +210,11 @@ async function runToolLoop(
           }
           toolCalls[call.function.name] = used + 1;
           const args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
-          if (typeof args.num_results === 'number' && args.num_results > 3) {
-            args.num_results = 3;
+          if (typeof args.num_results === 'number' && args.num_results > MAX_SEARCH_RESULTS) {
+            args.num_results = MAX_SEARCH_RESULTS;
           }
-          const out =
-            route.kind === 'function'
-              ? await (async () => {
-                  const resp = await renderFunction(route.name, mcp, trace, args);
-                  return { bericht: (resp.ssml ? stripSsmlTags(resp.speech) : resp.speech).slice(0, 4000) };
-                })()
-              : route.kind === 'index_find'
-                ? { bericht: await findIndexEntries(String(args.query ?? ''), typeof args.index === 'string' ? args.index : '') }
-                : route.kind === 'index_get'
-                  ? { bericht: await getIndexEntry(String(args.key ?? ''), typeof args.index === 'string' ? args.index : '') }
-                  : await route.client.callTool(route.toolName, args);
-          result = JSON.stringify(out).slice(0, 2000);
+          const out = await executeRoute(route, args);
+          result = JSON.stringify(out).slice(0, TOOL_RESULT_JSON_MAX_CHARS);
           // Schreibvorgaenge koennen den Index-Zustand veraendern (z. B.
           // ha_call_service): nach jedem schreibenden MCP-/Funktions-Call den
           // Index-Cache verwerfen. Lesende Tools (side_effect 'read') und die
@@ -221,6 +236,11 @@ async function runToolLoop(
       messages.push({ role: 'tool', content: r.content, tool_call_id: r.id });
     }
   };
+  const completeRound = async (withTools: boolean, timeoutMs: number): Promise<ChatMessage> => {
+    const result = await chatCompletion(messages, withTools && specs.length > 0 ? specs : undefined, timeoutMs, roundModel);
+    traceUsage(trace, roundModel ?? config.llm.model, result);
+    return result.message;
+  };
   const maxIter = getSettingNum('max_tool_iterations', config.maxToolIterations);
   for (let i = 0; i < maxIter; i++) {
     if (i > 0 && Date.now() >= overallDeadline) {
@@ -235,27 +255,21 @@ async function runToolLoop(
         content: 'Letzte Runde: formuliere JETZT die finale Antwort aus den bisherigen Tool-Ergebnissen - keine weiteren Tool-Aufrufe.',
       });
     }
-    const remaining = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), 5000));
+    const remaining = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), MIN_ROUND_TIMEOUT_MS));
     let message: ChatMessage;
     try {
-      const result = await chatCompletion(messages, specs.length > 0 ? specs : undefined, remaining, roundModel);
-      message = result.message;
-      traceUsage(trace, roundModel ?? config.llm.model, result);
+      message = await completeRound(true, remaining);
     } catch (e) {
-      if (!(String(e).includes('TimeoutError') || String(e).includes('abort'))) throw e;
+      if (!isTimeoutError(e)) throw e;
       trace.push({ ts: Date.now(), step: 'llm.timeout', detail: { round: i } });
       if (i === 0) {
         try {
-          const retryResult = await chatCompletion(messages, specs.length > 0 ? specs : undefined, 7000, roundModel);
-          traceUsage(trace, roundModel ?? config.llm.model, retryResult);
-          const retry = retryResult.message;
+          const retry = await completeRound(true, LLM_TIMEOUT_RETRY_MS);
           if (!retry.tool_calls || retry.tool_calls.length === 0) {
             return parseAgentAnswer(retry.content ?? '', trace);
           }
           await runTools(retry);
-          const finalResult = await chatCompletion(messages, undefined, 7000, roundModel);
-          traceUsage(trace, roundModel ?? config.llm.model, finalResult);
-          const final = finalResult.message;
+          const final = await completeRound(false, LLM_TIMEOUT_RETRY_MS);
           return parseAgentAnswer(final.content ?? '', trace);
         } catch (e2) {
           trace.push({ ts: Date.now(), step: 'tool.deadline', detail: String(e2).slice(0, 60) });
