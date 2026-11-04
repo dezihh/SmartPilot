@@ -58,6 +58,6 @@ export const handleLambdaTrace = (req: Request, res: Response) => {
   }
   res.status(204).end();
 };
-// Unter /api (nicht /admin): die LAN-only-Regel des Nginx-Vhosts blockiert sonst AWS-Lambda-IPs (403).
+// Unter /api (nicht /admin): der Adapter-/Lambda-Endpunkt braucht keinen Admin-Login.
 // Der Admin-Alias (/admin/api/lambda-trace) wird in app.ts unter dem Admin-Prefix registriert.
 queryRoutes.post('/api/lambda-trace', requireApiAuth, handleLambdaTrace);

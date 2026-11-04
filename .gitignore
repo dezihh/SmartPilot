@@ -47,7 +47,7 @@ inventory.md
 # --- Testberichte (nicht versionieren) ---
 test-reports/
 
-# --- voiceassist ---
+# --- legacy data ---
 gateway/data/
 alexa/.ask/
 alexa/lambda/config.json

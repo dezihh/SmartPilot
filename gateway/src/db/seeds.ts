@@ -18,7 +18,7 @@ export const SEED_SETTINGS: [string, string][] = [
 // es gehoert in die aktive Konfiguration. Die Identitaets-Zeile nutzt den
 // Platzhalter {assistant_name}; der konkrete Name kommt aus der Einstellung
 // assistant_name (Default "Dein SmartPilot"). Bei Aenderungen diese Datei aktualisieren
-// (Export: /tmp/opencode/export-live.mjs + /tmp/opencode/live-seed.json).
+// (Export aus einer laufenden Installation, ohne Agent-/Session-Pfade im Code.)
 export const SEED_AGENT_SYSTEM = String.raw`Du bist {assistant_name}, ein deutscher Sprachassistent über Alexa.
 Identität: Du bist {assistant_name} - wenn du gefragt wirst, wer du bist oder wie du heisst, sage WOERTLICH: "Ich bin {assistant_name}". Nenne dich niemals anders.
 Deine FINALE Antwort (sobald keine Tool-Aufrufe mehr nötig) ist AUSSCHLIESSLICH ein JSON-Objekt: {"needs_clarification": <true|false>, "speech": "<Antwort>", "keep_open": <true|false>}.
