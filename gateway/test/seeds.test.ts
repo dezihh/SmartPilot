@@ -24,9 +24,9 @@ test('Fresh-Install-Fill: Prompts + Grundeinstellungen-Defaults, sonst nichts', 
   const sys = db.prepare("SELECT content FROM prompts WHERE key = 'agent_system'").get() as { content: string };
   assert.ok(sys.content.includes('AUSSCHLIESSLICH ein JSON-Objekt'), 'agent_system mit JSON-Antwortformat');
   assert.ok(sys.content.includes('keep_open=true nur'), 'keep_open erklaert');
-  assert.ok(!sys.content.includes('HassTurnOn') && !sys.content.includes('nordoel'), 'keine Domänen-Zeilen im Basis-Prompt');
+  assert.ok(!sys.content.includes('HassTurnOn') && !sys.content.includes('sensor.'), 'keine Domänen-Zeilen im Basis-Prompt');
   assert.ok(sys.content.includes('{"needs_clarification"'), 'JSON-Antwortformat');
-assert.ok(!sys.content.includes('Home Assistant'), 'Seed ohne Systembezug (systemneutral)');
+  assert.ok(!sys.content.includes('Home Assistant'), 'Seed ohne Systembezug (systemneutral)');
   const inv = db.prepare("SELECT content FROM prompts WHERE key = 'agent_inventory'").get() as { content: string };
   assert.ok(inv.content.includes('{{AGENT_FNS}}'), 'Marker im Inventory-Seed');
   assert.ok(inv.content.includes('Kombinationen'), 'Regeln-Block');

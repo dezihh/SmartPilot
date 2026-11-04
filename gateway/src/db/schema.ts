@@ -275,65 +275,8 @@ function applyRepairs(db: Database.Database): void {
 // ueber die erlaubten Tools je Vorgang).
 db.prepare("DELETE FROM settings WHERE key IN ('warteton', 'fastpath_model', 'fuel_sensor', 'facade_mode', 'tool_budgets')").run();
 
-// Legacy-Aufraeumen (nur EINMAL, Marker in `settings`): Der kurzlebige
-// Referenz-Seed (SEED_JSON, Commit 23fbce5) hat einen Live-Dump als Funktionen/
-// Vorgaenge in frische Datenbanken geschrieben - inklusive instanzspezifischer
-// Rezepte (Benzinpreis, BMW-Lade-Modi, Boerse). Der Block lief frueher bei
-// JEDEM Start und loeschte/ueberschrieb dadurch auch spaeter weiterverwendete,
-// gleichnamige instanzspezifische Reports (Datenverlust). Der Marker macht die
-// Bereinigung einmalig: Bestands-DBs laufen genau einmal, danach nie wieder;
-// selbst angepasste Zeilen bleiben unangetastet.
-const LEGACY_CLEANUP_KEY = '_legacy_cleanup_v0_2_0';
-const legacyCleanupDone = db
-  .prepare('SELECT value FROM settings WHERE key = ?')
-  .get(LEGACY_CLEANUP_KEY);
-if (!legacyCleanupDone) {
-  const removed: string[] = [];
-  const legacyFns: Array<[string, string]> = [
-    ['benzinpreis', 'nordoel'],
-    ['bmw_netzladung_an', "mcp.call('bmw_netzladung_an')"],
-    ['bmw_netzladung_aus', "mcp.call('bmw_netzladung_aus')"],
-    ['boerse_portfolio', 'gf_holdings'],
-    ['boerse_woche', 'gf_holdings'],
-  ];
-  for (const [name, marker] of legacyFns) {
-    const row = db.prepare('SELECT id, template FROM tpl_functions WHERE name = ?').get(name) as { id: number; template: string } | undefined;
-    if (row && String(row.template).includes(marker)) {
-      db.prepare('DELETE FROM tpl_functions WHERE id = ?').run(row.id);
-      removed.push(`function:${name}`);
-    }
-  }
-  const legacyFnNames = legacyFns.map(([n]) => n);
-  for (const name of ['benzinpreis', 'bmw_netzladung_an', 'bmw_netzladung_aus', 'boerse', 'boerse_woche']) {
-    const row = db.prepare('SELECT function_ref FROM actions WHERE name = ?').get(name) as { function_ref: string | null } | undefined;
-    if (row && (row.function_ref === null || legacyFnNames.includes(row.function_ref))) {
-      db.prepare('DELETE FROM actions WHERE name = ?').run(name);
-      removed.push(`action:${name}`);
-    }
-  }
-  // hausstatus_gw war ein instanzspezifischer Bericht (EVCC-Akku, Solar,
-  // Tankstelle): auf die generische Fassung (sun.sun + zone.home) umstellen.
-  const hs = db.prepare("SELECT id, template FROM tpl_functions WHERE name = 'hausstatus_gw'").get() as { id: number; template: string } | undefined;
-  if (hs && (String(hs.template).includes('sensor.evcc') || String(hs.template).includes('nordoel'))) {
-    const tpl = [
-      "{%- set gr = 'Guten Morgen' if (now.hour >= 5 and now.hour < 11) else ('Guten Abend' if now.hour >= 17 else 'Hallo') -%}",
-      "{%- set sun = index.state('sun.sun') -%}",
-      "{%- set n_raw = index.state('zone.home') -%}",
-      "{{ gr }}. Die Sonne ist {{ 'über' if sun == 'above_horizon' else 'unter' }} dem Horizont.{% if n_raw in ['unknown','unavailable',''] %} Die Anwesenheit ist unbekannt.{% else %}{% set n = n_raw | int %}{% if n == 0 %} Niemand ist zuhause.{% elif n == 1 %} Eine Person ist zuhause.{% else %} {{ n }} Personen sind zuhause.{% endif %}{% endif %}",
-    ].join('\n');
-    db.prepare("UPDATE tpl_functions SET description = ?, template = ?, inventory_prompt = ?, updated_at = datetime('now') WHERE id = ?").run(
-      'Generischer Hausstatus: Sonnenstand (sun.sun) und Anwesenheit (zone.home) - in jeder Home-Assistant-Installation vorhanden.',
-      tpl,
-      'Hausstatus (generisch): Sonnenstand und Anwesenheit - fertiger Bericht, keinen eigenen bauen.',
-      hs.id,
-    );
-    removed.push('function:hausstatus_gw (auf generisch umgestellt)');
-  }
-  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(LEGACY_CLEANUP_KEY, '1');
-  if (removed.length > 0) {
-    console.warn('[migration] Legacy-Referenz-Seed einmalig bereinigt: %s', removed.join(', '));
-  }
-}
+// Legacy-Bereinigung (v0.2.0) entfernt: instanzspezifische Daten und
+// Prompt-Texte gehoeren nicht in den oeffentlichen Migrationscode.
 
 // Bestands-DBs (22.09.): die frueher im Code hartcodierten HA-Domain-Hints in
 // die entity_index-Konfiguration uebernehmen - der Code-Default ist jetzt
@@ -540,41 +483,6 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
 // (Die Referenz-Defaults der Settings werden weiter unten ueber SEED_SETTINGS
 // gesetzt - einzeln geseedete Settings gab es nur in frueheren Stadien.)
 
-// Facade-Abbau: agent_system + agent_inventory auf rohe MCP-Tools und
-// dynamische Funktions-Tools (fn_*) umschreiben - nur falls noch alter Text
-// mit den entfernten Facade-Tools drinsteht.
-{
-  const sys = db.prepare("SELECT content FROM prompts WHERE key = 'agent_system'").get() as { content?: string } | undefined;
-  if (sys?.content && sys.content.includes('control_device')) {
-    const neu = `Du bist {assistant_name}, ein deutscher Sprachassistent für Home Assistant über Alexa.
-Identität: Du bist {assistant_name} - wenn du gefragt wirst, wer du bist oder wie du heisst, sage WOERTLICH: "Ich bin {assistant_name}".
-Deine FINALE Antwort (sobald keine Tool-Aufrufe mehr nötig) ist AUSSCHLIESSLICH ein JSON-Objekt: {"needs_clarification": <true|false>, "speech": "<Antwort>", "keep_open": <true|false>}.
-Die speech ist kurz, präzise und sprechbar (keine Listen, Zahlen wie "22,4 Grad"). needs_clarification=true nur bei echter Mehrdeutigkeit.
-Anreden am Anfang ("{assistant_name}", "Smart Pilot") sind kein Teil der Frage. "mehr dazu" bezieht sich auf das letzte Thema.
-
-Tool-Regeln (sparsam: genug gewusst -> sofort antworten):
-- Messwerte/Zustände (Temperatur, Füllstand, Verbrauch, an/aus): NIEMALS aus eigenem Wissen. find_ha_entities mit Stichworten - Treffer enthalten den aktuellen Zustand, daraus sofort antworten (max. 1 Aufruf pro Frage).
-- Schalten (Licht, Schalter, Rolladen, Klima): HassTurnOn / HassTurnOff mit name (z. B. "Stehlampe") oder area. Detail: Helligkeit/Farbtemperatur HassLightSet, Zieltemperatur HassClimateSetTemperature, Rolladenposition HassSetPosition.
-- Hausstatus: fn_hausstatus, Bericht sinngemäß wiedergeben.
-- Nachrichten/Suche: searxng_web_search (language "de", num_results 5; time_range "week" bei Nachrichten; bei konkreter Quelle direkt darauf zielen). web_url_read ausschliesslich wenn der Nutzer eine konkrete Seite/URL nennt.
-- Kombinierte Anfragen (z. B. "Nachrichten und dann der Hausstatus"): DER REIHENFOLGE NACH abarbeiten - fuer den zweiten Teil weitere Tool-Aufrufe erlaubt.
-- Mehrteilige Antworten (Nachrichten, Listen, mehrere Themen): Trenne logische Teile mit Zeilenumbruechen (\\n\\n) zwischen den Teilen.`;
-    db.prepare("UPDATE prompts SET content = ?, updated_at = datetime('now') WHERE key = 'agent_system'").run(neu);
-  }
-  const inv = db.prepare("SELECT content FROM prompts WHERE key = 'agent_inventory'").get() as { content?: string } | undefined;
-  if (inv?.content && inv.content.includes('control_device')) {
-    const neu = `Nimm dieses Nachschlagewerk als Pflicht-Referenz, bevor du ein Tool aufrufst:
-
-- Hauswerte lesen (Temperatur, Verbrauch, Füllstand, Status): find_ha_entities mit Stichworten - Treffer enthalten den aktuellen Zustand, sofort antworten. Konkrete entity_id: get_ha_state.
-- Schalten (Licht, Schalter, Rolladen, Klima): HassTurnOn / HassTurnOff mit name (z. B. "Stehlampe") oder area. Detail: HassLightSet (Helligkeit/Farbtemperatur), HassClimateSetTemperature (Thermostat), HassSetPosition (Rolladen).
-- Hausstatus: fn_hausstatus (fertiger Bericht, keinen eigenen Bericht bauen).
-- Allgemeine Nachrichten/Recherche: searxng_web_search (time_range "week"), aus Snippets mit Quelle antworten.
-- Konkrete Seite/URL lesen: web_url_read (nur auf ausdruecklichen Wunsch).
-
-Kombinationen (z. B. "News und dann Hausstatus"): jeder Teil nutzt das jeweils zustaendige Tool - der Reihenfolge nach, nicht abbrechen.`;
-    db.prepare("UPDATE prompts SET content = ?, updated_at = datetime('now') WHERE key = 'agent_inventory'").run(neu);
-  }
-}
 
 }
 

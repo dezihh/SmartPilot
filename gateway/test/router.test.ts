@@ -68,7 +68,7 @@ test('routeAction: kombinierte Anfrage geht komplett an den Agent (auch nicht ll
   const det = action({ id: 1, name: 'hausstatus', mode: 'deterministic', triggers: ['hausstatus'] });
   const llm = action({ id: 2, name: 'agent', mode: 'llm', triggers: ['hausstatus'] });
   const hybrid = action({ id: 3, name: 'hyb', mode: 'hybrid', triggers: ['hausstatus'] });
-  const m = routeAction('hausstatus und benzinpreis', [det, llm, hybrid], false);
+  const m = routeAction('hausstatus und wetter', [det, llm, hybrid], false);
   assert.equal(m, null);
 });
 
@@ -99,13 +99,13 @@ test('routeAction: Verneinung blockiert lesenden Vorgang nicht', () => {
 
 test('routeAction: kombinierte Anfrage ohne llm-Action -> null', () => {
   const det = action({ triggers: ['hausstatus'] });
-  const m = routeAction('hausstatus und benzinpreis', [det], false);
+  const m = routeAction('hausstatus und wetter', [det], false);
   assert.equal(m, null);
 });
 
 test('routeAction: Komma gilt als Kombination', () => {
   const det = action({ triggers: ['hausstatus'] });
-  const m = routeAction('hausstatus, benzinpreis', [det], false);
+  const m = routeAction('hausstatus, wetter', [det], false);
   assert.equal(m, null);
 });
 
