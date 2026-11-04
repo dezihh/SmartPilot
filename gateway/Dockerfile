@@ -8,6 +8,9 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
+FROM deps AS dev
+CMD ["npm", "run", "dev"]
+
 FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
@@ -27,6 +30,3 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
 # 'node' (F-22): der Server laeuft nicht als root.
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/server.js"]
-
-FROM deps AS dev
-CMD ["npm", "run", "dev"]
