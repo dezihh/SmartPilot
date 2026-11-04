@@ -9,8 +9,31 @@ process.env.API_TOKEN = 'test-query-secret';
 process.env.LLM_BASE_URL = 'http://127.0.0.1:9/v1';
 process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
+// Ungueltige Zahlen duerfen nicht als NaN in die Laufzeit gelangen.
+process.env.PORT = 'abc';
+process.env.LLM_MAX_TOKENS = 'abc';
+process.env.AGENT_CLARIFICATION_BUDGET = 'abc';
+process.env.MAX_TOOL_ITERATIONS = 'abc';
+process.env.LLM_TOOL_DEADLINE_MS = 'abc';
 
-const { resolveDbPath, normalizeBasePath } = await import('../src/config.js');
+const { resolveDbPath, normalizeBasePath, envPositiveNumber, config } = await import('../src/config.js');
+
+test('envPositiveNumber: ungueltig/0/negativ -> Default, gueltig -> Wert', () => {
+  assert.equal(envPositiveNumber('5', 1), 5);
+  assert.equal(envPositiveNumber('abc', 7), 7);
+  assert.equal(envPositiveNumber('0', 7), 7);
+  assert.equal(envPositiveNumber('-3', 7), 7);
+  assert.equal(envPositiveNumber(undefined, 7), 7);
+  assert.equal(envPositiveNumber('  ', 7), 7);
+});
+
+test('config: ungueltige Zahlen fallen auf Defaults (kein NaN)', () => {
+  assert.equal(config.port, 3000);
+  assert.equal(config.llm.maxTokens, 2000);
+  assert.equal(config.agentClarificationBudget, 2);
+  assert.equal(config.maxToolIterations, 6);
+  assert.equal(config.toolDeadlineMs, 9000);
+});
 
 test('resolveDbPath: explizites DB_PATH hat Vorrang', () => {
   assert.equal(resolveDbPath('/x/custom.db', () => true), '/x/custom.db');

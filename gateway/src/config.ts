@@ -39,7 +39,7 @@ function req(name: string): string {
 }
 
 export const config = {
-  port: Number(process.env.PORT ?? 3000),
+  port: envPositiveNumber(process.env.PORT, 3000),
   // Zwei getrennte Schluessel (Principle of Least Privilege): ADMIN_TOKEN nur fuer
   // den Admin-Bereich, API_TOKEN nur fuer die Adapter-API (/api/query,
   // /api/lambda-trace). Kein gemeinsamer Token mehr.
@@ -60,12 +60,12 @@ export const config = {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),
     model: req('LLM_MODEL'),
-    maxTokens: Number(process.env.LLM_MAX_TOKENS ?? 2000),
+    maxTokens: envPositiveNumber(process.env.LLM_MAX_TOKENS, 2000),
     reasoningEffort: process.env.LLM_REASONING_EFFORT,
   },
-  agentClarificationBudget: Number(process.env.AGENT_CLARIFICATION_BUDGET ?? 2),
-  maxToolIterations: Number(process.env.MAX_TOOL_ITERATIONS ?? 6),
-  toolDeadlineMs: Number(process.env.LLM_TOOL_DEADLINE_MS ?? 9000),
+  agentClarificationBudget: envPositiveNumber(process.env.AGENT_CLARIFICATION_BUDGET, 2),
+  maxToolIterations: envPositiveNumber(process.env.MAX_TOOL_ITERATIONS, 6),
+  toolDeadlineMs: envPositiveNumber(process.env.LLM_TOOL_DEADLINE_MS, 9000),
   // Paket-Registry-Basis (die Sprache wird angehaengt). Default = Haupt-Repo;
   // per PACKAGES_REGISTRY_URL z. B. auf einen Test-Branch umstellbar.
   packagesRegistryUrl:
