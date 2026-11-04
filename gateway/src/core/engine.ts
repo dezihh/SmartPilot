@@ -2,7 +2,6 @@ import { config } from '../config.js';
 import {
   addLog,
   listActions,
-  listFunctions,
   getFunctionByName,
   getPrompt,
   getSetting,
@@ -16,8 +15,8 @@ import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
 import { renderHelpCatalog, renderHelpFallback } from './help.js';
-import { escapeXml, stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
-import { buildTools, type ToolRoute } from './tools.js';
+import { stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
+import { buildTools } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
 import { invalidateIndex } from './entityIndex.js';
 import { traceUsage, sumUsageFromTrace } from './usage.js';
