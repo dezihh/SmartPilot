@@ -1020,7 +1020,6 @@ init();
 
 let pkgState = { registry: [], installed: [], selected: null, preview: null, language: 'de' };
 
-function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 // Diff-Status als Chip + Wert-Darstellung (leer/Objekt).
 function statusChip(status) {
@@ -1046,9 +1045,9 @@ function diffValue(from, to) {
   const a = fmtVal(from);
   const b = fmtVal(to);
   const long = a.length > 80 || b.length > 80 || a.includes('\n') || b.includes('\n');
-  if (!long) return `<code>${escHtml(a)}</code> → <code>${escHtml(b)}</code>`;
-  const short = (s) => escHtml(s.length > 80 ? `${s.slice(0, 80)}…` : s);
-  return `<details><summary>${short(a)} → ${short(b)} (${a.length}/${b.length} Zeichen)</summary><pre class="pkg-docs">alt:  ${escHtml(a)}\n\nneu:  ${escHtml(b)}</pre></details>`;
+  if (!long) return `<code>${esc(a)}</code> → <code>${esc(b)}</code>`;
+  const short = (s) => esc(s.length > 80 ? `${s.slice(0, 80)}…` : s);
+  return `<details><summary>${short(a)} → ${short(b)} (${a.length}/${b.length} Zeichen)</summary><pre class="pkg-docs">alt:  ${esc(a)}\n\nneu:  ${esc(b)}</pre></details>`;
 }
 
 // Semantischer Versionsvergleich (nur Ziffernteile; robust gegen fehlende Teile).
@@ -1083,26 +1082,26 @@ function renderPackages() {
     const chip = !inst
       ? ''
       : update
-        ? `<span class="chip update">Update verfügbar: v${escHtml(p.version)}</span>`
+        ? `<span class="chip update">Update verfügbar: v${esc(p.version)}</span>`
         : '<span class="chip ok">installiert</span>';
-    return `<div class="pkg-item"><div><strong>${escHtml(p.name)}</strong> <span class="pkg-version">v${escHtml(p.version)}</span> <span class="pkg-id">${escHtml(p.id)}</span> ${chip}<div class="field-help">${escHtml(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${escHtml(pkgState.language ?? 'de')}/${escHtml(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${escHtml(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
+    return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(p.version)}</span> <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
   });
   $('pkg-available').innerHTML = avail.length ? avail.join('') : '<div class="field-help">Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.</div>';
   const instList = pkgState.installed.map((p) => {
     const reg = pkgState.registry.find((r) => r.id === p.id);
     const update = reg && cmpVersion(p.version, reg.version) < 0;
-    const chip = update ? ` <span class="chip update">Update verfügbar: v${escHtml(reg.version)}</span>` : '';
-    const itemRows = (p.items ?? []).map((i) => `<li><span class="kind">${escHtml(KIND_LABELS[i.kind] ?? i.kind)}</span> ${escHtml(i.name)}</li>`).join('');
+    const chip = update ? ` <span class="chip update">Update verfügbar: v${esc(reg.version)}</span>` : '';
+    const itemRows = (p.items ?? []).map((i) => `<li><span class="kind">${esc(KIND_LABELS[i.kind] ?? i.kind)}</span> ${esc(i.name)}</li>`).join('');
     return `<div class="pkg-installed-item">
       <div class="pkg-card-head">
-        <div class="pkg-card-title"><strong>${escHtml(p.id)}</strong> <span class="pkg-version">v${escHtml(p.version)}</span>${chip} <span class="pkg-version">${escHtml(p.source)}</span></div>
+        <div class="pkg-card-title"><strong>${esc(p.id)}</strong> <span class="pkg-version">v${esc(p.version)}</span>${chip} <span class="pkg-version">${esc(p.source)}</span></div>
         <div class="pkg-actions">
-          <button class="btn" data-testpkg="${escHtml(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button>
-          <button class="btn" data-reinstall="${escHtml(p.id)}">Neu installieren</button>
-          <button class="btn danger" data-uninstall="${escHtml(p.id)}">Entfernen</button>
+          <button class="btn" data-testpkg="${esc(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button>
+          <button class="btn" data-reinstall="${esc(p.id)}">Neu installieren</button>
+          <button class="btn danger" data-uninstall="${esc(p.id)}">Entfernen</button>
         </div>
       </div>
-      <div class="field-help">${escHtml(p.installed_at)}</div>
+      <div class="field-help">${esc(p.installed_at)}</div>
       <details class="pkg-items"><summary>Enthält (${(p.items ?? []).length})</summary><ul>${itemRows}</ul></details>
     </div>`;
   });
@@ -1128,10 +1127,10 @@ function paramForm(manifest, current = {}) {
     const isSet = current[p.key] != null && current[p.key] !== '';
     if (p.secret) {
       const ph = isSet ? '(gesetzt – leer lassen zum Behalten)' : (p.placeholder ?? '');
-      return `<label>${escHtml(p.label)}${p.required && !isSet ? ' *' : ''}</label><input data-param="${escHtml(p.key)}" type="password" placeholder="${escHtml(ph)}" value="">`;
+      return `<label>${esc(p.label)}${p.required && !isSet ? ' *' : ''}</label><input data-param="${esc(p.key)}" type="password" placeholder="${esc(ph)}" value="">`;
     }
     const val = isSet ? current[p.key] : (p.default ?? '');
-    return `<label>${escHtml(p.label)}${p.required ? ' *' : ''}</label><input data-param="${escHtml(p.key)}" type="text" placeholder="${escHtml(p.placeholder ?? p.default ?? '')}" value="${escHtml(val)}">`;
+    return `<label>${esc(p.label)}${p.required ? ' *' : ''}</label><input data-param="${esc(p.key)}" type="text" placeholder="${esc(p.placeholder ?? p.default ?? '')}" value="${esc(val)}">`;
   }).join('');
 }
 
@@ -1157,32 +1156,32 @@ async function showInstallForm(id, manifestFromImport) {
       conflicts = names.map((k) => ({ key: k, kind: String(k).split(':')[0], name: String(k).split(':')[1], fields: [] }));
     }
     const changed = allDiffs.filter((d) => d.status !== 'unchanged' && d.status !== 'conflict');
-    const diffItem = (d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${escHtml(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${escHtml(d.name)}</strong> ${statusChip(d.status)}</div>${d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${escHtml(labelField(f.field))}</span> ${diffValue(f.from, f.to)}</li>`).join('')}</ul>` : ''}</li>`;
+    const diffItem = (d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${esc(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${esc(d.name)}</strong> ${statusChip(d.status)}</div>${d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${esc(labelField(f.field))}</span> ${diffValue(f.from, f.to)}</li>`).join('')}</ul>` : ''}</li>`;
     const diffHtml = changed.length
       ? `<div class="diff-block"><h4>Änderungen gegenüber installiert <span class="chip update">${changed.length}</span></h4><ul class="diff-list">${changed.map(diffItem).join('')}</ul></div>`
       : (installed ? '<div class="diff-block"><h4>Änderungen gegenüber installiert</h4><div class="field-help">Keine inhaltlichen Änderungen — bereits auf Registry-Stand.</div></div>' : '');
     const restartHtml = diff.restartRequired
-      ? `<div class="error-text pkg-danger">⚠️ Container-Neustart erforderlich nach dem Speichern: npm-Paket${(diff.npmServers ?? []).length ? ` (${(diff.npmServers).map(escHtml).join(', ')})` : ''} wird erst beim nächsten Start provisioniert (z. B. <code>./compose.sh restart</code>).</div>`
+      ? `<div class="error-text pkg-danger">⚠️ Container-Neustart erforderlich nach dem Speichern: npm-Paket${(diff.npmServers ?? []).length ? ` (${(diff.npmServers).map(esc).join(', ')})` : ''} wird erst beim nächsten Start provisioniert (z. B. <code>./compose.sh restart</code>).</div>`
       : '';
-    const danger = preview.dangerous ? `<div class="error-text pkg-danger">⚠️ Gefährliche Aktion: ${(preview.dangerousItems ?? []).map((i) => escHtml(i)).join(' · ')}</div>` : '';
-    const info = (preview.infoItems ?? []).length ? `<div class="field-help">${(preview.infoItems ?? []).map((i) => escHtml(i)).join(' · ')}</div>` : '';
-    const items = (preview.items ?? []).map((i) => `<li>${escHtml(i.kind)}: ${escHtml(i.name)}</li>`).join('');
+    const danger = preview.dangerous ? `<div class="error-text pkg-danger">⚠️ Gefährliche Aktion: ${(preview.dangerousItems ?? []).map((i) => esc(i)).join(' · ')}</div>` : '';
+    const info = (preview.infoItems ?? []).length ? `<div class="field-help">${(preview.infoItems ?? []).map((i) => esc(i)).join(' · ')}</div>` : '';
+    const items = (preview.items ?? []).map((i) => `<li>${esc(i.kind)}: ${esc(i.name)}</li>`).join('');
     const meta = [
-      m.author ? `Autor: ${escHtml(m.author)}` : '',
-      m.license ? `Lizenz: ${escHtml(m.license)}` : '',
-      m.language ? `Sprache: ${escHtml(m.language)}` : '',
-      m.minGatewayVersion ? `min. Gateway ${escHtml(m.minGatewayVersion)}` : '',
+      m.author ? `Autor: ${esc(m.author)}` : '',
+      m.license ? `Lizenz: ${esc(m.license)}` : '',
+      m.language ? `Sprache: ${esc(m.language)}` : '',
+      m.minGatewayVersion ? `min. Gateway ${esc(m.minGatewayVersion)}` : '',
     ].filter(Boolean).join(' · ');
     const metaHtml = meta ? `<p class="field-help">${meta}</p>` : '';
     const securityHtml = `<p class="field-help">Sicherheit: ${preview.dangerous ? '⚠️ führt Shell-Befehle aus (Bestätigung nötig)' : (preview.infoItems ?? []).length ? 'ruft externe Dienste auf (Info)' : 'nur lesend / unkritisch'}</p>`;
-    const changelogHtml = m.changelog ? `<details><summary>Changelog</summary><pre class="pkg-docs">${escHtml(m.changelog)}</pre></details>` : '';
-    const conflictFields = (d) => d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${escHtml(labelField(f.field))}</span> lokal <code>${escHtml(fmtVal(f.from))}</code> → Paket <code>${escHtml(fmtVal(f.to))}</code></li>`).join('')}</ul>` : '';
+    const changelogHtml = m.changelog ? `<details><summary>Changelog</summary><pre class="pkg-docs">${esc(m.changelog)}</pre></details>` : '';
+    const conflictFields = (d) => d.fields?.length ? `<ul class="diff-fields">${d.fields.map((f) => `<li><span class="diff-field-name">${esc(labelField(f.field))}</span> lokal <code>${esc(fmtVal(f.from))}</code> → Paket <code>${esc(fmtVal(f.to))}</code></li>`).join('')}</ul>` : '';
     const conflictsHtml = conflicts.length ? `
       <div class="diff-block pkg-conflicts">
         <h4>Lokale Änderungen erkannt <span class="chip update">${conflicts.length}</span></h4>
         <p class="field-help">Standard: deine lokale Version behalten. Wähle „Paket-Version übernehmen", um sie durch das Paket zu ersetzen.</p>
-        <ul class="diff-list">${conflicts.map((d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${escHtml(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${escHtml(d.name)}</strong></div>${conflictFields(d)}
-          <select data-decision="${escHtml(d.key)}">
+        <ul class="diff-list">${conflicts.map((d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${esc(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${esc(d.name)}</strong></div>${conflictFields(d)}
+          <select data-decision="${esc(d.key)}">
             <option value="keep">Lokale Änderung behalten</option>
             <option value="take">Paket-Version übernehmen</option>
           </select></li>`).join('')}</ul>
@@ -1190,16 +1189,16 @@ async function showInstallForm(id, manifestFromImport) {
     const formEl = $('pkg-install-form');
     formEl.classList.remove('hidden');
     formEl.innerHTML = `
-      <h3>${escHtml(m.name)} <span class="pkg-version">v${escHtml(m.version)}</span></h3>
-      <p class="field-help">${escHtml(m.description ?? '')}</p>
+      <h3>${esc(m.name)} <span class="pkg-version">v${esc(m.version)}</span></h3>
+      <p class="field-help">${esc(m.description ?? '')}</p>
       ${metaHtml}
       ${securityHtml}
-      ${m.requires ? `<p class="field-help"><strong>Benötigt:</strong> ${escHtml(m.requires)}</p>` : ''}
+      ${m.requires ? `<p class="field-help"><strong>Benötigt:</strong> ${esc(m.requires)}</p>` : ''}
       ${danger}${info}
       ${conflictsHtml}
       ${restartHtml}${diffHtml}
       <div class="pkg-items"><strong>Enthält:</strong><ul>${items}</ul></div>
-      ${preview.setupDocs ? `<details><summary>Einrichtung Gegenseite</summary><pre class="pkg-docs">${escHtml(preview.setupDocs)}</pre></details>` : ''}
+      ${preview.setupDocs ? `<details><summary>Einrichtung Gegenseite</summary><pre class="pkg-docs">${esc(preview.setupDocs)}</pre></details>` : ''}
       ${changelogHtml}
       <div class="form-grid">${paramForm(m, currentParams)}</div>
       <div class="toolbar">
