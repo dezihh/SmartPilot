@@ -261,6 +261,17 @@ test('stdio: nach stdin-Fehler wird der Child freigegeben (F-37)', () => {
   assert.equal(child.killCalls, 1, 'EPIPE-Child muss genau einmal beendet werden');
 });
 
+test('stdio: isError=true im Result wird als Fehler geworfen', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.callTool('tool_x', {});
+  child.stdout.emit(
+    'data',
+    `${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { isError: true, content: [{ type: 'text', text: 'schreibfehler' }] } })}\n`,
+  );
+  await assert.rejects(p, /tool_x.*schreibfehler/);
+});
+
 test('getMcpContext: parallele Kaltstarts laden einen Server nur einmal (F-32)', async () => {
   stubFetch();
   let listCount = 0;
