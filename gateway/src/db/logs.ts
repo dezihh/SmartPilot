@@ -71,37 +71,44 @@ export function summarizeUsage(days = 30): {
   cachedRequests: number;
 } {
   const windowDays = Math.max(1, Math.floor(days));
-  const rows = getDb().prepare(
-      "SELECT prompt_tokens, completion_tokens, trace FROM logs WHERE trace IS NOT NULL AND trace != '' AND ts >= datetime('now', ?)"
+  const db = getDb();
+  // Token-Summen und LLM-Zeilen direkt in SQL; fuer Cache-Treffer bleibt der
+  // Trace noetig, aber nur Kandidatenzeilen werden geparst.
+  const stats = db.prepare(
+      `SELECT COUNT(*) AS requests,
+              COUNT(CASE WHEN trace LIKE '%"step":"llm.usage"%' THEN 1 END) AS llmRequests,
+              COALESCE(SUM(prompt_tokens), 0) AS promptTokens,
+              COALESCE(SUM(completion_tokens), 0) AS completionTokens
+       FROM logs
+       WHERE trace IS NOT NULL AND trace != '' AND ts >= datetime('now', ?)`
     )
-    .all(`-${windowDays} days`) as { prompt_tokens: number | null; completion_tokens: number | null; trace: string }[];
-  let prompt = 0;
-  let completion = 0;
+    .get(`-${windowDays} days`) as {
+      requests: number;
+      llmRequests: number;
+      promptTokens: number;
+      completionTokens: number;
+    };
+  const cachedRows = db.prepare(
+      `SELECT trace FROM logs WHERE trace LIKE '%"cached":true%' AND ts >= datetime('now', ?)`
+    )
+    .all(`-${windowDays} days`) as { trace: string }[];
   let cacheHits = 0;
-  let llmRequests = 0;
-  for (const r of rows) {
-    let events: TraceEvent[] = [];
+  for (const r of cachedRows) {
     try {
-      events = JSON.parse(r.trace) as TraceEvent[];
+      const events = JSON.parse(r.trace) as TraceEvent[];
+      for (const e of events) {
+        if (e.step === 'llm.usage' && (e.detail as { cached?: boolean })?.cached) cacheHits += 1;
+      }
     } catch {
-      continue;
-    }
-    const usageEvents = events.filter((e) => e.step === 'llm.usage');
-    if (usageEvents.length === 0) continue;
-    llmRequests += 1;
-    prompt += r.prompt_tokens ?? 0;
-    completion += r.completion_tokens ?? 0;
-    for (const e of usageEvents) {
-      const d = e.detail as { cached?: boolean };
-      if (d?.cached) cacheHits += 1;
+      /* ungueltiger Trace: Cache-Zaehler ueberspringen */
     }
   }
   return {
-    requests: rows.length,
-    llmRequests,
-    promptTokens: prompt,
-    completionTokens: completion,
-    totalTokens: prompt + completion,
+    requests: stats.requests,
+    llmRequests: stats.llmRequests,
+    promptTokens: stats.promptTokens,
+    completionTokens: stats.completionTokens,
+    totalTokens: stats.promptTokens + stats.completionTokens,
     cachedRequests: cacheHits,
   };
 }
