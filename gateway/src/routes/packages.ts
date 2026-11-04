@@ -302,8 +302,8 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
       for (const s of backup.servers as Record<string, unknown>[]) {
         if (!s.name) continue;
         db.prepare(
-          'INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, inventory_prompt, side_effect, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(s.name as string, (s.url as string) ?? '', (s.auth_token as string | null) ?? null, (s.transport as string) ?? 'http', (s.command as string | null) ?? null, (s.args as string | null) ?? null, (s.env as string | null) ?? null, (s.inventory_prompt as string | null) ?? null, (s.side_effect as string) ?? 'write', (s.enabled as number) ?? 1);
+          'INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, headers, npm_spec, inventory_prompt, side_effect, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(s.name as string, (s.url as string) ?? '', (s.auth_token as string | null) ?? null, (s.transport as string) ?? 'http', (s.command as string | null) ?? null, (s.args as string | null) ?? null, (s.env as string | null) ?? null, (s.headers as string | null) ?? null, (s.npm_spec as string | null) ?? null, (s.inventory_prompt as string | null) ?? null, (s.side_effect as string) ?? 'write', (s.enabled as number) ?? 1);
       }
     }
     if (Array.isArray(backup.functions)) {
@@ -321,9 +321,15 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
       db.prepare('DELETE FROM actions').run();
       for (const a of backup.actions as Record<string, unknown>[]) {
         if (!a.name) continue;
+        const fnArgs =
+          a.function_args == null
+            ? null
+            : typeof a.function_args === 'object'
+              ? JSON.stringify(a.function_args)
+              : String(a.function_args);
         db.prepare(
-          'INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, tools, handler_config, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(a.name as string, (a.mode as string) ?? 'llm', (a.trigger_phrases as string | null) ?? null, (a.fuzzy_threshold as number | null) ?? null, (a.system_prompt as string | null) ?? null, (a.template as string | null) ?? null, (a.function_ref as string | null) ?? null, (a.tools as string | null) ?? null, (a.handler_config as string | null) ?? null, (a.enabled as number) ?? 1);
+          'INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(a.name as string, (a.mode as string) ?? 'llm', (a.trigger_phrases as string | null) ?? null, (a.fuzzy_threshold as number | null) ?? null, (a.system_prompt as string | null) ?? null, (a.template as string | null) ?? null, (a.function_ref as string | null) ?? null, fnArgs, (a.tools as string | null) ?? null, (a.enabled as number) ?? 1);
       }
     }
     // Paket-Provenienz: mit der Konfiguration ersetzen. Alte Sicherungen ohne
@@ -339,9 +345,18 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
     }
     for (const i of (backup.package_items as Record<string, unknown>[] | undefined) ?? []) {
       if (!i.package_id || !i.kind || !i.name) continue;
+      const kind = String(i.kind);
+      const name = String(i.name);
+      const table =
+        kind === 'server' ? 'mcp_servers' : kind === 'function' ? 'tpl_functions' : kind === 'action' ? 'actions' : null;
+      // row_id zeigt nach dem Restore auf die neu vergebenen IDs; anhand des
+      // Namens neu aufloesen statt die alte ID aus der Sicherung zu uebernehmen.
+      const rowId = table
+        ? ((db.prepare(`SELECT id FROM ${table} WHERE name = ?`).get(name) as { id?: number } | undefined)?.id ?? null)
+        : null;
       db.prepare(
         'INSERT INTO package_items (package_id, kind, name, row_id, content_hash) VALUES (?, ?, ?, ?, ?)'
-      ).run(i.package_id as string, i.kind as string, i.name as string, (i.row_id as number | null) ?? null, (i.content_hash as string) ?? '');
+      ).run(i.package_id as string, kind, name, rowId, (i.content_hash as string) ?? '');
     }
   })();
   invalidateMcpCache();

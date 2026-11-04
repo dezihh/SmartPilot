@@ -289,6 +289,13 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
     assert.equal(install.status, 200);
     assert.equal(listInstalledPackages().length, 1);
     setSetting('probe_restore', 'BACKUP');
+    // Felder, die frueher beim Restore verloren gingen.
+    getDb()
+      .prepare(`UPDATE mcp_servers SET npm_spec = '@scope/pkg', headers = '{"X-Test":"1"}' WHERE name = 'Test MCP'`)
+      .run();
+    getDb()
+      .prepare(`INSERT INTO actions (name, mode, function_ref, function_args) VALUES ('restore_action', 'deterministic', 'test_fn', '{"x":1}')`)
+      .run();
 
     const backup = (await (await fetch(`${base}/admin/api/backup`, { headers: auth })).json()) as Record<string, unknown>;
     assert.equal((backup.packages as unknown[]).length, 1, 'Backup enthaelt Paket-Provenienz');
@@ -305,6 +312,19 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
     assert.equal(listInstalledPackages().length, 1, 'Provenienz restauriert');
     assert.equal(listAllPackageItems().length, itemCount);
     assert.equal(getSetting('probe_restore'), 'BACKUP', 'Settings restauriert');
+
+    const restoredServer = getDb()
+      .prepare("SELECT npm_spec, headers FROM mcp_servers WHERE name = 'Test MCP'")
+      .get() as { npm_spec: string; headers: string };
+    assert.equal(restoredServer.npm_spec, '@scope/pkg', 'npm_spec bleibt erhalten');
+    assert.equal(restoredServer.headers, '{"X-Test":"1"}', 'headers bleiben erhalten');
+    const restoredAction = getDb()
+      .prepare("SELECT function_args FROM actions WHERE name = 'restore_action'")
+      .get() as { function_args: string };
+    assert.deepEqual(JSON.parse(restoredAction.function_args), { x: 1 }, 'function_args bleibt erhalten');
+    const serverItem = listAllPackageItems().find((i) => i.kind === 'server' && i.name === 'Test MCP');
+    const serverId = (getDb().prepare("SELECT id FROM mcp_servers WHERE name = 'Test MCP'").get() as { id: number }).id;
+    assert.equal(serverItem?.row_id, serverId, 'package_items.row_id zeigt auf die neue ID');
 
     // Sicherung ohne Provenienz-Felder -> bewusst verworfen
     const ohneProvenienz = { ...backup };
