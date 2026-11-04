@@ -3,12 +3,14 @@ import { loadMaintenance, setTestPackageHandler, getPackageForTest } from './pac
 import { loadLogs } from './logs.js';
 import { initMonitor, testInMonitor, testPackage, sendTest } from './monitor.js';
 
-let bootstrap = { settings: {}, actions: [], functions: [], servers: [], prompts: [] };
+import { state } from './state.js';
+import { renderIndexes, saveIndexUi, deleteIndexUi, previewIndex } from './indexes.js';
+import { renderServers, toggleMcpTransportFields, openServerEditor, saveServer, healthServer, deleteServer, setServerContext } from './servers.js';
 
 
 async function loadBootstrap() {
   try {
-    bootstrap = await api('/bootstrap');
+    state.bootstrap = await api('/bootstrap');
     renderSettings();
     renderPromptKeys();
     renderActions();
@@ -158,7 +160,7 @@ function renderSettings() {
   for (const field of SETTINGS_FIELDS) {
     form.append(buildSettingField(field));
   }
-  for (const key of Object.keys(bootstrap.settings)) {
+  for (const key of Object.keys(state.bootstrap.settings)) {
     if (key === 'entity_index' || key.startsWith('entity_index_')) continue;
     if (!known.has(key)) form.append(buildSettingField({ key, label: key, type: 'text', help: '' }));
   }
@@ -178,7 +180,7 @@ async function loadSettingToolPickers() {
     const listId = `settings-tools-${f.key}`;
     const list = $(listId);
     if (!list) continue;
-    const current = String(bootstrap.settings[f.key] ?? '').trim();
+    const current = String(state.bootstrap.settings[f.key] ?? '').trim();
     const sync = () => {
       const ctrl = document.querySelector(`#settings-form [data-key="${f.key}"]`);
       const picked = toolsFromList(listId);
@@ -266,7 +268,7 @@ function buildSettingField(field) {
   const label = document.createElement('label');
   label.textContent = field.label;
   head.append(label);
-  const controlValue = bootstrap.settings[field.key] ?? '';
+  const controlValue = state.bootstrap.settings[field.key] ?? '';
   if (field.help) {
     const help = document.createElement('button');
     help.type = 'button';
@@ -277,7 +279,7 @@ function buildSettingField(field) {
     head.append(help);
   }
   let control;
-  const placeholder = bootstrap.settingDefaults?.[field.key] ?? '';
+  const placeholder = state.bootstrap.settingDefaults?.[field.key] ?? '';
   if (field.type === 'tools') {
     control = document.createElement('input');
     control.type = 'text';
@@ -341,14 +343,14 @@ function renderPromptKeys() {
   const select = $('prompt-key');
   const ta = $('prompt-content');
   select.innerHTML = '';
-  for (const p of bootstrap.prompts) {
+  for (const p of state.bootstrap.prompts) {
     const opt = document.createElement('option');
     opt.value = p.key;
     opt.textContent = p.key;
     select.append(opt);
   }
   select.onchange = () => {
-    const p = bootstrap.prompts.find((x) => x.key === select.value);
+    const p = state.bootstrap.prompts.find((x) => x.key === select.value);
     ta.value = p ? p.content : '';
     growPromptTextarea();
   };
@@ -359,7 +361,7 @@ function renderPromptKeys() {
 function renderActions() {
   const tbody = $('actions-table').querySelector('tbody');
   tbody.innerHTML = '';
-  for (const a of bootstrap.actions) {
+  for (const a of state.bootstrap.actions) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${esc(a.name)}</td>
@@ -441,7 +443,7 @@ async function loadToolPicker(selected, listId = 'action-tools-list', syncFn = s
 function renderFunctions() {
   const tbody = $('functions-table').querySelector('tbody');
   tbody.innerHTML = '';
-  for (const f of bootstrap.functions ?? []) {
+  for (const f of state.bootstrap.functions ?? []) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><code title="Einbettung in Templates: {{ fn('${esc(f.name)}') }}">${esc(f.name)}</code></td>
@@ -454,7 +456,7 @@ function renderFunctions() {
 }
 
 function openFunctionEditor(id) {
-  const f = id ? (bootstrap.functions ?? []).find((x) => x.id === id) : null;
+  const f = id ? (state.bootstrap.functions ?? []).find((x) => x.id === id) : null;
   $('fn-editor').classList.remove('hidden');
   $('fn-preview-out').classList.add('hidden');
   $('fn-editor-title').textContent = f ? `Funktion: ${f.name}` : 'Neue Funktion';
@@ -522,7 +524,7 @@ function fillFunctionSelect(selected) {
   none.value = '';
   none.textContent = '— Inline-Template verwenden —';
   sel.append(none);
-  for (const f of bootstrap.functions ?? []) {
+  for (const f of state.bootstrap.functions ?? []) {
     const opt = document.createElement('option');
     opt.value = f.name;
     opt.textContent = f.name;
@@ -531,118 +533,8 @@ function fillFunctionSelect(selected) {
   }
 }
 
-let indexesCache = [];
-
-function parseIndexConfig(raw) {
-  try {
-  return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-async function renderIndexes() {
-  const tbody = $('indexes-table').querySelector('tbody');
-  tbody.innerHTML = '';
-  try {
-    const d = await api('/indexes');
-    indexesCache = d.indexes ?? [];
-  } catch {
-    indexesCache = [];
-  }
-  for (const ix of indexesCache) {
-    const cfg = parseIndexConfig(ix.config) ?? {};
-    const desc = typeof cfg.desc === 'string' ? cfg.desc : '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><code>${ix.key ? esc(ix.key) : '(Standard)'}</code></td>
-      <td>${esc(String(cfg.tool ?? ''))}</td>
-      <td>${esc(String(cfg.ttlMs ?? ''))}</td>
-      <td>${esc(desc)}</td>
-      <td class="actions"><button class="btn small">Bearbeiten</button></td>`;
-    tr.querySelector('button').onclick = () => openIndexEditor(ix.key);
-    tbody.append(tr);
-  }
-}
-
-function openIndexEditor(key) {
-  const ix = indexesCache.find((x) => x.key === key) ?? null;
-  const cfg = ix ? (parseIndexConfig(ix.config) ?? {}) : { tool: '', args: {}, ttlMs: 60000 };
-  const { desc, ...rest } = cfg;
-  $('idx-editor').classList.remove('hidden');
-  $('idx-preview-out').classList.add('hidden');
-  $('idx-editor-title').textContent = ix ? (ix.key ? `Index-Quelle: ${ix.key}` : 'Index-Quelle: Standard') : 'Neue Index-Quelle';
-  $('idx-key').value = ix?.key ?? '';
-  $('idx-key').disabled = false;
-  $('idx-desc').value = typeof desc === 'string' ? desc : '';
-  $('idx-config').value = JSON.stringify(rest, null, 2);
-  $('idx-probe').value = '';
-}
-
-function indexPayload() {
-  let cfg = {};
-  try {
-    cfg = JSON.parse($('idx-config'.value));
-  } catch {
-    throw new Error('Config ist kein gültiges JSON');
-  }
-  if (!cfg.tool || !String(cfg.tool).trim()) throw new Error('Config braucht ein "tool"');
-  cfg.desc = $('idx-desc').value.trim();
-  return cfg;
-}
-
-async function saveIndexUi() {
-  try {
-    const cfg = indexPayload();
-    const key = $('idx-key').value.trim().toLowerCase();
-    if (key && !/^[a-z0-9_]{1,30}$/.test(key)) throw new Error('Key: a-z 0-9 _, max. 30');
-    await api(`/indexes/${key}`, { method: 'PUT', body: JSON.stringify({ config: JSON.stringify(cfg) }) });
-    $('idx-editor').classList.add('hidden');
-    await renderIndexes();
-  } catch (e) {
-    alert(`Speichern fehlgeschlagen: ${e.message}`);
-  }
-}
-
-async function deleteIndexUi() {
-  const key = $('idx-key').value.trim().toLowerCase();
-  if (!key) {
-    alert('Der Standard-Index kann nicht gelöscht werden — leere das Config-JSON statt dessen (per Speichern) oder lösche über die Settings-API.');
-    return;
-  }
-  if (!confirm(`Index-Quelle "${key}" löschen?`)) return;
-  try {
-    await api(`/indexes/${key}`, { method: 'DELETE' });
-    $('idx-editor').classList.add('hidden');
-    await renderIndexes();
-  } catch (e) {
-    alert(`Löschen fehlgeschlagen: ${e.message}`);
-  }
-}
-
-async function previewIndex() {
-  const out = $('idx-preview-out');
-  out.classList.remove('hidden');
-  out.textContent = 'Rendere …';
-  const probe = ($('idx-probe').value || '').replace(/['\\]/g, '').trim();
-  const key = $('idx-key').value.trim().toLowerCase();
-  const tpl = key
-    ? `{{ index.find('${probe}', '${key}') }}`
-    : `{{ index.find('${probe}') }}`;
-  try {
-    const d = await api('/functions/preview', {
-      method: 'POST',
-      body: JSON.stringify({ template: tpl }),
-    });
-    const steps = (d.trace ?? []).map((t) => `${t.step}${t.detail ? ' ' + JSON.stringify(t.detail).slice(0, 60) : ''}`).join(' → ');
-    out.textContent = `${d.rendered?.speech ?? ''}\n\n[trace] ${steps || '(keine Datenabrufe)'}`;
-  } catch (e) {
-    out.textContent = `Fehler: ${e.message}`;
-  }
-}
-
 function openActionEditor(id) {
-  const a = id ? bootstrap.actions.find((x) => x.id === id) : null;
+  const a = id ? state.bootstrap.actions.find((x) => x.id === id) : null;
   $('action-editor').classList.remove('hidden');
   $('action-editor-title').textContent = a ? `Vorgang: ${a.name}` : 'Neuer Vorgang';
   $('action-id').value = a?.id ?? '';
@@ -701,114 +593,6 @@ async function deleteActionUi() {
   $('action-editor').classList.add('hidden');
 }
 
-function renderServers() {
-  const tbody = $('mcp-table').querySelector('tbody');
-  tbody.innerHTML = '';
-  for (const s of bootstrap.servers) {
-    const tr = document.createElement('tr');
-    const target = s.transport === 'stdio' ? `[stdio] ${s.command ?? ''}` : s.url;
-    tr.innerHTML = `
-      <td>${esc(s.name)}</td>
-      <td>${esc(target)}</td>
-      <td>${s.enabled ? '✔' : '✖'}</td>
-      <td class="actions"><button class="btn small">Bearbeiten</button></td>`;
-    tr.querySelector('button').onclick = () => openServerEditor(s.id);
-    tbody.append(tr);
-  }
-}
-
-function toggleMcpTransportFields(transport) {
-  const stdio = transport === 'stdio';
-  for (const id of ['mcp-url-label', 'mcp-url', 'mcp-token-label', 'mcp-token', 'mcp-headers-label', 'mcp-headers']) {
-    $(id).classList.toggle('hidden', stdio);
-  }
-  for (const id of ['mcp-command-label', 'mcp-command', 'mcp-args-label', 'mcp-args', 'mcp-env-label', 'mcp-env', 'mcp-npm-spec-label', 'mcp-npm-spec']) {
-    $(id).classList.toggle('hidden', !stdio);
-  }
-  $('mcp-stdio-hint').classList.toggle('hidden', !stdio);
-}
-
-function openServerEditor(id) {
-  const s = id ? bootstrap.servers.find((x) => x.id === id) : null;
-  $('mcp-editor').classList.remove('hidden');
-  $('mcp-editor-title').textContent = s ? `MCP-Server: ${s.name}` : 'Neuer MCP-Server';
-  $('mcp-id').value = s?.id ?? '';
-  $('mcp-name').value = s?.name ?? '';
-  $('mcp-transport').value = s?.transport ?? 'http';
-  $('mcp-url').value = s?.url ?? '';
-  $('mcp-token').value = '';
-  $('mcp-headers').value = '';
-  $('mcp-command').value = s?.command ?? '';
-  let argsText = '';
-  let envText = '';
-  try { argsText = s?.args ? JSON.parse(s.args).join(', ') : ''; } catch { argsText = ''; }
-  try {
-    if (s?.env) {
-      envText = Object.entries(JSON.parse(s.env)).map(([k, v]) => `${k}=${v}`).join('\n');
-    }
-  } catch { envText = ''; }
-  $('mcp-args').value = argsText;
-  $('mcp-env').value = envText;
-  $('mcp-npm-spec').value = s?.npm_spec ?? '';
-  $('mcp-inventory-prompt').value = s?.inventory_prompt ?? '';
-  $('mcp-side-effect').value = s?.side_effect ?? 'write';
-  $('mcp-enabled').checked = s ? !!s.enabled : true;
-  $('mcp-tools').innerHTML = '';
-  toggleMcpTransportFields($('mcp-transport').value);
-}
-
-async function saveServer() {
-  const transport = $('mcp-transport').value;
-  const payload = {
-    name: $('mcp-name').value.trim(),
-    transport,
-    inventory_prompt: $('mcp-inventory-prompt').value.trim() || null,
-    side_effect: $('mcp-side-effect').value === 'read' ? 'read' : 'write',
-    enabled: $('mcp-enabled').checked,
-  };
-  if (transport === 'stdio') {
-    payload.command = $('mcp-command').value.trim();
-    payload.args = $('mcp-args').value;
-    payload.env = $('mcp-env').value;
-    payload.npm_spec = $('mcp-npm-spec').value.trim();
-    payload.url = '';
-  } else {
-    payload.url = $('mcp-url').value.trim();
-    if ($('mcp-token').value) payload.auth_token = $('mcp-token').value;
-    payload.headers = $('mcp-headers').value;
-  }
-  const id = $('mcp-id').value;
-  if (id) await api(`/mcp-servers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-  else await api('/mcp-servers', { method: 'POST', body: JSON.stringify(payload) });
-  await loadBootstrap();
-  $('mcp-editor').classList.add('hidden');
-}
-
-async function healthServer() {
-  const id = $('mcp-id').value;
-  if (!id) {
-    alert('Bitte zuerst speichern.');
-    return;
-  }
-  $('mcp-tools').textContent = 'Abfrage läuft…';
-  try {
-    const res = await api(`/mcp-servers/${id}/health`, { method: 'POST' });
-    $('mcp-tools').innerHTML = res.ok
-      ? res.tools.map((t) => `<div>${esc(t)}</div>`).join('')
-      : `<div class="error-text">${esc(res.error)}</div>`;
-  } catch (e) {
-    $('mcp-tools').innerHTML = `<div class="error-text">${esc(e.message)}</div>`;
-  }
-}
-
-async function deleteServer() {
-  const id = $('mcp-id').value;
-  if (!id || !confirm('MCP-Server wirklich löschen?')) return;
-  await api(`/mcp-servers/${id}`, { method: 'DELETE' });
-  await loadBootstrap();
-  $('mcp-editor').classList.add('hidden');
-}
-
 function init() {
   document.querySelectorAll('.sidebar nav a').forEach((a) => (a.onclick = () => showTab(a.dataset.tab)));
   $('token').value = token();
@@ -844,12 +628,12 @@ function init() {
   $('settings-restore').onclick = async () => {
     if (!confirm('Alle Grundeinstellungen auf die Defaults der Installation zuruecksetzen? (Index-Konfiguration bleibt unangetastet)')) return;
     const res = await api('/settings/restore-defaults', { method: 'POST' });
-    bootstrap.settings = res.settings;
+    state.bootstrap.settings = res.settings;
     renderSettings();
     alert('Grundeinstellungen auf Defaults zurueckgesetzt.');
   };
   $('prompt-restore').onclick = () => {
-    const seed = bootstrap.seedPrompts?.[$('prompt-key').value];
+    const seed = state.bootstrap.seedPrompts?.[$('prompt-key').value];
     if (!seed) return;
     $('prompt-content').value = seed;
     alert('Original-Text geladen - noch nicht gespeichert.');
@@ -902,6 +686,7 @@ $('mcp-transport').onchange = () => toggleMcpTransportFields($('mcp-transport').
   loadBootstrap();
 }
 
+setServerContext({ reload: loadBootstrap });
 init();
-initMonitor({ showTab, openFunctionEditor, previewFunction, getBootstrap: () => bootstrap, getPackageForTest });
+initMonitor({ showTab, openFunctionEditor, previewFunction, getBootstrap: () => state.bootstrap, getPackageForTest });
 setTestPackageHandler(testPackage);
