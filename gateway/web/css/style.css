@@ -221,6 +221,13 @@ td.actions { text-align: right; white-space: nowrap; }
 .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.78em; font-weight: 600; vertical-align: middle; background: rgba(255, 255, 255, 0.08); color: var(--muted, #aaa); }
 .chip.ok { background: rgba(46, 204, 113, 0.18); color: #7fe0a5; }
 .chip.update { background: rgba(241, 196, 15, 0.18); color: #ffd45e; }
+.chip.cat-driver { background: rgba(52, 152, 219, 0.18); color: #8ecaf5; }
+.chip.cat-function { background: rgba(155, 89, 182, 0.18); color: #d0a6e6; }
+.chip.cat-mixed { background: rgba(230, 126, 34, 0.18); color: #f0b27a; }
+.pkg-filter { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pkg-filter-btn.primary { border-color: var(--accent, #3498db); }
+#pkg-config-form { border: 1px solid var(--border, #ddd); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; background: rgba(52, 152, 219, 0.04); }
+.pkg-devtools > summary { cursor: pointer; color: var(--muted, #999); font-weight: 600; }
 .pkg-id { color: var(--muted, #888); font-size: 0.8em; margin-left: 6px; font-family: ui-monospace, monospace; }
 .pkg-danger { border-left: 3px solid #c0392b; padding: 6px 10px; margin: 8px 0; }
 .pkg-items ul { margin: 4px 0 0 18px; }

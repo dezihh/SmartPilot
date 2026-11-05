@@ -573,3 +573,30 @@ test('Konfig-Route: GET maskiert Secrets, PATCH merged und erhaelt bestehende We
     server.close();
   }
 });
+
+test('configOnly: Bestaetigung nur bei geaendertem gefaehrlichem Inhalt', () => {
+  const manifest = {
+    id: 'ack-test',
+    version: '1.0.0',
+    name: 'Ack',
+    summary: 's',
+    description: 'd',
+    params: [
+      { key: 'cmd', label: 'Kommando', required: true },
+      { key: 'note', label: 'Notiz' },
+    ],
+    functions: [{ name: 'ack_fn', template: "{{ shell('${cmd}') }}" }],
+  };
+  installPackage(manifest, { values: { cmd: 'echo ok', note: 'a' }, dangerousAck: true });
+  // Harmloser Parameter (note) - kein neues Ack noetig.
+  assert.doesNotThrow(() => installPackage(manifest, { values: { cmd: 'echo ok', note: 'b' }, configOnly: true }));
+  // Parameter im shell()-Kommando - Inhalt aendert sich, Ack erforderlich.
+  assert.throws(
+    () => installPackage(manifest, { values: { cmd: 'rm -rf /', note: 'b' }, configOnly: true }),
+    /Bestaetigung/
+  );
+  assert.doesNotThrow(() =>
+    installPackage(manifest, { values: { cmd: 'echo neu', note: 'b' }, configOnly: true, dangerousAck: true })
+  );
+  db_cleanup('ack-test');
+});

@@ -17,24 +17,35 @@ export function testInMonitor(phrase) {
 }
 
 // Paket: ersten Vorgang (sonst erste Funktion) des Pakets testen.
-export function testPackage(id) {
+// Lesende Prüfung: MCP-Server des Pakets initialisieren und Werkzeuge listen.
+// Funktionen und Vorgänge werden NICHT ausgeführt (das könnte schreiben).
+export async function testPackage(id) {
   const p = ctx.getPackageForTest(id);
   const items = p?.items ?? [];
-  const actionName = items.find((i) => i.kind === 'action')?.name;
-  if (actionName) {
-    const a = (ctx.getBootstrap().actions ?? []).find((x) => x.name === actionName);
-    testInMonitor((a?.triggers ?? [])[0] || actionName);
+  const serverNames = items.filter((i) => i.kind === 'server').map((i) => i.name);
+  if (!serverNames.length) {
+    const fns = items.filter((i) => i.kind === 'function').length;
+    const acts = items.filter((i) => i.kind === 'action').length;
+    const hint = [
+      fns ? `${fns} Funktion(en) — Vorschau im Tab „Funktionen" (lesend)` : '',
+      acts ? `${acts} Vorgang(e) — im Monitor bewusst auslösen` : '',
+    ].filter(Boolean).join('; ');
+    alert(`Kein MCP-Server im Paket. ${hint || 'Nichts zu prüfen.'}`);
     return;
   }
-  const fnName = items.find((i) => i.kind === 'function')?.name;
-  const f = fnName ? (ctx.getBootstrap().functions ?? []).find((x) => x.name === fnName) : null;
-  if (f) {
-    ctx.showTab('functions');
-    ctx.openFunctionEditor(f.id);
-    ctx.previewFunction();
-    return;
+  const servers = ctx.getBootstrap().servers ?? [];
+  const lines = [];
+  for (const name of serverNames) {
+    const row = servers.find((s) => s.name === name);
+    if (!row) { lines.push(`${name}: nicht gefunden`); continue; }
+    try {
+      const r = await api(`/mcp-servers/${encodeURIComponent(String(row.id))}/health`, { method: 'POST' });
+      lines.push(r.ok ? `${name}: ok — ${(r.tools ?? []).length} Werkzeug(e)` : `${name}: Fehler — ${r.error ?? 'unbekannt'}`);
+    } catch (e) {
+      lines.push(`${name}: Fehler — ${e.message}`);
+    }
   }
-  alert('Dieses Paket hat keinen direkt testbaren Vorgang/eine Funktion.');
+  alert(`MCP-Prüfung (lesend):\n${lines.join('\n')}`);
 }
 
 export async function sendTest() {

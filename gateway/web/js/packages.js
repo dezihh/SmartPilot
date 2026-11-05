@@ -6,7 +6,14 @@ export function getPackageForTest(id) { return (pkgState.installed ?? []).find((
 
 // ---- Wartung und Pakete ----
 
-let pkgState = { registry: [], installed: [], selected: null, preview: null, language: 'de' };
+let pkgState = { registry: [], installed: [], selected: null, preview: null, language: 'de', filter: 'all' };
+
+const CATEGORY_LABELS = { driver: 'Treiber', function: 'Funktion', mixed: 'Gemischt' };
+function categoryChip(category) {
+  if (!category) return '';
+  const label = CATEGORY_LABELS[category] ?? category;
+  return `<span class="chip cat-${esc(category)}">${esc(label)}</span>`;
+}
 
 
 // Diff-Status als Chip + Wert-Darstellung (leer/Objekt).
@@ -64,7 +71,16 @@ export async function loadMaintenance() {
 
 function renderPackages() {
   const installedById = new Map(pkgState.installed.map((p) => [p.id, p]));
-  const avail = pkgState.registry.map((p) => {
+  // Filterleiste: „Alle“ plus die Kategorien, die in der Registry vorkommen.
+  const filters = ['all', ...Object.keys(CATEGORY_LABELS).filter((c) => pkgState.registry.some((p) => p.category === c))];
+  $('pkg-filter').innerHTML = filters
+    .map((f) => `<button class="btn pkg-filter-btn${pkgState.filter === f ? ' primary' : ''}" data-filter="${esc(f)}">${f === 'all' ? 'Alle' : esc(CATEGORY_LABELS[f])}</button>`)
+    .join('');
+  for (const b of document.querySelectorAll('#pkg-filter [data-filter]')) {
+    b.onclick = () => { pkgState.filter = b.dataset.filter; renderPackages(); };
+  }
+  const visible = pkgState.registry.filter((p) => pkgState.filter === 'all' || p.category === pkgState.filter);
+  const avail = visible.map((p) => {
     const inst = installedById.get(p.id);
     const update = inst && cmpVersion(inst.version, p.version) < 0;
     const chip = !inst
@@ -72,30 +88,33 @@ function renderPackages() {
       : update
         ? `<span class="chip update">Update verfügbar: v${esc(p.version)}</span>`
         : '<span class="chip ok">installiert</span>';
-    return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(p.version)}</span> <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
+    return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(p.version)}</span> ${categoryChip(p.category)} <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
   });
-  $('pkg-available').innerHTML = avail.length ? avail.join('') : '<div class="field-help">Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.</div>';
+  $('pkg-available').innerHTML = avail.length ? avail.join('') : `<div class="field-help">${pkgState.registry.length ? 'Keine Pakete in dieser Kategorie.' : 'Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.'}</div>`;
   const instList = pkgState.installed.map((p) => {
     const reg = pkgState.registry.find((r) => r.id === p.id);
     const update = reg && cmpVersion(p.version, reg.version) < 0;
     const chip = update ? ` <span class="chip update">Update verfügbar: v${esc(reg.version)}</span>` : '';
     const itemRows = (p.items ?? []).map((i) => `<li><span class="kind">${esc(KIND_LABELS[i.kind] ?? i.kind)}</span> ${esc(i.name)}</li>`).join('');
+    const regName = reg?.name && reg.name !== p.name ? ` <span class="pkg-version">Registry: ${esc(reg.name)}</span>` : '';
     return `<div class="pkg-installed-item">
       <div class="pkg-card-head">
-        <div class="pkg-card-title"><strong>${esc(p.id)}</strong> <span class="pkg-version">v${esc(p.version)}</span>${chip} <span class="pkg-version">${esc(p.source)}</span></div>
+        <div class="pkg-card-title"><strong>${esc(p.name ?? p.id)}</strong> ${categoryChip(p.category)} <span class="pkg-version">v${esc(p.version)}</span>${chip} <span class="pkg-version">${esc(p.source)}</span></div>
         <div class="pkg-actions">
-          <button class="btn" data-testpkg="${esc(p.id)}" title="Ersten Vorgang des Pakets im Monitor ausführen">Testen</button>
+          <button class="btn" data-config="${esc(p.id)}" title="Parameter dieses Pakets bearbeiten">Konfigurieren</button>
+          <button class="btn" data-testpkg="${esc(p.id)}" title="MCP-Verbindung des Pakets prüfen">Testen</button>
           <button class="btn" data-reinstall="${esc(p.id)}">Neu installieren</button>
           <button class="btn danger" data-uninstall="${esc(p.id)}">Entfernen</button>
         </div>
       </div>
-      <div class="field-help">${esc(p.installed_at)}</div>
+      <div class="field-help">${esc(p.id)}${regName} · installiert ${esc(p.installed_at)}</div>
       <details class="pkg-items"><summary>Enthält (${(p.items ?? []).length})</summary><ul>${itemRows}</ul></details>
     </div>`;
   });
   $('pkg-installed').innerHTML = instList.length ? instList.join('') : '<div class="field-help">Noch keine Pakete installiert.</div>';
   for (const b of document.querySelectorAll('#pkg-available [data-install]')) b.onclick = () => showInstallForm(b.dataset.install, false);
   for (const b of document.querySelectorAll('[data-reinstall]')) b.onclick = () => showInstallForm(b.dataset.reinstall, null);
+  for (const b of document.querySelectorAll('[data-config]')) b.onclick = () => showConfigForm(b.dataset.config);
   for (const b of document.querySelectorAll('[data-testpkg]')) b.onclick = () => testPackageHandler(b.dataset.testpkg);
   for (const b of document.querySelectorAll('[data-uninstall]')) b.onclick = async () => {
     if (!confirm(`Paket "${b.dataset.uninstall}" entfernen? Nur unveränderte Zeilen werden gelöscht.`)) return;
@@ -113,12 +132,15 @@ function renderPackages() {
 function paramForm(manifest, current = {}) {
   return (manifest.params ?? []).map((p) => {
     const isSet = current[p.key] != null && current[p.key] !== '';
-    if (p.secret) {
-      const ph = isSet ? '(gesetzt – leer lassen zum Behalten)' : (p.placeholder ?? '');
-      return `<label>${esc(p.label)}${p.required && !isSet ? ' *' : ''}</label><input data-param="${esc(p.key)}" type="password" placeholder="${esc(ph)}" value="">`;
+    const type = p.type === 'password' || p.secret ? 'password' : p.type === 'number' ? 'number' : 'text';
+    const help = p.help ? `<div class="field-help">${esc(p.help)}</div>` : '';
+    const placeholder = p.placeholder ?? p.default ?? '';
+    if (type === 'password') {
+      const ph = isSet ? '(gesetzt – leer lassen zum Behalten)' : placeholder;
+      return `<label for="param-${esc(p.key)}">${esc(p.label)}${p.required && !isSet ? ' *' : ''}</label><input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="password" placeholder="${esc(ph)}" value="">${help}`;
     }
     const val = isSet ? current[p.key] : (p.default ?? '');
-    return `<label>${esc(p.label)}${p.required ? ' *' : ''}</label><input data-param="${esc(p.key)}" type="text" placeholder="${esc(p.placeholder ?? p.default ?? '')}" value="${esc(val)}">`;
+    return `<label for="param-${esc(p.key)}">${esc(p.label)}${p.required ? ' *' : ''}</label><input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="${type}" placeholder="${esc(placeholder)}" value="${esc(val)}">${help}`;
   }).join('');
 }
 
@@ -222,6 +244,51 @@ async function showInstallForm(id, manifestFromImport) {
 }
 
 function showInstallFormClose() { $('pkg-install-form').classList.add('hidden'); $('pkg-install-form').innerHTML = ''; }
+
+// Konfiguration eines installierten Pakets: generische Felder aus den
+// Manifest-Parametern (label/help/type/required/secret), ohne eigene UI
+// pro Paket. Speichern aendert nur Werte, nie Version oder Quelle.
+async function showConfigForm(id) {
+  const el = $('pkg-config-form');
+  try {
+    const cfg = await api(`/packages/${encodeURIComponent(id)}/config`);
+    const pkg = pkgState.installed.find((p) => p.id === id);
+    const hasParams = (cfg.params ?? []).length > 0;
+    el.classList.remove('hidden');
+    el.innerHTML = `
+      <h3>Konfiguration: ${esc(pkg?.name ?? id)} <span class="pkg-version">v${esc(cfg.version)}</span> ${categoryChip(pkg?.category)}</h3>
+      <p class="field-help">${esc(id)} · Quelle: ${esc(cfg.source)}${cfg.manifestSource === 'registry' ? ' · Manifest aus der Registry geladen (kein lokales)' : ''}</p>
+      ${cfg.dangerous ? `<div class="error-text pkg-danger">⚠️ Dieses Paket führt Befehle im Container aus. Änderungen an sicherheitsrelevanten Feldern verlangen eine erneute Bestätigung.</div>` : ''}
+      ${hasParams ? `<div class="form-grid">${paramForm({ params: cfg.params }, cfg.values)}</div>` : '<p class="field-help">Dieses Paket hat keine konfigurierbaren Parameter.</p>'}
+      <div class="toolbar">
+        ${hasParams ? '<button id="pkg-config-save" class="btn primary">Speichern</button>' : ''}
+        <button id="pkg-config-cancel" class="btn">${hasParams ? 'Abbrechen' : 'Schließen'}</button>
+      </div>`;
+    el.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    const close = () => { el.classList.add('hidden'); el.innerHTML = ''; };
+    const save = async (ack) => {
+      const params = {};
+      for (const input of el.querySelectorAll('[data-param]')) params[input.dataset.param] = input.value;
+      try {
+        const r = await api(`/packages/${encodeURIComponent(id)}/config`, { method: 'PATCH', body: { params, dangerousAck: ack } });
+        const rep = r.report ?? {};
+        let msg = 'Konfiguration gespeichert.';
+        if (rep.restartRequired) msg += `\n\n⚠️ Container-Neustart erforderlich, damit das npm-Paket provisioniert wird${(rep.npmServers ?? []).length ? ` (${rep.npmServers.join(', ')})` : ''}.`;
+        alert(msg);
+        close();
+        loadMaintenance();
+      } catch (e) {
+        if (!ack && /Bestaetigung/.test(e.message)) {
+          if (confirm('Diese Änderung betrifft ein Feld, das Befehle im Container ausführt. Trotzdem speichern?')) return save(true);
+          return;
+        }
+        alert(e.message);
+      }
+    };
+    $('pkg-config-cancel').onclick = close;
+    if ($('pkg-config-save')) $('pkg-config-save').onclick = () => save(false);
+  } catch (e) { alert(e.message); }
+}
 
 $('pkg-refresh').onclick = loadMaintenance;
 $('pkg-import-preview').onclick = async () => {

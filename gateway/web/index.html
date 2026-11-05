@@ -321,19 +321,23 @@
           <div class="field-help">Installiere fertige Pakete aus der <a href="https://github.com/dezihh/SmartPilot/tree/main/packages" target="_blank" rel="noopener">Registry</a>.</div>
           <div class="toolbar">
             <button id="pkg-refresh" class="btn">Aktualisieren</button>
+            <span id="pkg-filter" class="pkg-filter"></span>
           </div>
           <div id="pkg-available" class="pkg-list"></div>
           <div id="pkg-install-form" class="hidden"></div>
         </div>
         <div class="card">
           <h2>Installierte Pakete</h2>
+          <div id="pkg-config-form" class="hidden"></div>
           <div id="pkg-installed"></div>
         </div>
         <div class="card">
-          <h2>Offline-Import</h2>
-          <div class="field-help">Manifest-JSON direkt einfügen (ohne Registry-Komfort).</div>
-          <textarea id="pkg-import-manifest" rows="6" class="span-full"></textarea>
-          <button id="pkg-import-preview" class="btn">Vorschau</button>
+          <details class="pkg-devtools">
+            <summary>Entwicklerwerkzeuge: Offline-Import</summary>
+            <div class="field-help">Manifest-JSON direkt einfügen (ohne Registry-Komfort). Gedacht für Entwicklung und Tests.</div>
+            <textarea id="pkg-import-manifest" rows="6" class="span-full"></textarea>
+            <button id="pkg-import-preview" class="btn">Vorschau</button>
+          </details>
         </div>
         <div class="card">
           <h2>Sicherung und Rücksicherung</h2>

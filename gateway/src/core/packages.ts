@@ -131,6 +131,24 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
   return { dangerous: items.length > 0, items, info };
 }
 
+// Signatur der aufgeloesten, gefaehrlichen Bestandteile. Aendert sich der
+// Inhalt (z. B. ein Parameter fliesst in ein shell()-Kommando), muss der
+// Nutzer die Konfiguration neu bestaetigen - die blosse Anzahl der
+// Gefahrenpunkte reicht als Vergleich nicht aus.
+export function dangerSignature(m: PackageManifest): string {
+  return JSON.stringify({
+    servers: (m.servers ?? [])
+      .filter((s) => s.transport === 'stdio')
+      .map((s) => [s.name, s.command ?? null, s.args ?? null, s.env ?? null, s.npmSpec ?? null]),
+    functions: (m.functions ?? [])
+      .filter((f) => /\bshell\s*\(/.test(f.template))
+      .map((f) => [f.name, f.template]),
+    actions: (m.actions ?? [])
+      .filter((a) => a.template && /\bshell\s*\(/.test(a.template))
+      .map((a) => [a.name, a.template]),
+  });
+}
+
 export function validateManifest(raw: unknown): { ok: true; manifest: PackageManifest } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   const m = raw as PackageManifest | null;

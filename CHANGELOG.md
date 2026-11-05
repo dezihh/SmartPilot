@@ -29,10 +29,19 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Persistiertes Manifest:** Migration 6 speichert das beim Install
   aufgelöste Manifest in `packages.manifest`; die Konfigurationsansicht
   arbeitet damit auch ohne erreichbare Registry.
+- **Paketmanager-Oberfläche:** Filter nach Kategorie, Klartextnamen und
+  Kategorie-Chips bei installierten Paketen, Konfigurationsdialog aus den
+  Manifest-Parametern (mit `help`/`type`, Secrets bleiben maskiert).
+  „Testen“ prüft jetzt lesend die MCP-Verbindung statt Vorgänge auszuführen.
+  Der Offline-Import steht als Entwicklerwerkzeug eingeklappt am Rand.
 
 ### Behoben
 
 - **Backup/Restore behält das persistierte Manifest.**
+- **Konfigurationsänderungen bestätigen gefährliche Feldinhalte:** Fließt ein
+  geänderter Parameter in `shell()`, `command`, `args` oder `env`, verlangt
+  das Speichern erneut eine Bestätigung — nicht mehr erst bei geänderter
+  Anzahl der Gefahrenpunkte.
 
 ### Geplant
 

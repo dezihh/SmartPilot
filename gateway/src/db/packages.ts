@@ -1,6 +1,6 @@
 import { getDb } from './schema.js';
 import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
-import { substituteManifest, manifestDangerous, manifestHash, validateManifest } from '../core/packages.js';
+import { substituteManifest, manifestDangerous, manifestHash, validateManifest, dangerSignature } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
 import { hashContent, serverContentNew, type ServerHashRow } from './itemHash.js';
 
@@ -277,13 +277,14 @@ export function installPackage(
   const applied = substituteManifest(m, opts.values ?? {});
   const danger = manifestDangerous(applied);
   // Bei configOnly ist die Gefahrenstruktur bereits bestaetigt. Ein neues Ack
-  // ist nur noetig, wenn sich die Gefahrenmenge tatsaechlich aendert.
+  // ist nur noetig, wenn sich der Inhalt der gefaehrlichen Felder aendert
+  // (nicht schon bei jeder Parameter-Aenderung).
   let dangerChanged = true;
   if (opts.configOnly) {
     const installed = getInstalledPackage(m.id);
     const prev = installed?.manifest ? parseStoredManifest(installed.manifest) : null;
-    const previousDanger = prev ? manifestDangerous(substituteManifest(prev, existingParams(m.id, prev))) : null;
-    dangerChanged = !previousDanger || JSON.stringify(danger.items) !== JSON.stringify(previousDanger.items);
+    const previous = prev ? substituteManifest(prev, existingParams(m.id, prev)) : null;
+    dangerChanged = !previous || dangerSignature(previous) !== dangerSignature(applied);
   }
   if (danger.dangerous && !opts.dangerousAck && (!opts.configOnly || dangerChanged)) {
     throw new Error('Gefaehrliche Aktion: Bestaetigung erforderlich (dangerous_ack)');
