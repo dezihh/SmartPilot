@@ -49,20 +49,24 @@ jobs:
       - name: Typecheck (Tests)
         run: npm run typecheck:tests
 
-      - name: Tests
-        run: npm test
-
-      - name: Lint
+      # Billige Gates zuerst: sie brechen schneller ab als die Testsuite.
+      - name: Lint (ESLint)
         run: npm run lint
 
-      - name: Toter Code
+      - name: Toter Code (knip)
         run: npm run deadcode
 
-      - name: Duplikate (max. 3 %)
+      - name: Importzyklen (madge)
+        run: npm run cycles
+
+      - name: Duplikate (jscpd, max. 3 %)
         run: npm run dupes
 
-      - name: Zyklen
-        run: npm run cycles
+      - name: Build
+        run: npm run build
+
+      - name: Tests
+        run: npm test
 
       # Bekannte High-Findings laufen ueber Dependabot (undici 8.x, PR #16).
       # Der Gate greift daher erst bei critical, damit CI nicht dauerhaft rot ist.

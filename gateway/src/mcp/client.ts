@@ -11,6 +11,24 @@ export interface McpTransport {
 // blockieren (deterministic-Pfad hat keine eigene Gesamt-Deadline).
 export const MCP_TIMEOUT_MS = 30_000;
 
+// Gemeinsame Auswertung einer tools/call-Antwort fuer HTTP- und stdio-Client.
+// MCP-Fehler kommen oft als erfolgreiches Result mit isError=true (statt
+// JSON-RPC-error). Beide Transporte muessen gleich reagieren.
+export function unwrapToolResult(
+  name: string,
+  res: { error?: { message: string }; result?: unknown } | null | undefined
+): unknown {
+  if (res?.error) throw new Error(`MCP tools/call ${name}: ${res.error.message}`);
+  const result = res?.result as { isError?: boolean; content?: unknown } | undefined;
+  if (result?.isError) {
+    const text = Array.isArray(result.content)
+      ? (result.content as { text?: string }[]).map((c) => c?.text ?? '').join(' ').trim()
+      : '';
+    throw new Error(`MCP tools/call ${name}: ${text.slice(0, 200) || 'Tool meldet Fehler'}`);
+  }
+  return res?.result;
+}
+
 export class McpClient implements McpTransport {
   private nextId = 1;
   private sessionId: string | null = null;
@@ -110,16 +128,6 @@ export class McpClient implements McpTransport {
 
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const res = await this.rpc('tools/call', { name, arguments: args });
-    if (res?.error) throw new Error(`MCP tools/call ${name}: ${res.error.message}`);
-    // MCP-Fehler kommen oft als erfolgreiches Result mit isError=true (statt
-    // JSON-RPC-error). In den Fehlerpfad/Trace ueberfuehren.
-    const result = res?.result as { isError?: boolean; content?: unknown } | undefined;
-    if (result?.isError) {
-      const text = Array.isArray(result.content)
-        ? (result.content as { text?: string }[]).map((c) => c?.text ?? '').join(' ').trim()
-        : '';
-      throw new Error(`MCP tools/call ${name}: ${text.slice(0, 200) || 'Tool meldet Fehler'}`);
-    }
-    return res?.result;
+    return unwrapToolResult(name, res);
   }
 }

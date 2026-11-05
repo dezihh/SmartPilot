@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { ToolDef } from '../types.js';
-import type { McpTransport } from './client.js';
+import { unwrapToolResult, type McpTransport } from './client.js';
 
 interface RpcMessage {
   id?: number;
@@ -153,17 +153,7 @@ export class McpStdioClient implements McpTransport {
 
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     const res = await this.rpc('tools/call', { name, arguments: args }, false, 60_000);
-    if (res?.error) throw new Error(`MCP tools/call ${name}: ${res.error.message}`);
-    // MCP-Fehler kommen oft als erfolgreiches Result mit isError=true (statt
-    // JSON-RPC-error). Wie beim HTTP-Client in den Fehlerpfad ueberfuehren.
-    const result = res?.result as { isError?: boolean; content?: unknown } | undefined;
-    if (result?.isError) {
-      const text = Array.isArray(result.content)
-        ? (result.content as { text?: string }[]).map((c) => c?.text ?? '').join(' ').trim()
-        : '';
-      throw new Error(`MCP tools/call ${name}: ${text.slice(0, 200) || 'Tool meldet Fehler'}`);
-    }
-    return result;
+    return unwrapToolResult(name, res);
   }
 
   stop(): void {
