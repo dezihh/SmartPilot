@@ -51,3 +51,20 @@ jobs:
 
       - name: Tests
         run: npm test
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Toter Code
+        run: npm run deadcode
+
+      - name: Duplikate (max. 3 %)
+        run: npm run dupes
+
+      - name: Zyklen
+        run: npm run cycles
+
+      # Bekannte High-Findings laufen ueber Dependabot (undici 8.x, PR #16).
+      # Der Gate greift daher erst bei critical, damit CI nicht dauerhaft rot ist.
+      - name: Audit (nur Produktionsabhaengigkeiten)
+        run: npm audit --omit=dev --audit-level=critical
