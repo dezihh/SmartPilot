@@ -80,7 +80,7 @@ test('MCP_TIMEOUT_MS ist gesetzt (Schutz gegen haengende Server)', () => {
 test('init: sendet initialize + notifications/initialized, merkt Session-ID', async () => {
   stubFetch();
   const seen: string[] = [];
-  handler = (url, body) => {
+  handler = (_url, body) => {
     seen.push(String(body.method));
     if (body.method === 'initialize') {
       return { headers: { 'mcp-session-id': 'sess-1' }, json: { jsonrpc: '2.0', id: 1, result: {} } };

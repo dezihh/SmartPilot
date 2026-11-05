@@ -2,7 +2,7 @@ import { chatCompletion } from '../llm/client.js';
 import type { ChatMessage } from '../llm/client.js';
 import { config } from '../config.js';
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
-import { parseIndexResult, scoreEntries, fmtEntry, invalidateIndex, type IndexEntry } from './entityIndex.js';
+import { parseIndexResult, scoreEntries, fmtEntry, invalidateIndex } from './entityIndex.js';
 import { setSetting } from '../db.js';
 import type { SideEffect } from '../types.js';
 

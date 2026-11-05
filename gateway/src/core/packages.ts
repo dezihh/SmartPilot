@@ -268,7 +268,7 @@ export function parseManifest(text: string): { ok: true; manifest: PackageManife
 
 // {{param}} in String-Feldern ersetzen; unbekannte Platzhalter schlagen fehl.
 export function substituteParams(text: string, params: Record<string, string>): string {
-  return text.replace(/\$\{([a-z0-9_]+)\}/g, (full, key: string) => {
+  return text.replace(/\$\{([a-z0-9_]+)\}/g, (_full, key: string) => {
     const v = params[key];
     if (v == null) throw new Error(`Platzhalter ${key} hat keinen Wert`);
     return v;

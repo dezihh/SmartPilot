@@ -19,7 +19,6 @@ import {
   paramValues,
   requiredParams,
   getSetting,
-  setSetting,
   getSettings,
   listActions,
   listFunctions,

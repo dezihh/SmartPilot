@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { traceUsage, sumUsageFromTrace } from '../src/core/usage.js';
 import type { TraceEvent } from '../src/types.js';
-import type { ChatCompletionResult } from '../src/llm/client.js';
 
 test('traceUsage: nutzt usage.model (Response-echo), faellt auf arg zurueck', () => {
   const trace: TraceEvent[] = [];

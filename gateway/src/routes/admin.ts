@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import type { TraceEvent } from '../types.js';
-import type { Request, Response } from 'express';
 import { requireAdminAuth } from '../auth.js';
 import { config } from '../config.js';
 import {
@@ -9,7 +8,6 @@ import {
   deleteFunction,
   deleteSetting,
   getAction,
-  getFunction,
   getSettings,
   listActions,
   listFunctions,
@@ -17,7 +15,6 @@ import {
   listMcpServers,
   listPrompts,
   restoreDefaultSettings,
-  setPrompt,
   setSetting,
   updateAction,
   updateFunction,
@@ -34,7 +31,7 @@ export const adminRoutes = Router();
 const INDEX_KEY_RE = /^[a-z0-9_-]{1,30}$/;
 const INDEX_KEY_ERROR = 'Ungültiger Key (a-z 0-9 _ -, max. 30)';
 
-adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (req, res) => {
+adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (_req, res) => {
   res.json({
     settings: getSettings(),
     // Effektive Defaults (aus .env bzw. Code) fuer die Web-UI-Platzhalter:
@@ -68,16 +65,16 @@ adminRoutes.put('/admin/api/settings', requireAdminAuth, (req, res) => {
   res.json({ settings: getSettings() });
 });
 
-adminRoutes.post('/admin/api/settings/restore-defaults', requireAdminAuth, (req, res) => {
+adminRoutes.post('/admin/api/settings/restore-defaults', requireAdminAuth, (_req, res) => {
   restoreDefaultSettings();
   res.json({ settings: getSettings() });
 });
 
-adminRoutes.get('/admin/api/actions', requireAdminAuth, (req, res) => {
+adminRoutes.get('/admin/api/actions', requireAdminAuth, (_req, res) => {
   res.json({ actions: listActions(false) });
 });
 
-adminRoutes.get('/admin/api/functions', requireAdminAuth, (req, res) => {
+adminRoutes.get('/admin/api/functions', requireAdminAuth, (_req, res) => {
   res.json({ functions: listFunctions(false) });
 });
 
@@ -108,7 +105,7 @@ adminRoutes.delete('/admin/api/functions/:id', requireAdminAuth, (req, res) => {
 // Index-Quellen: universale benannte Snapshot-Indexe (entity_index = Default,
 // entity_index_<key> = benannt). Der Desc-Feldwert lebt im Config-JSON
 // ("desc") und wird vom Index-Loader ignoriert.
-adminRoutes.get('/admin/api/indexes', requireAdminAuth, (req, res) => {
+adminRoutes.get('/admin/api/indexes', requireAdminAuth, (_req, res) => {
   const settings = getSettings();
   const indexes: { key: string; config: string }[] = [];
   for (const [key, value] of Object.entries(settings)) {

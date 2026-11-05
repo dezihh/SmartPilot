@@ -1,7 +1,5 @@
 import { Router } from 'express';
-import { join } from 'node:path';
-import { requireAdminAuth, createSession, sessionValid, cookieFor } from '../auth.js';
-import { config } from '../config.js';
+import { requireAdminAuth } from '../auth.js';
 import {
   deleteMcpServer,
   createMcpServer,
@@ -76,12 +74,12 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
   };
 }
 
-mcpRoutes.get('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
+mcpRoutes.get('/admin/api/mcp-servers', requireAdminAuth, (_req, res) => {
   res.json({ servers: listMcpServers(false) });
 });
 
 // Alle fuer LLM-Actions verfuegbaren Tools (Facade + MCP) fuer den Web-Editor
-mcpRoutes.get('/admin/api/tools', requireAdminAuth, async (req, res) => {
+mcpRoutes.get('/admin/api/tools', requireAdminAuth, async (_req, res) => {
   try {
     const mcp = await getMcpContext();
     const serverTools = mcp.servers.map((s) => ({ server: s.name, tools: s.tools.map((t) => t.name) }));

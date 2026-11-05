@@ -2,7 +2,7 @@ import nunjucks from 'nunjucks';
 import type { McpContext } from '../mcp/registry.js';
 import { getIndexSnapshot, listIndexKeys, type IndexEntry } from './entityIndex.js';
 import { findInSnapshot, getFromSnapshot } from './indexTools.js';
-import { getFunctionByName, getSettingNum } from '../db.js';
+import { getFunctionByName } from '../db.js';
 import type { AssistantResponse, TraceEvent } from '../types.js';
 import { extractLiterals } from './extract.js';
 import { httpCacheGet, httpCacheSet } from './httpCache.js';

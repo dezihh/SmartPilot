@@ -11,7 +11,7 @@ export function findInSnapshot(snapshot: IndexEntry[], query: string, max = 8, k
   return hits.length > 0 ? hits.join('\n') : 'keine Treffer';
 }
 
-export function getFromSnapshot(snapshot: IndexEntry[], id: string, key = ''): string {
+export function getFromSnapshot(snapshot: IndexEntry[], id: string, _key = ''): string {
   if (snapshot.length === 0) return 'Index nicht verfuegbar';
   const found = snapshot.find((e) => e.id === id);
   return found ? fmtEntry(found) : `${id}: nicht im Index (ID ungueltig) - nutze fn_find_entities mit dem Namen, statt IDs zu raten`;

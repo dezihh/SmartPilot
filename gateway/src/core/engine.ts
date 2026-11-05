@@ -8,7 +8,7 @@ import {
   getSettingNum,
   recentAgentTurns,
 } from '../db.js';
-import { chatCompletion, type ChatCompletionResult, type ChatMessage, type ToolSpec } from '../llm/client.js';
+import { chatCompletion, type ChatMessage } from '../llm/client.js';
 import { getMcpContext, type McpContext } from '../mcp/registry.js';
 import { routeAction, normalize, type RouteMatch } from './router.js';
 import { renderFunction } from './template.js';
