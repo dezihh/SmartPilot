@@ -29,6 +29,8 @@ export interface PackageServer {
   env?: Record<string, string>;
   /** npm-Paket, das der Provisioner fuer den stdio-Server bereitstellt. */
   npmSpec?: string;
+  /** Zusaetzliche HTTP-Header (nur transport http), Werte per ${key} ersetzbar. */
+  headers?: Record<string, string>;
   inventory_prompt?: string;
   sideEffect?: SideEffect;
   enabled?: boolean;
@@ -171,6 +173,11 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
         if (s?.transport === 'http' && !s.url) errors.push(`server "${s.name}": url erforderlich`);
         if (s?.transport === 'stdio' && !s.command) errors.push(`server "${s.name}": command erforderlich`);
         if (s?.npmSpec !== undefined && (typeof s.npmSpec !== 'string' || !s.npmSpec.trim())) errors.push(`server "${s.name}": npmSpec muss ein nicht-leerer String sein`);
+        if (s?.headers !== undefined) {
+          if (s.transport !== 'http') errors.push(`server "${s.name}": headers nur bei transport http`);
+          else if (typeof s.headers !== 'object' || s.headers === null || Array.isArray(s.headers)) errors.push(`server "${s.name}": headers muss ein Objekt sein`);
+          else if (Object.entries(s.headers).some(([k, v]) => !/^[A-Za-z0-9-]+$/.test(k) || typeof v !== 'string')) errors.push(`server "${s.name}": headers braucht gueltige Namen und String-Werte`);
+        }
         if (s?.sideEffect !== undefined && s.sideEffect !== 'read' && s.sideEffect !== 'write') errors.push(`server "${s.name}": sideEffect muss read oder write sein`);
       }
     }

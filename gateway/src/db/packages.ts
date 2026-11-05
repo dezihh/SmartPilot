@@ -2,7 +2,7 @@ import { getDb } from './schema.js';
 import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash, validateManifest, dangerSignature } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
-import { hashContent, serverContentNew, type ServerHashRow } from './itemHash.js';
+import { hashContent, serverContentNew, normalizeHeaders, type ServerHashRow } from './itemHash.js';
 
 export interface InstalledPackageRow {
   id: string;
@@ -51,6 +51,7 @@ function serverContent(s: PackageServer): Record<string, unknown> {
     args: s.transport === 'stdio' && s.args?.length ? JSON.stringify(s.args) : null,
     env: s.transport === 'stdio' && s.env ? JSON.stringify(s.env) : null,
     npm_spec: s.transport === 'stdio' ? (s.npmSpec ?? null) : null,
+    headers: s.transport === 'http' ? normalizeHeaders(s.headers) : null,
     inventory_prompt: s.inventory_prompt ?? null,
     side_effect: s.sideEffect === 'read' ? 'read' : 'write',
     enabled: s.enabled === false ? 0 : 1,
@@ -142,6 +143,17 @@ export function conflictItems(packageId: string): string[] {
 }
 
 const MASKED_DIFF_FIELDS = new Set(['auth_token', 'env']);
+// Header-Werte sind potenziell geheim: im Diff nur die Namen zeigen.
+function headerNames(v: unknown): string | null {
+  if (v == null) return null;
+  try {
+    const o = typeof v === 'string' ? (JSON.parse(v) as unknown) : v;
+    if (o && typeof o === 'object' && !Array.isArray(o)) return Object.keys(o as Record<string, unknown>).join(', ') || '(keine)';
+  } catch {
+    return '***';
+  }
+  return '***';
+}
 function isParamDependent(v: unknown): boolean {
   return typeof v === 'string' && v.includes('${');
 }
@@ -155,6 +167,10 @@ function diffFields(target: Record<string, unknown>, current: Record<string, unk
     const from = current[field];
     if (isParamDependent(to) || isParamDependent(from)) continue;
     if (JSON.stringify(to) === JSON.stringify(from)) continue;
+    if (field === 'headers') {
+      out.push({ field, from: headerNames(from), to: headerNames(to) });
+      continue;
+    }
     const mask = MASKED_DIFF_FIELDS.has(field);
     out.push({ field, from: mask && from != null ? '***' : from, to: mask && to != null ? '***' : to });
   }
@@ -317,14 +333,14 @@ export function installPackage(
       } else if (existing) {
         db.prepare(
           `UPDATE mcp_servers SET name = @name, url = @url, auth_token = @auth_token, transport = @transport,
-           command = @command, args = @args, env = @env, npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled
+           command = @command, args = @args, env = @env, npm_spec = @npm_spec, headers = @headers, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled
            WHERE id = @id`
         ).run({ ...content, id: existing.id });
         report.updated.push(key);
       } else {
         db.prepare(
-          `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, npm_spec, inventory_prompt, side_effect, enabled)
-           VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @npm_spec, @inventory_prompt, @side_effect, @enabled)`
+          `INSERT INTO mcp_servers (name, url, auth_token, transport, command, args, env, npm_spec, headers, inventory_prompt, side_effect, enabled)
+           VALUES (@name, @url, @auth_token, @transport, @command, @args, @env, @npm_spec, @headers, @inventory_prompt, @side_effect, @enabled)`
         ).run(content);
         report.created.push(key);
       }

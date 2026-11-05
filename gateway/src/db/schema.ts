@@ -4,7 +4,7 @@ import { dirname } from 'node:path';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_PROMPT, SEED_SETTINGS } from './seeds.js';
 import { runMigrations, type Migration } from './migrations/runner.js';
 import { backupDatabase } from './migrations/backup.js';
-import { hashContent, serverContentOld, serverContentNew, type ServerHashRow } from './itemHash.js';
+import { hashContent, serverContentOld, serverContentNew, serverContentV6, type ServerHashRow } from './itemHash.js';
 
 // DB-Handle + Migrationen: getDb() lazily nach initDb(path) - so ist die DB
 // in Tests injizierbar (Temp-File) und im Runtime-Setup einmalig initialisiert.
@@ -496,6 +496,27 @@ function applyPackageManifest(db: Database.Database): void {
   addColumnIfMissing(db, 'packages', 'manifest', 'TEXT');
 }
 
+// Header sind Teil des Server-Hashes geworden: bestehende, unveraenderte
+// Items einmalig von der alten auf die neue Feldform umschreiben, damit
+// installierte Pakete nicht als lokal geaendert gelten.
+function applyHeadersHashRebase(db: Database.Database): void {
+  const items = db
+    .prepare("SELECT package_id, name, content_hash FROM package_items WHERE kind = 'server'")
+    .all() as { package_id: string; name: string; content_hash: string }[];
+  for (const it of items) {
+    const row = db.prepare('SELECT * FROM mcp_servers WHERE name = ?').get(it.name) as ServerHashRow | undefined;
+    if (!row) continue;
+    if (hashContent('server', it.name, serverContentV6(row)) !== it.content_hash) continue; // echte lokale Aenderung
+    const newHash = hashContent('server', it.name, serverContentNew(row));
+    if (newHash === it.content_hash) continue;
+    db.prepare("UPDATE package_items SET content_hash = ? WHERE package_id = ? AND kind = 'server' AND name = ?").run(
+      newHash,
+      it.package_id,
+      it.name
+    );
+  }
+}
+
 const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
@@ -503,6 +524,7 @@ const MIGRATIONS: Migration[] = [
   { version: 4, name: 'rebase-package-item-hashes-args', up: applyHashRebase },
   { version: 5, name: 'mcp-server-headers', up: applyMcpHeaders },
   { version: 6, name: 'package-manifest', up: applyPackageManifest },
+  { version: 7, name: 'rebase-package-item-hashes-headers', up: applyHeadersHashRebase },
 ];
 
 // Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen

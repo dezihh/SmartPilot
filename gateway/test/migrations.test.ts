@@ -9,7 +9,7 @@ import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
 import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
 import { conflictItems } from '../src/db/packages.js';
-import { hashContent, serverContentOld } from '../src/db/itemHash.js';
+import { hashContent, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
 const TARGET = LATEST_SCHEMA_VERSION;
@@ -133,5 +133,34 @@ test('Migration 6: Bestands-DB (v5) bekommt packages.manifest', () => {
   getDb().prepare("INSERT INTO packages (id, version, manifest) VALUES ('m6', '1.0.0', '{}')").run();
   const row = getDb().prepare("SELECT manifest FROM packages WHERE id = 'm6'").get() as { manifest: string };
   assert.equal(row.manifest, '{}');
+  closeDb();
+});
+
+test('Migration 7: Header-Hash-Rebase ohne Scheinkonflikt, echte Aenderung bleibt', () => {
+  const p = tmpDb('mig-headers');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  db.prepare(
+    "INSERT INTO mcp_servers (name,url,transport,headers,side_effect,enabled) VALUES ('Sauber','http://x','http',?,'write',1)"
+  ).run(JSON.stringify({ 'X-Api-Key': 'v' }));
+  db.prepare(
+    "INSERT INTO mcp_servers (name,url,transport,headers,side_effect,enabled) VALUES ('Lokal','http://y','http',?,'write',1)"
+  ).run(JSON.stringify({ 'X-Api-Key': 'v' }));
+  const clean = db.prepare("SELECT * FROM mcp_servers WHERE name = 'Sauber'").get() as Parameters<typeof serverContentV6>[0];
+  const changed = db.prepare("SELECT * FROM mcp_servers WHERE name = 'Lokal'").get() as Parameters<typeof serverContentV6>[0];
+  db.prepare("INSERT INTO packages (id, version, source) VALUES ('hdr', '1.0.0', 'registry')").run();
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('hdr','server','Sauber',NULL,?)").run(
+    hashContent('server', 'Sauber', serverContentV6(clean))
+  );
+  // Lokal geaenderte URL: Alt-Hash passt nicht zur aktuellen Zeile.
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('hdr','server','Lokal',NULL,?)").run(
+    hashContent('server', 'Lokal', { ...serverContentV6(changed), url: 'http://alt' })
+  );
+  db.pragma('user_version = 6');
+  closeDb();
+  initDb(p);
+  assert.equal(getSchemaVersion(), TARGET);
+  assert.deepEqual(conflictItems('hdr'), ['server:Lokal'], 'nur echte Aenderung bleibt Konflikt');
   closeDb();
 });

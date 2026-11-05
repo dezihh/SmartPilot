@@ -600,3 +600,32 @@ test('configOnly: Bestaetigung nur bei geaendertem gefaehrlichem Inhalt', () => 
   );
   db_cleanup('ack-test');
 });
+
+test('headers: Manifest-Header werden substituiert, gespeichert und gehasht', () => {
+  const manifest = {
+    ...OK_MANIFEST,
+    id: 'hdr-test',
+    servers: [
+      {
+        name: 'Hdr Srv',
+        transport: 'http' as const,
+        url: 'http://${host}:8086/mcp',
+        headers: { 'X-Api-Key': '${token}', 'X-Team': 'team-a' },
+      },
+    ],
+    functions: [],
+    indexes: [],
+    allowTools: [],
+  };
+  installPackage(manifest, { values: { host: 'h', token: 'sekret' } });
+  const row = getDb().prepare("SELECT headers FROM mcp_servers WHERE name = 'Hdr Srv'").get() as { headers: string };
+  assert.deepEqual(JSON.parse(row.headers), { 'X-Api-Key': 'sekret', 'X-Team': 'team-a' });
+  // Gleiche Header in anderer Reihenfolge gelten nicht als lokale Aenderung.
+  const swapped = {
+    ...manifest,
+    servers: [{ ...manifest.servers[0]!, headers: { 'X-Team': 'team-a', 'X-Api-Key': '${token}' } }],
+  };
+  installPackage(swapped, { values: { host: 'h', token: 'sekret' } });
+  assert.deepEqual(conflictItems('hdr-test'), []);
+  db_cleanup('hdr-test');
+});

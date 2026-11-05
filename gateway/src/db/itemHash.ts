@@ -33,14 +33,47 @@ export interface ServerHashRow {
   args: unknown;
   env: unknown;
   npm_spec: unknown;
+  headers: unknown;
   inventory_prompt: unknown;
   side_effect: unknown;
   enabled: unknown;
 }
 
-// Aktuelle Feldform (inkl. npm_spec) - entspricht dem, was serverRowContent()
-// aus der DB liest und serverContent() aus dem Manifest schreibt.
+// Kanonische Form der Header (sortierte Schluessel) - Reihenfolge im Manifest
+// darf den Hash nicht veraendern. Leere Objekte/Null zaehlen als "keine".
+export function normalizeHeaders(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+  let obj: unknown = raw;
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (s === '' || s === '{}') return null;
+    try {
+      obj = JSON.parse(s) as unknown;
+    } catch {
+      return s;
+    }
+  }
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  const entries = Object.entries(obj as Record<string, unknown>)
+    .filter(([, v]) => v !== null && v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  if (!entries.length) return null;
+  return JSON.stringify(Object.fromEntries(entries));
+}
+
+// Aktuelle Feldform (inkl. npm_spec und headers) - entspricht dem, was
+// serverRowContent() aus der DB liest und serverContent() aus dem Manifest schreibt.
 export function serverContentNew(row: ServerHashRow): Record<string, unknown> {
+  return {
+    name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
+    command: row.command, args: normalizeArgs(row.args), env: row.env, npm_spec: row.npm_spec,
+    headers: normalizeHeaders(row.headers),
+    inventory_prompt: row.inventory_prompt, side_effect: row.side_effect, enabled: row.enabled,
+  };
+}
+
+// Feldform vor Migration 7 (ohne headers) - fuer den einmaligen Hash-Rebase.
+export function serverContentV6(row: ServerHashRow): Record<string, unknown> {
   return {
     name: row.name, url: row.url, auth_token: row.auth_token, transport: row.transport,
     command: row.command, args: normalizeArgs(row.args), env: row.env, npm_spec: row.npm_spec,
