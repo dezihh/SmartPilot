@@ -307,3 +307,49 @@ test('getMcpContext: parallele Kaltstarts laden einen Server nur einmal (F-32)',
     getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-cold'").run();
   }
 });
+
+// Paritaet: dieselben Fehlerfaelle muessen bei HTTP und stdio gleich ankommen.
+// (Kein gemeinsamer Harness noetig: je Fall beide Clients, gleiche Erwartung.)
+test('Paritaet: isError-Result wird bei HTTP und stdio als Fehler geworfen', async () => {
+  stubFetch();
+  handler = () => rpcRes({ isError: true, content: [{ type: 'text', text: 'schreibfehler' }] });
+  const http = new McpClient('https://mcp.example.org/rpc', null);
+  await assert.rejects(() => http.callTool('tool_x', {}), /tool_x.*schreibfehler/);
+
+  const child = new FakeChild();
+  const stdio = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = stdio.callTool('tool_x', {});
+  child.stdout.emit(
+    'data',
+    `${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { isError: true, content: [{ type: 'text', text: 'schreibfehler' }] } })}\n`,
+  );
+  await assert.rejects(p, /tool_x.*schreibfehler/);
+});
+
+test('Paritaet: JSON-RPC-Fehler wird bei HTTP und stdio als Fehler geworfen', async () => {
+  stubFetch();
+  handler = () => ({ json: { jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'kaputt' } } });
+  const http = new McpClient('https://mcp.example.org/rpc', null);
+  await assert.rejects(() => http.callTool('tool_x', {}), /kaputt/);
+
+  const child = new FakeChild();
+  const stdio = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = stdio.callTool('tool_x', {});
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'kaputt' } })}\n`);
+  await assert.rejects(p, /kaputt/);
+});
+
+test('Paritaet: Timeout bricht bei HTTP und stdio ab', async () => {
+  stubFetch();
+  handler = () => ({ hang: true });
+  const http = new McpClient('https://mcp.example.org/rpc', null, { timeoutMs: 50 });
+  await assert.rejects(() => http.listTools(), /aborted|AbortError|Timeout/);
+
+  // stdio: kein Output -> init laeuft ins konfigurierte Zeitlimit.
+  const child = new FakeChild();
+  const stdio = new McpStdioClient(
+    { command: 'x', args: [], env: {}, initTimeoutMs: 50 },
+    () => child as unknown as ChildProcess,
+  );
+  await assert.rejects(() => stdio.init(), /Timeout/);
+});
