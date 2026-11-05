@@ -349,6 +349,9 @@ packagesRoutes.get('/admin/api/backup', requireAdminAuth, (req, res) => {
       ...s,
       auth_token: includeTokens ? s.auth_token : null,
       env: includeTokens ? s.env : null,
+      // Header koennen Secrets tragen (z. B. API-Key) und werden wie die
+      // uebrigen Zugangsdaten nur mit tokens=1 exportiert.
+      headers: includeTokens ? s.headers : null,
     })),
     functions: listFunctions(false).map((f) => ({ ...f, enabled: f.enabled ? 1 : 0, parameters: f.parameters ? JSON.stringify(f.parameters) : null })),
     actions: listActions(false),

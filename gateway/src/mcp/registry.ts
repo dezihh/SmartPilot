@@ -55,6 +55,12 @@ export function invalidateMcpCache(): void {
   cache.clear();
 }
 
+// Beim Shutdown alle offenen stdio-Kinder beenden (SIGTERM/SIGINT in
+// server.ts). Ohne das blieben Kindprozesse im Container zurueck.
+export function stopAllClients(): void {
+  invalidateMcpCache();
+}
+
 function parseJsonArray(raw: string | null): string[] {
   try {
     const parsed = raw ? (JSON.parse(raw) as unknown) : [];

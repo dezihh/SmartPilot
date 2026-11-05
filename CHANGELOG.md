@@ -42,6 +42,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 ### Behoben
 
 - **Backup/Restore behält das persistierte Manifest.**
+- **Backup maskiert Header ohne Opt-in:** `GET /admin/api/backup` entfernt
+  `headers` wie `auth_token`/`env`; vollständig nur mit `?tokens=1`.
+- **Header-Secrets überleben die Konfiguration:** `existingParams` liest
+  `servers[].headers` zurück, sodass `PATCH …/config` Header-Werte nicht mehr
+  leert.
+- **Health-Check ohne Prozessleck:** Der stdio-Client wird auch im Fehlerfall
+  beendet (`finally`).
+- **Sauberes Herunterfahren:** `SIGTERM`/`SIGINT` schließen den HTTP-Server,
+  beenden alle stdio-Kinder und schließen die SQLite-Verbindung
+  (WAL-Checkpoint).
 - **Konfigurationsänderungen bestätigen gefährliche Feldinhalte:** Fließt ein
   geänderter Parameter in `shell()`, `command`, `args` oder `env`, verlangt
   das Speichern erneut eine Bestätigung — nicht mehr erst bei geänderter
@@ -58,6 +68,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `http()`-URL in ein privates Netz, erscheint das als Hinweis in der
   Installationsvorschau. Literale URLs bleiben (anders als dynamische) von
   der SSRF-Prüfung ausgenommen, weil LAN-Ziele gewollt sind.
+- **Loopback/Metadaten sind bestätigungspflichtig:** Literale `http()`-URLs
+  auf `127.0.0.0/8`, `169.254.0.0/16` (Cloud-Metadata), `0.0.0.0/8` oder
+  `::1` zählen als gefährlich und verlangen `dangerousAck`. RFC1918-Ziele
+  bleiben ein Hinweis, damit LAN-Pakete installierbar bleiben.
 
 ### Entwicklung
 

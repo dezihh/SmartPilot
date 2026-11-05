@@ -65,10 +65,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Tests
-        run: npm test
+      - name: Tests + Coverage-Gate
+        run: npm run coverage
 
-      # Bekannte High-Findings laufen ueber Dependabot (undici 8.x, PR #16).
-      # Der Gate greift daher erst bei critical, damit CI nicht dauerhaft rot ist.
-      - name: Audit (nur Produktionsabhaengigkeiten)
+      # Blockierendes Gate: critical.
+      - name: Audit (blockierend, critical)
         run: npm audit --omit=dev --audit-level=critical
+
+      # High-Findings sichtbar machen, ohne die Pipeline dauerhaft rot zu halten
+      # (bekannt: undici 6.x, Fix ueber Dependabot-PR #16).
+      - name: Audit-Report (high, nicht blockierend)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high

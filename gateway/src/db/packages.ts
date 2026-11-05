@@ -250,8 +250,8 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
   for (const s of m.servers ?? []) {
     if (!ownedServers.has(s.name)) continue;
     const row = getDb()
-      .prepare('SELECT url, auth_token, command, env FROM mcp_servers WHERE name = ?')
-      .get(s.name) as { url: string | null; auth_token: string | null; command: string | null; env: string | null } | undefined;
+      .prepare('SELECT url, auth_token, command, env, headers FROM mcp_servers WHERE name = ?')
+      .get(s.name) as { url: string | null; auth_token: string | null; command: string | null; env: string | null; headers: string | null } | undefined;
     if (!row) continue;
     const map = (raw: unknown, resolved: string | null): void => {
       const key = placeholderKey(raw);
@@ -264,6 +264,11 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
       let renv: Record<string, string> = {};
       try { renv = row.env ? (JSON.parse(row.env) as Record<string, string>) : {}; } catch { renv = {}; }
       for (const [k, v] of Object.entries(s.env)) map(v, renv[k] ?? null);
+    }
+    if (s.headers) {
+      let rheaders: Record<string, string> = {};
+      try { rheaders = row.headers ? (JSON.parse(row.headers) as Record<string, string>) : {}; } catch { rheaders = {}; }
+      for (const [name, value] of Object.entries(s.headers)) map(value, rheaders[name] ?? null);
     }
   }
   return out;

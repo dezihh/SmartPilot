@@ -298,7 +298,13 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
       .prepare(`INSERT INTO actions (name, mode, function_ref, function_args) VALUES ('restore_action', 'deterministic', 'test_fn', '{"x":1}')`)
       .run();
 
-    const backup = (await (await fetch(`${base}/admin/api/backup`, { headers: auth })).json()) as Record<string, unknown>;
+    // Ohne Opt-in werden Header wie Token/Env maskiert (F-01).
+    const masked = (await (await fetch(`${base}/admin/api/backup`, { headers: auth })).json()) as Record<string, unknown>;
+    const maskedSrv = (masked.servers as Record<string, unknown>[]).find((s) => s.name === 'Test MCP');
+    assert.equal(maskedSrv?.headers, null, 'Header ohne tokens=1 maskiert');
+
+    // tokens=1: Header- und Token-Werte nur mit Opt-in im Backup.
+    const backup = (await (await fetch(`${base}/admin/api/backup?tokens=1`, { headers: auth })).json()) as Record<string, unknown>;
     assert.equal((backup.packages as unknown[]).length, 1, 'Backup enthaelt Paket-Provenienz');
     assert.ok((backup.packages as Record<string, unknown>[])[0]!.manifest, 'Backup enthaelt das persistierte Manifest');
     const itemCount = (backup.package_items as unknown[]).length;
@@ -646,4 +652,62 @@ test('manifestDangerous: literale interne http()-URL wird sichtbar ausgewiesen',
   assert.equal(d.dangerous, false, 'http() allein bleibt Info');
   assert.ok(d.info.some((i) => i.includes('192.168.10.5')), 'interne Adresse sichtbar');
   assert.equal(d.info.filter((i) => i.includes('example.com')).length, 0, 'oeffentliche URL ohne Extra-Hinweis');
+});
+
+test('Konfig-Route: Header-Secret wird rekonstruiert und beim PATCH erhalten', async () => {
+  const app = express();
+  app.use(express.json({ limit: '1mb' }));
+  app.use(packagesRoutes);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
+  const base = `http://127.0.0.1:${port}/admin/api/packages`;
+  const manifest = {
+    ...OK_MANIFEST,
+    id: 'cfg-hdr',
+    params: [
+      { key: 'host', label: 'Host', required: true },
+      { key: 'apikey', label: 'API-Key', secret: true, required: true },
+    ],
+    servers: [
+      {
+        name: 'Cfg-Hdr Srv',
+        transport: 'http' as const,
+        url: 'http://${host}:8086/mcp',
+        // Secret nur im Header, nicht in auth_token (F-02).
+        headers: { 'X-Api-Key': '${apikey}' },
+      },
+    ],
+    functions: [],
+    indexes: [],
+    allowTools: [],
+  };
+  try {
+    const inst = await fetch(`${base}/cfg-hdr/install`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ manifest, params: { host: '10.0.0.1', apikey: 'hdr-geheim' } }),
+    });
+    assert.equal(inst.status, 200, await inst.text());
+
+    // existingParams muss den Header-Wert zuruecklesen.
+    assert.equal(existingParams('cfg-hdr', manifest).apikey, 'hdr-geheim');
+
+    const got = await fetch(`${base}/cfg-hdr/config`, { headers: auth });
+    assert.equal(got.status, 200);
+    const cfg = (await got.json()) as { values: Record<string, string> };
+    assert.equal(cfg.values.apikey, '(gesetzt)', 'Header-Secret maskiert');
+
+    // PATCH ohne apikey: Header darf nicht geleert werden.
+    const patch = await fetch(`${base}/cfg-hdr/config`, {
+      method: 'PATCH', headers: auth, body: JSON.stringify({ params: { host: '10.0.0.2', apikey: '' } }),
+    });
+    assert.equal(patch.status, 200, await patch.text());
+    const srv = getDb().prepare("SELECT url, headers FROM mcp_servers WHERE name = 'Cfg-Hdr Srv'").get() as { url: string; headers: string };
+    assert.equal(srv.url, 'http://10.0.0.2:8086/mcp');
+    assert.deepEqual(JSON.parse(srv.headers), { 'X-Api-Key': 'hdr-geheim' }, 'Header-Secret bleibt erhalten');
+  } finally {
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'Cfg-Hdr Srv'").run();
+    db_cleanup('cfg-hdr');
+    server.close();
+  }
 });

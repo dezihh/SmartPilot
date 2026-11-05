@@ -1,6 +1,7 @@
 import { config } from './config.js';
-import { initDb } from './db/schema.js';
+import { initDb, closeDb } from './db/schema.js';
 import { listMcpServers } from './db.js';
+import { stopAllClients } from './mcp/registry.js';
 import { provisionMcpServers, npmInstallRunner, npmPruneRunner } from './mcp/provision.js';
 import { chatCompletion } from './llm/client.js';
 import { createApp } from './app.js';
@@ -29,9 +30,24 @@ try {
   console.warn('MCP-Provisionierung uebersprungen:', e);
 }
 
-createApp().listen(config.port, () => {
+const server = createApp().listen(config.port, () => {
   console.log(`SmartPilot Gateway auf Port ${config.port}`);
 });
+
+// Docker/Compose beendet den Container mit SIGTERM. Ohne Handler blieben
+// stdio-Kindprozesse am Leben und die SQLite-WAL unaufgeraeumt.
+function shutdown(signal: string): void {
+  console.log(`Signal ${signal}: Gateway wird beendet`);
+  server.close(() => {
+    try { stopAllClients(); } catch { /* best effort */ }
+    try { closeDb(); } catch { /* best effort */ }
+    process.exit(0);
+  });
+  // Fallback, falls offene Keep-Alive-Verbindungen das Schliessen blockieren.
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // LLM warm halten (0 = aus). Ungueltige Werte deaktivieren den Timer, statt
 // mit NaN zu laufen.

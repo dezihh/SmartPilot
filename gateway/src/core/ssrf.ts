@@ -105,3 +105,22 @@ export function isPrivateHost(hostname: string): boolean {
   if (isPrivateIpv6(h)) return true;
   return false;
 }
+
+// Besonders sensible Ziele: Loopback, Link-Local (inkl. Cloud-Metadata
+// 169.254.169.254), 0.0.0.0/8 und Broadcast. In Paketmanifesten sind sie
+// ack-pflichtig; reine LAN-Ziele (RFC1918) bleiben nur ein Hinweis.
+export function isSensitiveHost(hostname: string): boolean {
+  let h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  try {
+    const canon = new URL(`http://${h}`).hostname.replace(/^\[|\]$/g, '');
+    if (canon) h = canon;
+  } catch {
+    /* kein parsbarer Host - mit dem Rohwert weiterpruefen */
+  }
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  if (h === '::1' || h === '0:0:0:0:0:0:0:1' || h === 'fe80' || h.startsWith('fe80:')) return true;
+  const bytes = ipv4ToBytes(h);
+  if (!bytes) return false;
+  const n = ipv4ToInt(bytes);
+  return (n >>> 24) === 127 || (n >>> 16) === 0xa9fe || (n >>> 24) === 0 || n === 0xffffffff;
+}

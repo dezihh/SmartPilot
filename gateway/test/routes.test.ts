@@ -301,6 +301,12 @@ test('mcp-servers: CRUD, Maskierung und env-COALESCE', async () => {
   const health = await call('POST', '/admin/api/mcp-servers/999999/health', { cookie, body: {} });
   assert.equal(health.status, 404);
 
+  // Fehlerpfad: stdio-Server, dessen Prozess sofort endet -> ok:false, und der
+  // Client wird im finally beendet (kein Kindprozess-Leck).
+  const healthErr = await call('POST', `/admin/api/mcp-servers/${id}/health`, { cookie, body: {} });
+  assert.equal(healthErr.status, 200);
+  assert.equal((healthErr.json as { ok: boolean }).ok, false, 'stdio-Fehler wird als ok:false gemeldet');
+
   const del = await call('DELETE', `/admin/api/mcp-servers/${id}`, { cookie });
   assert.equal(del.status, 200);
 });

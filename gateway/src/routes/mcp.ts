@@ -127,14 +127,17 @@ mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req
     res.status(404).json({ error: 'nicht gefunden' });
     return;
   }
+  const client = createClient(server);
   try {
-    const client = createClient(server);
     await client.init();
     const tools = await client.listTools();
-    if (typeof client.stop === 'function') client.stop();
     res.json({ ok: true, tools: tools.map((t) => t.name) });
   } catch (e) {
     res.json({ ok: false, error: String(e) });
+  } finally {
+    // Auch im Fehlerfall beenden, sonst bleibt ein stdio-Kindprozess zurueck
+    // (Prozessleck bei wiederholten Health-Checks).
+    if (typeof client.stop === 'function') client.stop();
   }
 });
 
