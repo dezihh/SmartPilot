@@ -3,7 +3,7 @@
 // geloescht oder ueberschrieben. Der Test sichert dieses Verhalten ab.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initDb, closeDb, getDb, getSchemaVersion } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('legacy-cleanup');
@@ -24,7 +24,7 @@ function seedReports(): void {
 test('Migration 2 laesst Bestandsdaten unangetastet', () => {
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(getSchemaVersion(), 5, 'frischer Start auf Zielversion');
+  assert.equal(getSchemaVersion(), LATEST_SCHEMA_VERSION, 'frischer Start auf Zielversion');
 
   const db = getDb();
   db.prepare("DELETE FROM actions WHERE name = 'example_action'").run();
@@ -35,7 +35,7 @@ test('Migration 2 laesst Bestandsdaten unangetastet', () => {
   db.pragma('user_version = 1');
   closeDb();
   initDb(DB_PATH, true);
-  assert.equal(getSchemaVersion(), 5);
+  assert.equal(getSchemaVersion(), LATEST_SCHEMA_VERSION);
 
   assert.equal(count("SELECT COUNT(*) c FROM tpl_functions WHERE name = 'example_report'"), 1, 'Report bleibt erhalten');
   assert.equal(count("SELECT COUNT(*) c FROM actions WHERE name = 'example_action'"), 1, 'Vorgang bleibt erhalten');

@@ -13,6 +13,10 @@ export interface PackageParam {
   /** Token/Key - landet nur in der Zielzeile (auth_token/env), nie geloggt */
   secret?: boolean;
   required?: boolean;
+  /** Kurzer Hilfetext fuer die Konfigurationsansicht. */
+  help?: string;
+  /** Eingabetyp der Konfigurationsansicht (Default: text). */
+  type?: 'text' | 'password' | 'number';
 }
 
 export interface PackageServer {
@@ -72,6 +76,8 @@ export interface PackageManifest {
   language?: string;
   /** Projekt-/Doku-Link. */
   homepage?: string;
+  /** Darstellungs-Kategorie: Treiber, Funktion oder Kombination. */
+  category?: 'driver' | 'function' | 'mixed';
   requires?: string;
   /** Getestete Gateway-Mindestversion (semver); Installation wird sonst abgelehnt. */
   minGatewayVersion?: string;
@@ -137,6 +143,7 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
   if (m.author !== undefined && typeof m.author !== 'string') errors.push('author muss ein String sein');
   if (m.license !== undefined && typeof m.license !== 'string') errors.push('license muss ein String sein');
   if (m.minGatewayVersion !== undefined && (typeof m.minGatewayVersion !== 'string' || !/^\d+\.\d+\.\d+$/.test(m.minGatewayVersion))) errors.push('minGatewayVersion muss semver (x.y.z) sein');
+  if (m.category !== undefined && m.category !== 'driver' && m.category !== 'function' && m.category !== 'mixed') errors.push('category muss driver, function oder mixed sein');
   if (m.servers !== undefined) {
     if (!Array.isArray(m.servers)) errors.push('servers muss ein Array sein');
     else {
@@ -192,6 +199,8 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
       for (const p of m.params) {
         if (!p || !/^[a-z0-9_]{1,40}$/.test(p.key ?? '')) errors.push('param-key ungueltig');
         if (!p?.label) errors.push(`param "${p?.key}": label fehlt`);
+        if (p?.type !== undefined && p.type !== 'text' && p.type !== 'password' && p.type !== 'number') errors.push(`param "${p.key}": type muss text, password oder number sein`);
+        if (p?.help !== undefined && typeof p.help !== 'string') errors.push(`param "${p.key}": help muss ein String sein`);
       }
     }
   }
@@ -264,4 +273,14 @@ export function manifestItems(m: PackageManifest): { kind: string; name: string 
   for (const ix of m.indexes ?? []) items.push({ kind: 'index', name: ix.key || '(Standard)' });
   if (m.allowTools?.length) items.push({ kind: 'allowTools', name: m.allowTools.join(',') });
   return items;
+}
+
+// Kategorie ableiten, falls im Manifest nicht gesetzt: reine Treiber
+// (nur Server), reine Funktionen (nur Funktionen/Vorgaenge) oder gemischt.
+export function deriveCategory(m: PackageManifest): 'driver' | 'function' | 'mixed' {
+  const hasServers = (m.servers?.length ?? 0) > 0;
+  const hasFunctions = (m.functions?.length ?? 0) > 0 || (m.actions?.length ?? 0) > 0;
+  if (hasServers && hasFunctions) return 'mixed';
+  if (hasServers) return 'driver';
+  return 'function';
 }

@@ -9,6 +9,9 @@ import {
   conflictItems,
   packageDiff,
   existingParams,
+  getInstalledPackage,
+  parseStoredManifest,
+  deriveCategory,
   parseManifest,
   validateManifest,
   manifestDangerous,
@@ -45,6 +48,7 @@ interface RegistryEntry {
   name: string;
   summary: string;
   version: string;
+  category?: 'driver' | 'function' | 'mixed';
 }
 interface RegistryIndex {
   registryVersion: number;
@@ -205,10 +209,17 @@ packagesRoutes.post('/admin/api/packages/:id/uninstall', requireAdminAuth, (req,
 
 // Installierte Pakete inkl. Items.
 packagesRoutes.get('/admin/api/packages', requireAdminAuth, async (_req, res) => {
-  const installed = listInstalledPackages().map((p) => ({
-    ...p,
-    items: listPackageItems(p.id).map((i) => ({ kind: i.kind, name: i.name, hash: i.content_hash })),
-  }));
+  // Manifest nicht in die Liste aufnehmen (Groesse); Name/Kategorie daraus
+  // ableiten, damit die UI Klartext statt technischer IDs zeigt.
+  const installed = listInstalledPackages().map(({ manifest, ...p }) => {
+    const parsed = manifest ? parseStoredManifest(manifest) : null;
+    return {
+      ...p,
+      name: parsed?.name ?? p.id,
+      category: parsed?.category ?? (parsed ? deriveCategory(parsed) : undefined),
+      items: listPackageItems(p.id).map((i) => ({ kind: i.kind, name: i.name, hash: i.content_hash })),
+    };
+  });
   let registry: RegistryEntry[] | null = null;
   try {
     registry = await registryEntries(false);
@@ -248,6 +259,80 @@ packagesRoutes.post('/admin/api/packages/:id/diff', requireAdminAuth, async (req
   }
 });
 
+// Konfigurationsansicht: Parameter + Manifest-Metadaten eines installierten
+// Pakets. Faellt bei fehlendem lokalem Manifest auf die Registry zurueck.
+packagesRoutes.get('/admin/api/packages/:id/config', requireAdminAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id ?? '');
+    const pkg = getInstalledPackage(id);
+    if (!pkg) return res.status(404).json({ error: `Paket "${id}" ist nicht installiert` });
+    let manifest = pkg.manifest ? parseStoredManifest(pkg.manifest) : null;
+    let manifestSource: 'stored' | 'registry' = 'stored';
+    if (!manifest) {
+      manifest = await fetchManifest(id);
+      manifestSource = 'registry';
+    }
+    const values = existingParams(id, manifest);
+    // Secrets maskiert ausgeben; nicht-geheime Werte im Klartext.
+    const safeValues: Record<string, string> = {};
+    for (const p of manifest.params ?? []) {
+      const v = values[p.key];
+      safeValues[p.key] = p.secret ? (v ? '(gesetzt)' : '') : (v ?? '');
+    }
+    const danger = manifestDangerous(manifest);
+    res.json({
+      id,
+      version: pkg.version,
+      source: pkg.source,
+      manifestSource,
+      params: manifest.params ?? [],
+      values: safeValues,
+      dangerous: danger.dangerous,
+      dangerousItems: danger.items,
+    });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
+});
+
+// Konfiguration speichern: nur Parameter/Manifest, keine Versionsaenderung.
+packagesRoutes.patch('/admin/api/packages/:id/config', requireAdminAuth, async (req, res) => {
+  try {
+    const id = String(req.params.id ?? '');
+    const pkg = getInstalledPackage(id);
+    if (!pkg) return res.status(404).json({ error: `Paket "${id}" ist nicht installiert` });
+    let manifest = pkg.manifest ? parseStoredManifest(pkg.manifest) : null;
+    if (!manifest) manifest = await fetchManifest(id);
+    if (manifest.id !== id) throw new Error(`Manifest-id "${manifest.id}" passt nicht zu "${id}"`);
+    const body = req.body as { params?: Record<string, string>; dangerousAck?: boolean };
+    const provided = body.params ?? {};
+    const current = existingParams(id, manifest);
+    const merged: Record<string, string> = {};
+    for (const p of manifest.params ?? []) {
+      const v = provided[p.key];
+      const keep = current[p.key];
+      if (v == null || String(v).trim() === '') {
+        if (keep) merged[p.key] = keep;
+      } else {
+        merged[p.key] = String(v);
+      }
+    }
+    const values = paramValues(manifest, merged);
+    const report = installPackage(manifest, {
+      source: pkg.source,
+      registryUrl: pkg.registry_url,
+      values,
+      dangerousAck: body.dangerousAck,
+      configOnly: true,
+    });
+    invalidateMcpCache();
+    invalidateIndex();
+    res.json({ report });
+  } catch (e) {
+    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+  }
+});
+
 // --- Sicherung / Rücksicherung (logischer JSON-Export, ohne Logs) ---
 
 packagesRoutes.get('/admin/api/backup', requireAdminAuth, (req, res) => {
@@ -256,6 +341,7 @@ packagesRoutes.get('/admin/api/backup', requireAdminAuth, (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="smartpilot-config-${new Date().toISOString().slice(0, 10)}.json"`);
   res.json({
     kind: 'smartpilot-config-backup',
+    formatVersion: 1,
     created: new Date().toISOString(),
     includeTokens,
     settings: getSettings(),
@@ -341,8 +427,8 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
     for (const p of (backup.packages as Record<string, unknown>[] | undefined) ?? []) {
       if (!p.id) continue;
       db.prepare(
-        'INSERT INTO packages (id, version, source, registry_url, params, manifest_hash, installed_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(p.id as string, (p.version as string) ?? '', (p.source as string) ?? 'registry', (p.registry_url as string | null) ?? null, (p.params as string | null) ?? null, (p.manifest_hash as string | null) ?? null, (p.installed_at as string) ?? new Date().toISOString());
+        'INSERT INTO packages (id, version, source, registry_url, params, manifest, manifest_hash, installed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(p.id as string, (p.version as string) ?? '', (p.source as string) ?? 'registry', (p.registry_url as string | null) ?? null, (p.params as string | null) ?? null, (p.manifest as string | null) ?? null, (p.manifest_hash as string | null) ?? null, (p.installed_at as string) ?? new Date().toISOString());
     }
     for (const i of (backup.package_items as Record<string, unknown>[] | undefined) ?? []) {
       if (!i.package_id || !i.kind || !i.name) continue;

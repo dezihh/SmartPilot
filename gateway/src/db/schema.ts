@@ -490,13 +490,24 @@ function applyMcpHeaders(db: Database.Database): void {
   if (!cols.includes('headers')) db.exec('ALTER TABLE mcp_servers ADD COLUMN headers TEXT');
 }
 
+// Persistiertes Paket-Manifest: erlaubt die Konfigurationsansicht auch ohne
+// Registry-Zugriff. Bestands-DBs bekommen die Spalte nachgezogen.
+function applyPackageManifest(db: Database.Database): void {
+  addColumnIfMissing(db, 'packages', 'manifest', 'TEXT');
+}
+
 const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
   { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },
   { version: 4, name: 'rebase-package-item-hashes-args', up: applyHashRebase },
   { version: 5, name: 'mcp-server-headers', up: applyMcpHeaders },
+  { version: 6, name: 'package-manifest', up: applyPackageManifest },
 ];
+
+// Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen
+// nicht die konkrete Zahl hartcodieren.
+export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version;
 
 export function getDb(): Database.Database {
   if (!_db) throw new Error('DB nicht initialisiert - initDb(path) zuerst rufen');

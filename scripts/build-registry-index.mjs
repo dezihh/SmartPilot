@@ -24,6 +24,16 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+// Gleiche Ableitung wie gateway/src/core/packages.ts (deriveCategory):
+// Treiber = nur MCP-Server, Funktion = nur Funktionen/Vorgaenge, sonst gemischt.
+function deriveCategory(m) {
+  const hasServers = (m.servers?.length ?? 0) > 0;
+  const hasFunctions = (m.functions?.length ?? 0) > 0 || (m.actions?.length ?? 0) > 0;
+  if (hasServers && hasFunctions) return 'mixed';
+  if (hasServers) return 'driver';
+  return 'function';
+}
+
 // Bestehende Reihenfolge beibehalten (Kuration), neue IDs alphabetisch anhaengen
 // - deterministisch und ohne unnoetiges Umsortieren.
 function buildIndex(lang) {
@@ -53,7 +63,13 @@ function buildIndex(lang) {
       console.error(`Manifest ${lang}/${id} fehlt name/summary/version`);
       process.exit(1);
     }
-    return { id: m.id, name: m.name, summary: m.summary, version: m.version };
+    return {
+      id: m.id,
+      name: m.name,
+      summary: m.summary,
+      version: m.version,
+      category: m.category ?? deriveCategory(m),
+    };
   });
   return { registryVersion, packages };
 }

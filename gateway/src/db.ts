@@ -49,6 +49,7 @@ export {
   conflictItems,
   packageDiff,
   existingParams,
+  parseStoredManifest,
   type InstalledPackageRow,
   type PackageItemRow,
   type PackageReport,
@@ -64,7 +65,9 @@ export {
   paramValues,
   requiredParams,
   manifestHash,
+  deriveCategory,
   type PackageManifest,
+  type PackageParam,
 } from './core/packages.js';
 export {
   addLog,

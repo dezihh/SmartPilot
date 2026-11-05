@@ -12,6 +12,28 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Paket-Kategorien:** Pakete tragen eine Kategorie `driver` (MCP-Treiber),
+  `function` (Funktionen/Vorgänge) oder `mixed`. Fehlt der Wert im Manifest,
+  wird er aus den Artefakten abgeleitet; `packages/<lang>/index.json` führt
+  ihn mit.
+- **Konfigurations-API für installierte Pakete:**
+  `GET`/`PATCH /admin/api/packages/:id/config` lesen und ändern Parameter,
+  ohne Version, Quelle oder Installationszeitpunkt anzutasten. Secrets werden
+  maskiert, leere Felder behalten den bestehenden Wert. Änderungen laufen
+  über denselben Installationspfad (`configOnly`) inklusive Update-Schutz für
+  lokal geänderte Zeilen.
+- **Parameter-Metadaten:** `params[].help` und `params[].type`
+  (`text`/`password`/`number`) bereiten die generische Formulardarstellung vor.
+- **Persistiertes Manifest:** Migration 6 speichert das beim Install
+  aufgelöste Manifest in `packages.manifest`; die Konfigurationsansicht
+  arbeitet damit auch ohne erreichbare Registry.
+
+### Behoben
+
+- **Backup/Restore behält das persistierte Manifest.**
+
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es

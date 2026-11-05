@@ -7,12 +7,12 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
-import { initDb, closeDb, getDb, getSchemaVersion } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
 import { conflictItems } from '../src/db/packages.js';
 import { hashContent, serverContentOld } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
-const TARGET = 5;
+const TARGET = LATEST_SCHEMA_VERSION;
 
 test('Runner: wendet Migrationen der Reihe nach an, stoppt+rollt bei Fehler zurueck', () => {
   const db = new Database(':memory:');
@@ -112,5 +112,26 @@ test('Migration 4: args "[]" wird auf null normalisiert (kein Scheinkonflikt)', 
   closeDb();
   initDb(p);
   assert.deepEqual(conflictItems('searxng'), [], 'args-Normalisierung verhindert Scheinkonflikt');
+  closeDb();
+});
+
+test('Migration 6: Bestands-DB (v5) bekommt packages.manifest', () => {
+  const p = tmpDb('mig-manifest');
+  closeDb();
+  initDb(p);
+  closeDb();
+  // Zustand vor Migration 6 herstellen: Spalte fehlt, Version 5.
+  const raw = new Database(p);
+  raw.exec('ALTER TABLE packages DROP COLUMN manifest');
+  raw.pragma('user_version = 5');
+  raw.close();
+  initDb(p);
+  assert.equal(getSchemaVersion(), TARGET);
+  const cols = getDb().prepare('PRAGMA table_info(packages)').all() as { name: string }[];
+  assert.ok(cols.some((c) => c.name === 'manifest'), 'manifest-Spalte ergaenzt');
+  // Persistenz nutzbar: Manifest schreiben und lesen.
+  getDb().prepare("INSERT INTO packages (id, version, manifest) VALUES ('m6', '1.0.0', '{}')").run();
+  const row = getDb().prepare("SELECT manifest FROM packages WHERE id = 'm6'").get() as { manifest: string };
+  assert.equal(row.manifest, '{}');
   closeDb();
 });

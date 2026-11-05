@@ -24,6 +24,7 @@ import {
   manifestItems,
   paramValues,
   manifestHash,
+  deriveCategory,
 } from '../src/core/packages.js';
 import { getSetting, setSetting } from '../src/db/settings.js';
 import { tmpDb } from './_tmpdb.js';
@@ -299,6 +300,7 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
 
     const backup = (await (await fetch(`${base}/admin/api/backup`, { headers: auth })).json()) as Record<string, unknown>;
     assert.equal((backup.packages as unknown[]).length, 1, 'Backup enthaelt Paket-Provenienz');
+    assert.ok((backup.packages as Record<string, unknown>[])[0]!.manifest, 'Backup enthaelt das persistierte Manifest');
     const itemCount = (backup.package_items as unknown[]).length;
     assert.ok(itemCount >= 3, 'Backup enthaelt package_items');
 
@@ -310,6 +312,7 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
     });
     assert.equal(restore.status, 200, await restore.text());
     assert.equal(listInstalledPackages().length, 1, 'Provenienz restauriert');
+    assert.ok(listInstalledPackages()[0]!.manifest, 'persistiertes Manifest wird mitgesichert');
     assert.equal(listAllPackageItems().length, itemCount);
     assert.equal(getSetting('probe_restore'), 'BACKUP', 'Settings restauriert');
 
@@ -461,6 +464,112 @@ test('Install: zu altes Gateway wird abgelehnt (minGatewayVersion)', async () =>
     const body = (await res.json()) as { error?: string };
     assert.match(body.error ?? '', /benoetigt Gateway/);
   } finally {
+    server.close();
+  }
+});
+test('Kategorie: deriveCategory leitet Treiber/Funktion/gemischt ab; category validiert', () => {
+  const base = { id: 'cat', version: '1.0.0', name: 'c', summary: 's', description: 'd' };
+  assert.equal(deriveCategory({ ...base, servers: [{ name: 's', transport: 'http', url: 'http://x' }] }), 'driver');
+  assert.equal(deriveCategory({ ...base, functions: [{ name: 'f', template: 'x' }] }), 'function');
+  assert.equal(deriveCategory({ ...base, actions: [{ name: 'a', mode: 'llm' }] }), 'function');
+  assert.equal(
+    deriveCategory({ ...base, servers: [{ name: 's', transport: 'http', url: 'http://x' }], functions: [{ name: 'f', template: 'x' }] }),
+    'mixed'
+  );
+  assert.equal(deriveCategory(base), 'function');
+  // Expliziter Wert gewinnt in der Validierung (nicht in deriveCategory).
+  const ok = validateManifest({ ...base, category: 'driver' });
+  assert.equal(ok.ok, true);
+  const bad = validateManifest({ ...base, category: 'tool' });
+  assert.equal(bad.ok, false);
+});
+
+test('Manifest-Validierung: param help + type (text/password/number)', () => {
+  const base = { id: 'p', version: '1.0.0', name: 'p', summary: 's', description: 'd' };
+  assert.equal(validateManifest({ ...base, params: [{ key: 'a', label: 'A', help: 'Hilfe', type: 'password' }] }).ok, true);
+  assert.equal(validateManifest({ ...base, params: [{ key: 'a', label: 'A', type: 'number' }] }).ok, true);
+  assert.equal(validateManifest({ ...base, params: [{ key: 'a', label: 'A', type: 'color' }] }).ok, false);
+  assert.equal(validateManifest({ ...base, params: [{ key: 'a', label: 'A', help: 5 as never }] }).ok, false);
+});
+
+test('configOnly: Version, Quelle und installed_at bleiben; Params/Manifest aktualisiert', () => {
+  const db = getDb();
+  db.prepare("DELETE FROM packages WHERE id = 'cfg-only'").run();
+  db.prepare("DELETE FROM package_items WHERE package_id = 'cfg-only'").run();
+  db.prepare("DELETE FROM mcp_servers WHERE name = 'Cfg-Only Srv'").run();
+  const manifest = {
+    ...OK_MANIFEST,
+    id: 'cfg-only',
+    servers: [{ name: 'Cfg-Only Srv', transport: 'http' as const, url: 'http://${host}:8086/mcp', auth_token: '${token}' }],
+    functions: [],
+    indexes: [],
+    allowTools: [],
+  };
+  installPackage(manifest, { source: 'registry', registryUrl: 'https://example/reg', values: { host: 'h1', token: 't1' } });
+  db.prepare("UPDATE packages SET installed_at = '2000-01-01 00:00:00' WHERE id = 'cfg-only'").run();
+  // Version des Manifests hochsetzen - configOnly darf sie nicht uebernehmen.
+  installPackage({ ...manifest, version: '9.9.9' }, { source: 'import', values: { host: 'h2', token: 't2' }, configOnly: true });
+  const row = getDb().prepare("SELECT version, source, registry_url, installed_at, params, manifest FROM packages WHERE id = 'cfg-only'").get() as {
+    version: string; source: string; registry_url: string; installed_at: string; params: string; manifest: string;
+  };
+  assert.equal(row.version, '1.0.0');
+  assert.equal(row.source, 'registry');
+  assert.equal(row.registry_url, 'https://example/reg');
+  assert.equal(row.installed_at, '2000-01-01 00:00:00');
+  assert.equal((JSON.parse(row.params) as Record<string, string>).host, 'h2');
+  assert.equal(JSON.parse(row.manifest).version, '9.9.9', 'neues Manifest persistiert');
+  const srv = getDb().prepare("SELECT url FROM mcp_servers WHERE name = 'Cfg-Only Srv'").get() as { url: string };
+  assert.equal(srv.url, 'http://h2:8086/mcp');
+  getDb().prepare("DELETE FROM mcp_servers WHERE name = 'Cfg-Only Srv'").run();
+  db_cleanup('cfg-only');
+});
+
+test('Konfig-Route: GET maskiert Secrets, PATCH merged und erhaelt bestehende Werte', async () => {
+  const app = express();
+  app.use(express.json({ limit: '1mb' }));
+  app.use(packagesRoutes);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
+  const base = `http://127.0.0.1:${port}/admin/api/packages`;
+  const manifest = {
+    ...OK_MANIFEST,
+    id: 'cfg-route',
+    servers: [{ name: 'Cfg-Route Srv', transport: 'http' as const, url: 'http://${host}:8086/mcp', auth_token: '${token}' }],
+    functions: [],
+    indexes: [],
+    allowTools: [],
+  };
+  try {
+    const inst = await fetch(`${base}/cfg-route/install`, {
+      method: 'POST', headers: auth,
+      body: JSON.stringify({ manifest, params: { host: '10.0.0.1', token: 'streng-geheim' } }),
+    });
+    assert.equal(inst.status, 200, await inst.text());
+
+    const got = await fetch(`${base}/cfg-route/config`, { headers: auth });
+    assert.equal(got.status, 200);
+    const cfg = (await got.json()) as { manifestSource: string; values: Record<string, string>; params: { key: string }[] };
+    assert.equal(cfg.manifestSource, 'stored');
+    assert.equal(cfg.values.host, '10.0.0.1');
+    assert.equal(cfg.values.token, '(gesetzt)', 'Secret maskiert');
+    assert.deepEqual(cfg.params.map((p) => p.key), ['host', 'token']);
+
+    // PATCH: nur host aendern, token leer = behalten.
+    const patch = await fetch(`${base}/cfg-route/config`, {
+      method: 'PATCH', headers: auth, body: JSON.stringify({ params: { host: '10.0.0.2', token: '' } }),
+    });
+    assert.equal(patch.status, 200, await patch.text());
+    const srv = getDb().prepare("SELECT url, auth_token FROM mcp_servers WHERE name = 'Cfg-Route Srv'").get() as { url: string; auth_token: string };
+    assert.equal(srv.url, 'http://10.0.0.2:8086/mcp');
+    assert.equal(srv.auth_token, 'streng-geheim', 'Secret bleibt erhalten');
+
+    // Unbekanntes Paket -> 404
+    const missing = await fetch(`${base}/gibt-es-nicht/config`, { headers: auth });
+    assert.equal(missing.status, 404);
+  } finally {
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'Cfg-Route Srv'").run();
+    db_cleanup('cfg-route');
     server.close();
   }
 });

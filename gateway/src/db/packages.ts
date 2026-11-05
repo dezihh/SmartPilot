@@ -1,6 +1,6 @@
 import { getDb } from './schema.js';
 import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
-import { substituteManifest, manifestDangerous, manifestHash } from '../core/packages.js';
+import { substituteManifest, manifestDangerous, manifestHash, validateManifest } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
 import { hashContent, serverContentNew, type ServerHashRow } from './itemHash.js';
 
@@ -10,6 +10,8 @@ export interface InstalledPackageRow {
   source: string;
   registry_url: string | null;
   params: string; // JSON ohne Secret-Werte
+  /** Unsubstituiertes Manifest (JSON) fuer die Konfigurationsansicht. */
+  manifest: string | null;
   manifest_hash: string;
   installed_at: string;
 }
@@ -196,6 +198,18 @@ function placeholderKey(v: unknown): string | null {
   return m?.[1] ?? null;
 }
 
+// Gespeichertes Manifest parsen. Ungueltige Daten liefern null, damit die
+// Konfigurationsansicht sauber auf die Registry ausweichen kann.
+export function parseStoredManifest(raw: string): PackageManifest | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const result = validateManifest(parsed);
+    return result.ok ? result.manifest : null;
+  } catch {
+    return null;
+  }
+}
+
 // Bestehende Parameterwerte einer installierten Instanz rekonstruieren, damit
 // ein Reinstall sie ohne erneute Eingabe beibehalten kann. Nicht-geheime Werte
 // kommen aus packages.params; Secrets werden aus den aufgeloesten Server-Feldern
@@ -245,6 +259,8 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
 // 'keep' (lokale Aenderung behalten). Standard bei lokal geaenderten Zeilen
 // (Konflikt) ist 'keep' - nur ein ausdrueckliches 'take' ueberschreibt sie.
 // dryRun: nur Report berechnen, ohne zu schreiben (fuer die Diff-Vorschau).
+// configOnly: nur Parameter/Manifest einer bestehenden Installation aendern;
+// Version, Quelle, Registry-URL und installed_at bleiben erhalten.
 export function installPackage(
   m: PackageManifest,
   opts: {
@@ -254,12 +270,22 @@ export function installPackage(
     dangerousAck?: boolean;
     decisions?: Record<string, 'take' | 'keep'>;
     dryRun?: boolean;
+    configOnly?: boolean;
   }
 ): PackageReport {
   const db = getDb();
   const applied = substituteManifest(m, opts.values ?? {});
   const danger = manifestDangerous(applied);
-  if (danger.dangerous && !opts.dangerousAck) {
+  // Bei configOnly ist die Gefahrenstruktur bereits bestaetigt. Ein neues Ack
+  // ist nur noetig, wenn sich die Gefahrenmenge tatsaechlich aendert.
+  let dangerChanged = true;
+  if (opts.configOnly) {
+    const installed = getInstalledPackage(m.id);
+    const prev = installed?.manifest ? parseStoredManifest(installed.manifest) : null;
+    const previousDanger = prev ? manifestDangerous(substituteManifest(prev, existingParams(m.id, prev))) : null;
+    dangerChanged = !previousDanger || JSON.stringify(danger.items) !== JSON.stringify(previousDanger.items);
+  }
+  if (danger.dangerous && !opts.dangerousAck && (!opts.configOnly || dangerChanged)) {
     throw new Error('Gefaehrliche Aktion: Bestaetigung erforderlich (dangerous_ack)');
   }
   const decisions = opts.decisions ?? {};
@@ -374,13 +400,21 @@ export function installPackage(
     }
     const safeParams: Record<string, string> = {};
     for (const p of m.params ?? []) safeParams[p.key] = p.secret ? '(gesetzt)' : (opts.values?.[p.key] ?? p.default ?? '');
-    db.prepare(
-      `INSERT INTO packages (id, version, source, registry_url, params, manifest_hash, installed_at)
-       VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-       ON CONFLICT(id) DO UPDATE SET version = excluded.version, source = excluded.source,
-       registry_url = excluded.registry_url, params = excluded.params, manifest_hash = excluded.manifest_hash,
-       installed_at = datetime('now')`
-    ).run(m.id, m.version, opts.source ?? 'registry', opts.registryUrl ?? null, JSON.stringify(safeParams), manifestHash(applied));
+    const rawManifest = JSON.stringify(m);
+    if (opts.configOnly) {
+      const r = db.prepare(
+        'UPDATE packages SET params = ?, manifest = ?, manifest_hash = ? WHERE id = ?'
+      ).run(JSON.stringify(safeParams), rawManifest, manifestHash(applied), m.id);
+      if (r.changes === 0) throw new Error(`Paket "${m.id}" ist nicht installiert`);
+    } else {
+      db.prepare(
+        `INSERT INTO packages (id, version, source, registry_url, params, manifest, manifest_hash, installed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+         ON CONFLICT(id) DO UPDATE SET version = excluded.version, source = excluded.source,
+         registry_url = excluded.registry_url, params = excluded.params, manifest = excluded.manifest,
+         manifest_hash = excluded.manifest_hash, installed_at = datetime('now')`
+      ).run(m.id, m.version, opts.source ?? 'registry', opts.registryUrl ?? null, JSON.stringify(safeParams), rawManifest, manifestHash(applied));
+    }
     if (opts.dryRun) throw new DryRunSignal();
   })();
   };
