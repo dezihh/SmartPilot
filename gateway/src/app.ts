@@ -16,6 +16,19 @@ export function createApp(): Express {
   // Hinter einem Reverse-Proxy die echte Client-IP aus X-Forwarded-For lesen
   // (sonst greift das Rate-Limit fuer alle Clients gemeinsam auf die Proxy-IP).
   if (config.trustProxy !== undefined) app.set('trust proxy', config.trustProxy);
+  // Sicherheits-Header: Die Admin-UI laedt ausschliesslich eigene Module und
+  // spricht nur mit der eigenen Origin. Kein Inline-Skript, keine externen
+  // Quellen. Der Proxy darf eigene Header (HSTS) zusaetzlich setzen.
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'"
+    );
+    next();
+  });
   app.use(express.json({ limit: '1mb' }));
 
   // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).

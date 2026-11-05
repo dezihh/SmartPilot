@@ -138,8 +138,12 @@ Automatisch abgesichert:
 
 - `/admin/*`: Session-Login (HttpOnly-Cookie, 12 h) mit Rate-Limit gegen
   Brute-Force
+- CSP, `X-Content-Type-Options`, `X-Frame-Options` und `Referrer-Policy` auf
+  allen Antworten; die Admin-UI lädt keine externen Ressourcen
 - JSON-Body-Limit (1 MB), gepinnte Dependencies (`npm ci` + Lockfile),
   Secrets nur via `.env` (nie im Repo)
+- `ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden — der Start bricht
+  sonst ab
 
 Für den Betrieb hinter dem Reverse-Proxy:
 

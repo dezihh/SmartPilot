@@ -38,6 +38,15 @@ function req(name: string): string {
   return v;
 }
 
+const adminToken = req('ADMIN_TOKEN');
+const apiToken = req('API_TOKEN');
+// Beide Schluessel schuetzen unterschiedliche Bereiche. Waeren sie gleich,
+// haette ein kompromittiertes API-Token (Alexa-Lambda) auch Admin-Zugriff.
+export function assertTokensDistinct(admin: string, api: string): void {
+  if (admin === api) throw new Error('ADMIN_TOKEN und API_TOKEN muessen sich unterscheiden');
+}
+assertTokensDistinct(adminToken, apiToken);
+
 export const config = {
   port: envPositiveNumber(process.env.PORT, 3000),
   // Zwei getrennte Schluessel (Principle of Least Privilege): ADMIN_TOKEN nur fuer

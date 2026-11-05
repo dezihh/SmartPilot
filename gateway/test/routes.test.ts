@@ -507,3 +507,11 @@ test('packages: Fehlerpfade (400/502)', async () => {
   assert.equal((list.json as { registry: unknown }).registry, null);
   deleteSetting('registry_language');
 });
+
+test('Sicherheits-Header: CSP und Nosniff auf Admin-Antworten', async () => {
+  const r = await call('GET', '/healthz');
+  assert.equal(r.status, 200);
+  assert.match(String(r.headers['content-security-policy'] ?? ''), /default-src 'self'/);
+  assert.equal(r.headers['x-content-type-options'], 'nosniff');
+  assert.equal(r.headers['x-frame-options'], 'SAMEORIGIN');
+});

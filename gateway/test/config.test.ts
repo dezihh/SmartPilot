@@ -16,7 +16,7 @@ process.env.AGENT_CLARIFICATION_BUDGET = 'abc';
 process.env.MAX_TOOL_ITERATIONS = 'abc';
 process.env.LLM_TOOL_DEADLINE_MS = 'abc';
 
-const { resolveDbPath, normalizeBasePath, envPositiveNumber, config } = await import('../src/config.js');
+const { resolveDbPath, normalizeBasePath, envPositiveNumber, config, assertTokensDistinct } = await import('../src/config.js');
 
 test('envPositiveNumber: ungueltig/0/negativ -> Default, gueltig -> Wert', () => {
   assert.equal(envPositiveNumber('5', 1), 5);
@@ -65,4 +65,9 @@ test('normalizeBasePath: nur Slashes und umgebende Leerzeichen', () => {
   assert.equal(normalizeBasePath('  /foo  '), '/foo');
   assert.equal(normalizeBasePath('foo/'), '/foo');
   assert.equal(normalizeBasePath('a/b'), '/a/b');
+});
+
+test('config: identische Tokens verhindern den Start', () => {
+  assert.throws(() => assertTokensDistinct('gleich', 'gleich'), /muessen sich unterscheiden/);
+  assert.doesNotThrow(() => assertTokensDistinct('a', 'b'));
 });

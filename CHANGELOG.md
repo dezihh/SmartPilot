@@ -47,6 +47,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   das Speichern erneut eine Bestätigung — nicht mehr erst bei geänderter
   Anzahl der Gefahrenpunkte.
 
+### Sicherheit
+
+- **Sicherheits-Header:** CSP, `X-Content-Type-Options`, `X-Frame-Options`
+  und `Referrer-Policy` werden jetzt serverseitig gesetzt. Die Admin-UI
+  verwendet keine Inline-Skripte oder externen Quellen.
+- **Getrennte Tokens erzwungen:** Der Start bricht ab, wenn `ADMIN_TOKEN` und
+  `API_TOKEN` identisch sind (vorher nur dokumentiert).
+- **Interne `http()`-Ziele sichtbar:** Nutzt ein Paket eine literale
+  `http()`-URL in ein privates Netz, erscheint das als Hinweis in der
+  Installationsvorschau. Literale URLs bleiben (anders als dynamische) von
+  der SSRF-Prüfung ausgenommen, weil LAN-Ziele gewollt sind.
+
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es

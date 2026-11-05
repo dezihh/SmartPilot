@@ -4,6 +4,7 @@
 // Bestaetigung. Konvention: nur generische Inhalte (keine Infra-Spezifika).
 import { createHash } from 'node:crypto';
 import type { SideEffect } from '../types.js';
+import { isPrivateHost } from './ssrf.js';
 
 export interface PackageParam {
   key: string;
@@ -115,6 +116,21 @@ export function meetsMinVersion(current: string, min: string | undefined): boole
 export function manifestDangerous(m: PackageManifest): { dangerous: boolean; items: string[]; info: string[] } {
   const items: string[] = [];
   const info: string[] = [];
+  // Literale http()-URLs sind nicht SSRF-geprueft (dynamische schon). Weisen
+  // wir interne Ziele sichtbar aus, damit die Bestaetigung nicht blind ist.
+  const privateHosts = (template: string): string[] => {
+    const re = /\bhttp\(\s*['"]([^'"]+)['"]/g;
+    const hosts: string[] = [];
+    for (let hit = re.exec(template); hit; hit = re.exec(template)) {
+      try {
+        const h = new URL(hit[1]!).hostname;
+        if (isPrivateHost(h)) hosts.push(h);
+      } catch {
+        // keine absolute URL - ignorieren
+      }
+    }
+    return [...new Set(hosts)];
+  };
   // stdio-Server starten einen beliebigen Prozess im Gateway-Container
   // (command/args) - immer als gefaehrlich einstufen, unabhaengig vom command.
   for (const s of m.servers ?? []) {
@@ -124,11 +140,19 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
   }
   for (const f of m.functions ?? []) {
     if (/\bshell\s*\(/.test(f.template)) items.push(`Funktion "${f.name}" nutzt shell() - fuehrt Befehle im Gateway-Container aus`);
-    if (/\bhttp\s*\(/.test(f.template)) info.push(`Funktion "${f.name}" nutzt http() - ruft externe URLs auf`);
+    if (/\bhttp\s*\(/.test(f.template)) {
+      info.push(`Funktion "${f.name}" nutzt http() - ruft externe URLs auf`);
+      const hosts = privateHosts(f.template);
+      if (hosts.length) info.push(`Funktion "${f.name}" ruft interne Adresse ${hosts.join(', ')} auf (literale http()-URL)`);
+    }
   }
   for (const a of m.actions ?? []) {
     if (a.template && /\bshell\s*\(/.test(a.template)) items.push(`Vorgang "${a.name}" nutzt shell() - fuehrt Befehle im Gateway-Container aus`);
-    if (a.template && /\bhttp\s*\(/.test(a.template)) info.push(`Vorgang "${a.name}" nutzt http() - ruft externe URLs auf`);
+    if (a.template && /\bhttp\s*\(/.test(a.template)) {
+      info.push(`Vorgang "${a.name}" nutzt http() - ruft externe URLs auf`);
+      const hosts = privateHosts(a.template);
+      if (hosts.length) info.push(`Vorgang "${a.name}" ruft interne Adresse ${hosts.join(', ')} auf (literale http()-URL)`);
+    }
   }
   return { dangerous: items.length > 0, items, info };
 }

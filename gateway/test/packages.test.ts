@@ -629,3 +629,21 @@ test('headers: Manifest-Header werden substituiert, gespeichert und gehasht', ()
   assert.deepEqual(conflictItems('hdr-test'), []);
   db_cleanup('hdr-test');
 });
+
+test('manifestDangerous: literale interne http()-URL wird sichtbar ausgewiesen', () => {
+  const m = {
+    id: 'lan',
+    version: '1.0.0',
+    name: 'LAN',
+    summary: 's',
+    description: 'd',
+    functions: [
+      { name: 'intern', template: "{{ http('http://192.168.10.5/api') }}" },
+      { name: 'extern', template: "{{ http('https://example.com/api') }}" },
+    ],
+  } as unknown as Parameters<typeof manifestDangerous>[0];
+  const d = manifestDangerous(m);
+  assert.equal(d.dangerous, false, 'http() allein bleibt Info');
+  assert.ok(d.info.some((i) => i.includes('192.168.10.5')), 'interne Adresse sichtbar');
+  assert.equal(d.info.filter((i) => i.includes('example.com')).length, 0, 'oeffentliche URL ohne Extra-Hinweis');
+});
