@@ -59,6 +59,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Installationsvorschau. Literale URLs bleiben (anders als dynamische) von
   der SSRF-Prüfung ausgenommen, weil LAN-Ziele gewollt sind.
 
+### Entwicklung
+
+- **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
+  und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
+  und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind
+  aktiv; die Datenbank-Sicherung hat einen Rundlauf-Test über alle
+  Datenspalten, MCP-Fehlerfälle sind für HTTP und stdio paritätisch getestet.
+
 ### Geplant
 
 - Native Alexa-Anbindung ohne Skill-Namen (Ausbau, siehe README „Warum es

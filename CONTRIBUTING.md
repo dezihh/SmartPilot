@@ -50,6 +50,21 @@ Für Gateway- und Lambda-Änderungen:
    Nennenswerte Änderungen zusätzlich unter `[Unreleased]` im
    [Changelog](CHANGELOG.md) eintragen.
 
+Vor dem Commit laufen im Gateway-Container alle Prüfungen (Details:
+[Deployment](doc/DEPLOYMENT.md#lokale-entwicklung-und-tests)):
+
+```bash
+npm run typecheck && npm run typecheck:tests && npm test && npm run build
+npm run lint && npm run deadcode && npm run cycles && npm run dupes
+```
+
+`lint` (ESLint), `deadcode` (knip), `cycles` (madge) und `dupes` (jscpd,
+Schwelle 3 %) müssen grün sein. Eine Schwelle darf nur **besser** werden —
+steigt sie, ist das ein Befund, kein Grund, sie zu erhöhen. Für ein
+vollständiges Hygiene-Audit gibt es den Agenten
+[`.opencode/agents/test-hygiene.md`](.opencode/agents/test-hygiene.md):
+Phasen 0–4 ausführen, Bericht reviewen.
+
 Dabei gelten drei Grundsätze:
 
 - **Klein und testbar.** Gelieferter Code kommt in kleinen, testbaren
