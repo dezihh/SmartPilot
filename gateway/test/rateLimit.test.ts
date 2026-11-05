@@ -4,7 +4,7 @@ import { checkRateLimit, resetRateLimitsForTests } from '../src/rateLimit.js';
 
 test('Rate-Limit: bis max erlaubt, danach abgelehnt', () => {
   resetRateLimitsForTests();
-  let now = 1_000_000;
+  const now = 1_000_000;
   for (let i = 0; i < 10; i++) {
     assert.equal(checkRateLimit('ip1', now), true, `Versuch ${i + 1} erlaubt`);
   }

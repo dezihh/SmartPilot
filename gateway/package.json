@@ -13,6 +13,11 @@
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
     "typecheck:tests": "tsc -p tsconfig.tests.json",
+    "lint": "eslint src test",
+    "deadcode": "knip",
+    "dupes": "jscpd src web --threshold 3",
+    "cycles": "madge --circular --extensions ts src",
+    "coverage": "node --import tsx --experimental-test-coverage --test test/*.test.ts",
     "smoke": "node scripts/smoke-test.mjs",
     "test": "node --import tsx --test test/*.test.ts"
   },
@@ -29,8 +34,13 @@
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.10",
     "@types/nunjucks": "^3.2.6",
+    "eslint": "^10.14.0",
+    "jscpd": "^5.4.2",
+    "knip": "^6.44.1",
+    "madge": "^8.0.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1"
   },
   "overrides": {
     "ip-address": "^10.7.3"

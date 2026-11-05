@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/app.ts", "scripts/*.mjs"],
+  "project": ["src/**/*.ts"],
+  "ignoreDependencies": ["mcp-searxng"],
+  "ignoreExportsUsedInFile": true
+}

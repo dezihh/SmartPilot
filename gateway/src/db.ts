@@ -1,24 +1,19 @@
 // Reiner Barrel-Export: kein DB-Seiteneffekt beim Import. Der Entrypoint
 // (src/server.ts) initialisiert die DB explizit vor dem ersten Zugriff.
-export { initDb, getDb, getSchemaVersion } from './db/schema.js';
+export { getDb, getSchemaVersion } from './db/schema.js';
 export {
-  parseAction,
   listActions,
   getAction,
   createAction,
   updateAction,
   deleteAction,
-  type ActionInput,
 } from './db/actions.js';
 export {
   listFunctions,
-  getFunction,
   getFunctionByName,
   createFunction,
   updateFunction,
   deleteFunction,
-  type ParsedFunction,
-  type FunctionInput,
 } from './db/functions.js';
 export {
   listMcpServers,
@@ -50,12 +45,6 @@ export {
   packageDiff,
   existingParams,
   parseStoredManifest,
-  type InstalledPackageRow,
-  type PackageItemRow,
-  type PackageReport,
-  type UninstallReport,
-  type DiffItem,
-  type DiffField,
 } from './db/packages.js';
 export {
   parseManifest,
@@ -64,15 +53,12 @@ export {
   manifestItems,
   paramValues,
   requiredParams,
-  manifestHash,
   deriveCategory,
   type PackageManifest,
-  type PackageParam,
 } from './core/packages.js';
 export {
   addLog,
   listLogs,
   summarizeUsage,
   recentAgentTurns,
-  type LogEntry,
 } from './db/logs.js';

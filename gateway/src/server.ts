@@ -33,8 +33,12 @@ createApp().listen(config.port, () => {
   console.log(`SmartPilot Gateway auf Port ${config.port}`);
 });
 
-if (process.env.LLM_KEEPALIVE_MS !== '0') {
+// LLM warm halten (0 = aus). Ungueltige Werte deaktivieren den Timer, statt
+// mit NaN zu laufen.
+const keepaliveRaw = (process.env.LLM_KEEPALIVE_MS ?? '').trim();
+const keepaliveMs = Number(keepaliveRaw);
+if (keepaliveRaw !== '0' && Number.isFinite(keepaliveMs) && keepaliveMs > 0) {
   setInterval(() => {
     chatCompletion([{ role: 'user', content: 'OK' }], undefined, 15000).catch(() => {});
-  }, Number(process.env.LLM_KEEPALIVE_MS ?? 120_000)).unref();
+  }, keepaliveMs).unref();
 }

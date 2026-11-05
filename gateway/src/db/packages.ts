@@ -476,7 +476,7 @@ function actionRowContent(name: string): Record<string, unknown> | null {
   };
 }
 
-export interface UninstallReport {
+interface UninstallReport {
   removed: string[];
   kept: string[];
 }
@@ -484,7 +484,7 @@ export interface UninstallReport {
 // Deinstall: entfernt nur unveranderte Paket-Zeilen (Hash-Vergleich); lokal
 // geaenderte bleiben mit Warnung. agent_tools: Paket-Tools werden abgezogen,
 // ausser andere installierte Pakete fuehren sie ebenfalls.
-export function uninstallPackage(id: string): { removed: string[]; kept: string[] } {
+export function uninstallPackage(id: string): UninstallReport {
   const db = getDb();
   const pkg = getInstalledPackage(id);
   if (!pkg) throw new Error(`Paket "${id}" ist nicht installiert`);
