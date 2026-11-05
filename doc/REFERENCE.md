@@ -118,6 +118,18 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
   `indexKey` landen die Werte im Standard-Index (`entity_index`), mit Key in
   `entity_index_<key>`.
 
+## Paket-Konfiguration (Admin-API)
+
+- `GET /admin/api/packages` — installierte Pakete (Name und Kategorie aus dem
+  persistierten Manifest) plus Registry-Liste.
+- `GET /admin/api/packages/:id/config` — Parameter eines installierten Pakets
+  (`values` mit maskierten Secrets, `params` aus dem Manifest,
+  `manifestSource`: `stored` oder `registry`).
+- `PATCH /admin/api/packages/:id/config` — `{ "params": { … },
+  "dangerousAck": true }`. Ändert nur Parameter (`configOnly`); leere Werte
+  behalten den bisherigen Stand. Ein Ack ist nötig, sobald sich der Inhalt
+  eines gefährlichen Feldes ändert.
+
 ## Vorgangsfelder
 
 | Feld | Bedeutung |

@@ -88,6 +88,7 @@ Diese Variablen liest der Gateway-Code beim Start:
 | `PORT` | nein | Gateway-Port, Standard `3000` |
 | `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/smartpilot.db` |
 | `BASE_PATH` | nein | Pfad-Prefix nur für die Admin-UI (leer = `/admin`); z. B. `/smartpilot` |
+| `TRUST_PROXY` | nein | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); hinter dem Reverse-Proxy setzen, sonst gilt das Login-Rate-Limit für alle Clients gemeinsam |
 | `LLM_MODEL` | ja | Name des LLM-Modells |
 | `LLM_MAX_TOKENS` | nein | Ausgabe-Budget, Standard `2000` |
 
@@ -326,6 +327,12 @@ Hinweise:
    jeweiligen API-Pfad.
 - Der interne Zugriff auf `/admin` erfolgt nicht über diesen öffentlichen
    VHost, sondern direkt im LAN oder über einen getrennten internen VHost.
+- `location / { return 404; }` sperrt `/api/lambda-trace` und alles Übrige mit.
+   Die Route nur für eine gezielte Fehlersuche vorübergehend ergänzen, nie
+   dauerhaft veröffentlichen.
+- `TRUST_PROXY=1` (ein Hop) setzen, damit das Gateway die echte Client-IP aus
+   `X-Forwarded-For` liest. Ohne das teilen sich alle Clients ein
+   Rate-Limit-Konto.
 
 ### Weitere Varianten (nur beschrieben)
 

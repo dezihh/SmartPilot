@@ -166,15 +166,35 @@ Das Modell muss:
 Reasoning-Modelle lösen komplexe Kaskaden oft besser, benötigen aber mehr Zeit
 und ein ausreichend großes Ausgabe-Budget.
 
+## Installierte Pakete
+
+Installierte Pakete zeigen ihre Parameter unter **Wartung → Installierte
+Pakete → Konfigurieren**. Die Ansicht wird aus dem Manifest abgeleitet
+(`label`, `help`, `type`, `required`, `secret`) — es gibt keine
+paketspezifische Oberfläche. Speichern ändert nur die Parameter: Version,
+Quelle und Installationszeitpunkt bleiben unverändert
+(`configOnly`). Secrets werden maskiert; ein leeres Feld behält den
+bisherigen Wert.
+
+Lokal geänderte Zeilen bleiben beim Speichern erhalten (Konflikt „keep“).
+Ändert ein Parameter den Inhalt eines gefährlichen Feldes (`shell()`,
+`command`, `args`, `env`), verlangt das Speichern erneut eine Bestätigung.
+
+Werte, die bewusst kein Parameter sind (z. B. eine Region), werden weiterhin
+im jeweiligen Editor (MCP-Server, Funktion, Index) angepasst.
+
 ## Konfigurationsebenen
 
 | Ebene | Inhalt | Beispiele |
 |---|---|---|
-| `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` |
+| `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `TRUST_PROXY` |
 | Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `http_timeout_ms`, `http_body_cap` |
+| Paket-Parameter | Werte eines installierten Pakets | `host`, `token`, `port` (aus `manifest.params`) |
 | DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
 
 Ein Setting mit leerem Wert fällt auf den `.env`- bzw. Code-Default zurück.
+`TRUST_PROXY` gehört hinter einen Reverse-Proxy gesetzt (Hops, z. B. `1`),
+sonst sieht das Gateway nur die Proxy-IP.
 
 ## Abnahme
 

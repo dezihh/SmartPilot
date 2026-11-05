@@ -29,6 +29,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Persistiertes Manifest:** Migration 6 speichert das beim Install
   aufgelöste Manifest in `packages.manifest`; die Konfigurationsansicht
   arbeitet damit auch ohne erreichbare Registry.
+- **HTTP-Header in Paketmanifesten:** `servers[].headers` war dokumentiert,
+  wurde aber nicht übernommen. Jetzt landen Header (Werte per `${key}`
+  ersetzbar) in `mcp_servers.headers`; Migration 7 rebased die Item-Hashes
+  ohne Scheinkonflikte. Header-Werte erscheinen im Diff nur als Name.
 - **Paketmanager-Oberfläche:** Filter nach Kategorie, Klartextnamen und
   Kategorie-Chips bei installierten Paketen, Konfigurationsdialog aus den
   Manifest-Parametern (mit `help`/`type`, Secrets bleiben maskiert).

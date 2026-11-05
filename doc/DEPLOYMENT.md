@@ -247,3 +247,13 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, ADMI
 - `GATEWAY_TOKEN` nur im `Authorization`-Header; in Diagnose-Logs maskiert.
 - Öffentlich erreichbar ist nur `/api/query` (Bearer). Admin-UI/API und die
   früheren Pfade `/alexa` und `/privacy` sind nicht öffentlich exponiert.
+- `TRUST_PROXY` hinter nginx setzen, sonst greift das Login-Rate-Limit nicht
+  pro Client (ein Angreifer könnte den Admin-Login global sperren).
+- `/api/lambda-trace` ist reine Diagnose und bleibt im öffentlichen VHost
+  gesperrt.
+- **Paket-Registry = Code-Vertrauensgrenze:** Manifeste sind nicht signiert.
+  `shell()`/stdio verlangen ein Ack; die Konfigurationsansicht verlangt es
+  erneut, sobald ein Parameter ein gefährliches Feld (`shell()`, `command`,
+  `args`, `env`) verändert. `http()`-Ziele in Manifesten gelten als
+  vertraut (SSRF-Prüfung nur für dynamische, argumentgesteuerte URLs) —
+  nur Registries einsetzen, denen man vertraut.

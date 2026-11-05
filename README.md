@@ -114,6 +114,10 @@ der Admin-Oberfläche. Ein Paket legt MCP-Server, Entity-Index, Funktionen und
 Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
 
 - Verfügbare Pakete: [packages/de/index.json](packages/de/index.json)
+- Kategorien: **Treiber** (MCP-Server), **Funktion** (Vorgänge/Funktionen)
+  und **gemischt** — filterbar in der Oberfläche.
+- Parameter nachträglich ändern: **Konfigurieren** an der installierten
+  Karte; die Ansicht entsteht generisch aus dem Manifest.
 - Eigene Pakete schreiben:
   [packages/README.md](packages/README.md) und
   [doc/RECIPES.md](doc/RECIPES.md)
@@ -136,6 +140,18 @@ Automatisch abgesichert:
   Brute-Force
 - JSON-Body-Limit (1 MB), gepinnte Dependencies (`npm ci` + Lockfile),
   Secrets nur via `.env` (nie im Repo)
+
+Für den Betrieb hinter dem Reverse-Proxy:
+
+- **`TRUST_PROXY` setzen** (Anzahl der Hops, z. B. `1`). Sonst sieht das
+  Gateway nur die Proxy-IP: das Login-Rate-Limit gilt dann global statt pro
+  Client, und ein einzelner Angreifer kann den Admin-Login für alle sperren.
+- **`/api/lambda-trace` im öffentlichen VHost sperren.** Die Route ist nur für
+  die Fehlersuche gedacht; der Normalbetrieb braucht sie nicht.
+- **Paket-Registry ist eine Code-Vertrauensgrenze.** Manifeste kommen per
+  HTTPS aus dem Repo, sind aber nicht signiert. `shell()` und stdio-Server
+  verlangen vor dem Install eine Bestätigung; geprüfte Signaturen sind erst
+  geplant. Nur Registry-Quellen einsetzen, denen man vertraut.
 
 ## Repository-Struktur
 

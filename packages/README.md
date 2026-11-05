@@ -33,6 +33,21 @@ schlägt der Install mit klarer Meldung fehl. Secrets (API-Keys, Token) sind
 als solche markiert, landen nur in der jeweiligen Zielzeile und werden nie
 geloggt.
 
+Jeder Parameter kann die Darstellung steuern:
+
+| Feld | Bedeutung |
+|---|---|
+| `key`, `label` | technischer Name (`${key}`) und Beschriftung (Pflicht) |
+| `help` | Hilfetext unter dem Feld (optional) |
+| `type` | `text`, `password` oder `number` (optional; `secret: true` wirkt wie `password`) |
+| `required`, `default`, `placeholder`, `secret` | Pflichtfeld, Vorbelegung, Platzhalter, Maskierung |
+
+Nach dem Install lassen sich die Werte über **Konfigurieren** in der
+Paketliste erneut ändern — ohne Version oder Quelle anzutasten. Secrets
+bleiben dabei maskiert („(gesetzt)“, leer lassen behält den Wert). Fließt
+ein geänderter Wert in ein gefährliches Feld (`shell()`, `command`, `args`,
+`env`), verlangt das Speichern erneut eine Bestätigung.
+
 Was bewusst kein Parameter ist (z. B. die Region im `autobahn`-Paket), wird
 nach dem Install direkt im Editor angepasst — die Paket-README sagt, wo und
 wie. Alternativ kann ein Manifest auch offline importiert werden; Vorschau
@@ -80,6 +95,7 @@ einen Branch, kommen die Pakete genau dieses Branches.
 | `name`, `summary`, `description` | ja | Anzeige und Kurzbeschreibung |
 | `author`, `license`, `homepage` | empfohlen | Herkunft und Lizenz (Vertrauensmodell) |
 | `language` | optional | Sprachkuerzel, Default `de` |
+| `category` | optional | `driver` (MCP-Treiber), `function` (Funktionen/Vorgänge) oder `mixed`; fehlt der Wert, wird er aus den Artefakten abgeleitet |
 | `requires`, `setupDocs` | optional | benoetigte Gegenseite / Einrichtungshinweise |
 | `minGatewayVersion` | optional | getestete Gateway-Mindestversion (wird **erzwungen**) |
 | `changelog` | empfohlen | Versionshistorie und Upgrade-Hinweise |

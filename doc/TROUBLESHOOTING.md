@@ -12,6 +12,19 @@ Der Monitor spart bei der Fehlersuche mehrere externe Schichten.
 3. Trage den exakten Wert aus `ADMIN_TOKEN` rechts oben ein.
 4. Prüfe Browser-Netzwerkfehler und Gateway-Log.
 
+### Login plötzlich für alle gesperrt (429)
+
+Hinter einem Reverse-Proxy ohne `TRUST_PROXY` sieht das Gateway nur die
+Proxy-IP. Dann teilen sich alle Clients ein Login-Limit (10/min), und ein
+einziger Angreifer kann den Admin-Login sperren. Setze `TRUST_PROXY=1`
+(ein Hop) und starte das Gateway neu.
+
+### Konfigurieren meldet „Bestätigung erforderlich“
+
+Das ist beabsichtigt: Ein Parameter fließt in `shell()`, `command`, `args`
+oder `env`, und sein Wert hat sich geändert. Erst nach ausdrücklicher
+Bestätigung wird gespeichert.
+
 ## Tool-Registry
 
 ### „Tools abfragen“ liefert nichts

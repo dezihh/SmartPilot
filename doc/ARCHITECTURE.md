@@ -256,7 +256,7 @@ Schema in `db/schema.ts` (Init + idempotente Migrationen inline):
 | `tpl_functions` | Funktions-Registry: `template`, Parameter-Schema, `budget`, `inventory_prompt`, `side_effect` |
 | `prompts` | `agent_system`, `agent_inventory` |
 | `settings` | Laufzeit-Einstellungen (u. a. `assistant_name`, `fuzzy_global`, `session_followup`, `memory_turns`/`memory_minutes`, `agent_tools`, `entity_index*`, `registry_language`) |
-| `packages` / `package_items` | Provenienz installierter Pakete (Version, Quelle, Hashes der angelegten Artefakte) |
+| `packages` / `package_items` | Provenienz installierter Pakete (Version, Quelle, `manifest` als persistiertes, aufgelöstes Manifest, Hashes der angelegten Artefakte) |
 | `logs` | Request-Log (Route, Latenz, Trace, Token-Usage) |
 
 Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
@@ -278,12 +278,22 @@ Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
   `registry_language`, Default `de`), alternativ **Offline-Import**.
 - **Manifest** (`manifest.json`): `id`/`version` (semver), Anzeige- und
   Vertrauensfelder (`author`, `license`, `homepage`, `changelog`),
-  `minGatewayVersion` (erzwungen), `params` (`${key}`-Substitution),
-  `servers`/`functions`/`indexes`, `allowTools`.
+  `category` (`driver`/`function`/`mixed`, sonst aus den Artefakten
+  abgeleitet), `minGatewayVersion` (erzwungen), `params` (`${key}`-Substitution,
+  optional `help`/`type`/`secret`), `servers` (inkl. `headers`),
+  `functions`/`indexes`, `allowTools`.
+- **Persistenz**: Das beim Install aufgelöste Manifest liegt in
+  `packages.manifest` (Migration 6). Die Konfigurationsansicht
+  (`GET`/`PATCH /admin/api/packages/:id/config`, `configOnly`) arbeitet damit
+  ohne Registry-Zugriff und ändert nur Parameter — Version, Quelle,
+  `registry_url` und `installed_at` bleiben.
 - **Sicherheit/Vorschau**: `shell()`-Templates gelten als **gefährlich** und
   verlangen eine Bestätigung (`dangerousAck`); `http()` als Info. Installation
   ist Dry-Run-fähig, Upsert mit Konflikt-Entscheidungen pro Element
-  (`know`-Abgleich über `content_hash`), Deinstallation, JSON-Backup/Restore.
+  (`know`-Abgleich über `content_hash`), Deinstallation, JSON-Backup/Restore
+  (inkl. persistiertem Manifest). Ein `configOnly`-Speichern verlangt erneut
+  ein Ack, sobald sich der Inhalt eines gefährlichen Feldes ändert
+  (`dangerSignature`), nicht erst bei geänderter Anzahl der Gefahrenpunkte.
 
 ## Externe Dienste und Konfiguration
 
