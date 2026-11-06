@@ -33,6 +33,9 @@ werden dabei nicht überschrieben.
 | Tool-Deadline | innerhalb des verfügbaren Antwortfensters halten |
 | Agent-Tool-Auswahl | nur tatsächlich benötigte Werkzeuge erlauben |
 | Paketsprache (`registry_language`) | Standard `de`; bestimmt die Sprache der Paket-Registry |
+| Gedächtnis (`memory_turns`, `memory_minutes`) | Standard beibehalten; `memory_scope=session` begrenzt den DB-Recall auf die eigene Sitzung (Mehrpersonenhaushalte) |
+| Verbatim-Logs (`log_verbatim`) | `1` (Standard) speichert Frage/Antwort; `0` speichert nur Metadaten |
+| Log-Aufbewahrung (`log_retention_days`) | Standard 30 Tage (1–3650) |
 
 Ein separates kleines Tool-Modell ist eine spätere Optimierung. Zuerst sollte
 der gesamte Ablauf mit einem Modell zuverlässig funktionieren.

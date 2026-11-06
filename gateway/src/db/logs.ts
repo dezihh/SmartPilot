@@ -1,11 +1,19 @@
 import { getDb } from './schema.js';
+import { getSetting } from './settings.js';
 import type { TraceEvent } from '../types.js';
 
-export function recentAgentTurns(limit = 2, maxAgeMs = 30 * 60_000): { query: string; response: string; ageMs: number }[] {
-  const rows = getDb().prepare(
-      "SELECT ts, query, response FROM logs WHERE route = 'agent' AND response != '' ORDER BY id DESC LIMIT ?"
-    )
-    .all(limit) as { ts?: string; query: string; response: string }[];
+export function recentAgentTurns(
+  limit = 2,
+  maxAgeMs = 30 * 60_000,
+  sessionId?: string
+): { query: string; response: string; ageMs: number }[] {
+  const base =
+    "SELECT ts, query, response FROM logs WHERE route = 'agent' AND response != ''";
+  const rows = (
+    sessionId
+      ? getDb().prepare(`${base} AND session_id = ? ORDER BY id DESC LIMIT ?`).all(sessionId, limit)
+      : getDb().prepare(`${base} ORDER BY id DESC LIMIT ?`).all(limit)
+  ) as { ts?: string; query: string; response: string }[];
   const now = Date.now();
   const parsed = rows
     .map((r) => {
@@ -53,16 +61,19 @@ export function redactTrace(value: unknown): unknown {
 }
 
 export function addLog(entry: LogEntry): void {
+  // Datenschutz: Mit log_verbatim=0 werden fuer Agent-Turns keine Frage/
+  // Antwort-Texte gespeichert, nur Metadaten (Route, Dauer, Tokens).
+  const verbatim = entry.route !== 'agent' || getSetting('log_verbatim') !== '0';
   getDb().prepare(
     `INSERT INTO logs (session_id, query, route, action_id, score, response, duration_ms, trace, prompt_tokens, completion_tokens, llm_model)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     entry.sessionId,
-    entry.query,
+    verbatim ? entry.query : '',
     entry.route,
     entry.actionId ?? null,
     entry.score ?? null,
-    entry.response,
+    verbatim ? entry.response : '',
     entry.durationMs,
     JSON.stringify(redactTrace(entry.trace)),
     entry.promptTokens ?? null,
@@ -72,7 +83,9 @@ export function addLog(entry: LogEntry): void {
   // Retention: gelegentlich alte Logs entfernen (kein eigener Cron im Gateway).
   if (++logInserts % 200 === 0) {
     try {
-      getDb().prepare("DELETE FROM logs WHERE ts < datetime('now', '-30 days')").run();
+      const raw = Number(getSetting('log_retention_days'));
+      const days = Number.isFinite(raw) && raw >= 1 ? Math.min(Math.floor(raw), 3650) : 30;
+      getDb().prepare('DELETE FROM logs WHERE ts < datetime(\'now\', ?)').run(`-${days} days`);
     } catch {
       /* Retention ist best-effort */
     }

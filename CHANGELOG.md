@@ -60,6 +60,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `TZ` (Default `Europe/Berlin`) statt der Container-Zeitzone (UTC).
 - **MCP-Negativ-Cache:** Ein fehlgeschlagener Init wird für
   `MCP_FAILURE_TTL_MS` (Default 30 s) nicht erneut versucht.
+- **Datenschutz in den Logs:** `log_verbatim=0` speichert für Agent-Turns
+  keine Frage/Antwort-Texte mehr; `log_retention_days` macht die Aufbewahrung
+  konfigurierbar (Standard 30, 1–3650 Tage).
+- **Agent-Gedächtnis wählbar:** `memory_scope=session` begrenzt den DB-Recall
+  auf die eigene Sitzung (Mehrpersonenhaushalte); Standard bleibt
+  sitzungsübergreifend.
 - **Zentraler JSON-Fehlerhandler:** Kaputtes JSON oder ein zu großer Body
   liefern jetzt 400/413 als JSON statt der Express-HTML-Seite.
 - **ID-Validierung:** Ungültige numerische IDs (`abc`, `0`, `-1`) liefern 400,

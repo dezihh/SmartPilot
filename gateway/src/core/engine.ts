@@ -46,13 +46,24 @@ function memoryMinutes(): number {
   return getSettingNum('memory_minutes', 30);
 }
 
+// Standard: DB-Recall ueber Sitzungsgrenzen (bisheriges Verhalten). Mit
+// memory_scope=session bleibt der Recall auf die eigene Sitzung begrenzt -
+// wichtig in Mehrpersonenhaushalten.
+function memoryScope(): 'session' | 'global' {
+  return getSetting('memory_scope') === 'session' ? 'session' : 'global';
+}
+
 function priorTurns(sessionId: string, currentQuery = ''): ChatMessage[] {
   const maxTurns = memoryTurns();
   const inMem = sessionPriorTurns(sessionId, maxTurns * 2);
   if (inMem.length > 0) return dropRepeatedTurns(inMem, currentQuery);
   // DB-Recall als ALT markieren: Das LLM weiss, dass die Zeit fortgeschritten
   // ist, und kann selbst entscheiden, ob der Inhalt noch relevant ist.
-  const turns = recentAgentTurns(maxTurns, memoryMinutes() * 60_000);
+  const turns = recentAgentTurns(
+    maxTurns,
+    memoryMinutes() * 60_000,
+    memoryScope() === 'session' ? sessionId : undefined
+  );
   if (turns.length === 0) return [];
   const ageHits = turns.filter((t) => t.ageMs > 5 * 60_000);
   const out: ChatMessage[] = [];

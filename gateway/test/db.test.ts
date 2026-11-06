@@ -169,3 +169,27 @@ test('addLog: Secrets in Trace-Details werden redigiert (F-13)', () => {
   assert.equal(trace[0]!.detail.args.api_key, '***');
   assert.equal(trace[0]!.detail.args.frage, 'ok');
 });
+
+test('Logs: log_verbatim=0 speichert keinen Klartext', () => {
+  setSetting('log_verbatim', '0');
+  try {
+    addLog({ sessionId: 'priv-test', query: 'geheim', route: 'agent', response: 'antwort', durationMs: 1, trace: [] });
+    const row = getDb()
+      .prepare("SELECT query, response FROM logs WHERE session_id = 'priv-test'")
+      .get() as { query: string; response: string };
+    assert.equal(row.query, '');
+    assert.equal(row.response, '');
+  } finally {
+    deleteSetting('log_verbatim');
+  }
+});
+
+test('recentAgentTurns: optional auf eine Sitzung begrenzt', () => {
+  addLog({ sessionId: 'scope-a', query: 'frage-a', route: 'agent', response: 'antwort-a', durationMs: 1, trace: [] });
+  addLog({ sessionId: 'scope-b', query: 'frage-b', route: 'agent', response: 'antwort-b', durationMs: 1, trace: [] });
+  const onlyA = recentAgentTurns(5, 60 * 60_000, 'scope-a');
+  assert.ok(onlyA.length >= 1);
+  assert.ok(onlyA.every((t) => t.query === 'frage-a'), 'nur die eigene Sitzung');
+  const all = recentAgentTurns(50, 60 * 60_000);
+  assert.ok(all.some((t) => t.query === 'frage-b'), 'ohne Filter sitzungsuebergreifend');
+});
