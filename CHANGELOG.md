@@ -129,6 +129,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   (Begründungen bleiben), `errMsg`/`parseId` als gemeinsame Helfer,
   Manifest-Projektion einmal statt zweimal, `McpServerRow` statt drei
   Inline-Typen, Template-Re-Exports entfernt.
+- **CI-Gates erweitert:** Die Lambda-CI misst Coverage für
+  `lambda_function.py` (Schwelle 80 %); die Gateway-CI baut zusätzlich das
+  Runtime-Image (`docker build --target runtime`).
 - **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
   und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
   und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind

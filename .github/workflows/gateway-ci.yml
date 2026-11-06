@@ -64,6 +64,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Docker-Image (runtime)
+        run: docker build --target runtime -t smartpilot-gateway:ci .
+
       - name: Tests + Coverage-Gate
         run: npm run coverage
 
