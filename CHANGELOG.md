@@ -137,6 +137,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Vertragstest für ausgelieferte Pakete:** Prüft Manifeste, Platzhalter,
   Versionen und die Sicherheitswirkung der Registry-Pakete; in CI ist ein
   fehlendes Paketverzeichnis ein Fehler statt eines stillen Skips.
+- **Paket-Vertrag in der Registry-CI:** Änderungen unter `packages/**` lösen
+  jetzt den Vertragstest aus (eigener Job, Node 22). Vorher lief dort nur die
+  Index-Prüfung, ein defektes Manifest erreichte `main` ungeprüft und war nach
+  dem Registry-Cache (60 s) für alle Installationen live.
 - **Actions auf Commit-SHAs gepinnt:** Alle Workflows referenzieren die
   GitHub-Actions per SHA (Kommentar nennt die Version) statt per beweglichem
   Tag.

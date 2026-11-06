@@ -2,6 +2,9 @@ name: Registry CI
 
 # Prueft, dass packages/<lang>/index.json mit den Manifesten synchron ist.
 # Der Index wird aus den Manifesten generiert; Drift laesst die CI rot werden.
+# Der zweite Job prueft die Manifeste selbst (Schema, Platzhalter, Secrets,
+# Sicherheitswirkung) - sonst erreicht ein defektes Paket ungeprueft `main`
+# und ist nach 60 s Registry-Cache fuer alle Installationen live.
 on:
   push:
     branches: [main]
@@ -27,7 +30,32 @@ jobs:
       - name: Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version: '26'
 
       - name: Registry-Index gegen Manifeste pruefen
         run: node scripts/build-registry-index.mjs --check
+
+  contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gateway
+    env:
+      # Explizit, damit der Test die Manifeste des Checkouts prueft und nicht
+      # versehentlich uebersprungen wird.
+      PACKAGES_DIR: ${{ github.workspace }}/packages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: gateway/package-lock.json
+
+      - name: Installieren
+        run: npm ci
+
+      - name: Paket-Vertrag (Schema, Platzhalter, Secrets, Sicherheitswirkung)
+        run: node --import tsx --test test/contract-packages-registry.test.ts
