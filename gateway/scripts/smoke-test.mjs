@@ -82,8 +82,11 @@ async function main() {
     check('  /api/query mit falschem Bearer → 401', wrongAuth.status === 401, `HTTP ${wrongAuth.status}`);
     const adminOnQuery = await post('/api/query', { text: 'test' }, TOKEN);
     check('  /api/query mit ADMIN_TOKEN → 401 (Split)', adminOnQuery.status === 401, `HTTP ${adminOnQuery.status}`);
-    const adminNoCookie = await get(`${ADMIN}/`, TOKEN);
-    check('  /admin ohne Session → 4xx', adminNoCookie.status >= 400, `HTTP ${adminNoCookie.status}`);
+    const adminAnon = await get(`${ADMIN}/`, '');
+    check('  /admin ohne Credentials → 401', adminAnon.status === 401, `HTTP ${adminAnon.status}`);
+    // Bearer-Token ODER Session-Cookie oeffnen die Admin-UI (Proxy-Modus).
+    const adminBearer = await get(`${ADMIN}/`, TOKEN);
+    check('  /admin mit Bearer → 200', adminBearer.status === 200, `HTTP ${adminBearer.status}`);
     const loginWrong = await post(`${ADMIN}/login`, { token: 'falsch' }, '');
     check('  /admin/login falscher Token → 401', loginWrong.status === 401, `HTTP ${loginWrong.status}`);
     const loginOk = await post(`${ADMIN}/login`, { token: TOKEN }, '');

@@ -156,6 +156,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Node 26 (Active LTS):** Runtime-Image, `engines.node` und CI laufen auf
   Node 26.13.0 (`>=26.0.0`). Aus dem Quellcode betrieben setzt das Gateway
   damit Node 26 voraus; das Docker-Image bringt es mit.
+- **Smoke-Test korrigiert:** `/admin` wird jetzt ohne Credentials auf `401`
+  und mit Bearer-Token auf `200` geprüft. Die alte Erwartung („4xx trotz
+  Bearer“) widersprach dem dokumentierten Token-oder-Cookie-Modus.
 - **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
   und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
   und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind
