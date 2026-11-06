@@ -158,6 +158,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **CI-Gates erweitert:** Die Lambda-CI misst Coverage für
   `lambda_function.py` (Schwelle 80 %); die Gateway-CI baut zusätzlich das
   Runtime-Image (`docker build --target runtime`).
+- **Strukturierte Logzeilen mit Anfrage-Kennung:** eine Zeile pro Ereignis
+  (`Zeit LEVEL req=… Text k=v`); `LOG_LEVEL` steuert die Ausführlichkeit
+  (ungültige Werte verhindern den Start). Jede Anfrage bekommt eine
+  `X-Request-ID` (übernommen, wenn im erwarteten Zeichensatz, sonst neue UUID),
+  die im Antwortheader und in allen Logzeilen dieses Requests steht.
+- **Metriken:** `GET /metrics` liefert Prometheus-Text (`smartpilot_http_requests_total`,
+  `…_duration_seconds_sum`/`_count`, `…_uptime_seconds`, `…_resident_memory_bytes`)
+  — geschützt durch `ADMIN_TOKEN`.
 - **CI-Matrix 22 + 26:** Die Gateway-CI testet zusätzlich gegen Node 26
   (Active LTS seit 28.10.2026). Die gepinnte Runtime bleibt vorerst 22.
 - **Node 26 (Active LTS):** Runtime-Image, `engines.node` und CI laufen auf

@@ -167,6 +167,7 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `TZ` | `Europe/Berlin` | Zeitzone fuer `now.hour`/`now.date`/`now.time` im Template-Kontext |
 | `MCP_FAILURE_TTL_MS` | `30000` | Sperre nach fehlgeschlagenem MCP-Init (kein erneuter Versuch im Fenster) |
 | `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; prüft den Header `X-Alexa-Skill-Id` der Lambda nur warnend (reine Log-Info, **keine** Sicherheitsgrenze) |
+| `LOG_LEVEL` | `info` | Ausführlichkeit der Logzeilen: `debug`, `info`, `warn`, `error` (anderer Wert verhindert den Start) |
 | `SESSION_MAX_HOURS` | `24` | absolute Obergrenze einer Admin-Session (Sliding-TTL verlängert sonst unbegrenzt) |
 | `GATEWAY_PORT` | `3000` | nur Compose-Host-Mapping (der Code liest `PORT`) |
 

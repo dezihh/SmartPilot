@@ -1,4 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { createSession, requestAuthorized, bearerToken, cookieFor, requireAdminAuth } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
@@ -8,6 +9,8 @@ import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
 import { mcpRoutes } from './routes/mcp.js';
 import { packagesRoutes } from './routes/packages.js';
+import { runWithRequestId, log, logError } from './core/logger.js';
+import { incCounter, setGauge, renderMetrics } from './core/metrics.js';
 
 // Baut die Express-App (ohne listen), damit Routen/Tests sie direkt nutzen
 // koennen. Der Entry src/server.ts startet sie nur.
@@ -16,6 +19,41 @@ export function createApp(): Express {
   // Hinter einem Reverse-Proxy die echte Client-IP aus X-Forwarded-For lesen
   // (sonst greift das Rate-Limit fuer alle Clients gemeinsam auf die Proxy-IP).
   if (config.trustProxy !== undefined) app.set('trust proxy', config.trustProxy);
+
+  // Anfrage-Kennung: uebernommene X-Request-ID (nur im erwarteten Zeichen-
+  // satz) oder eine neue UUID. Sie steht im Antwortheader und in jeder
+  // Logzeile dieses Requests, damit Proxy-Log und Gateway-Log zusammenfinden.
+  app.use((req, res, next) => {
+    const incoming = String(req.headers['x-request-id'] ?? '').trim();
+    const requestId = /^[A-Za-z0-9._-]{8,64}$/.test(incoming) ? incoming : randomUUID();
+    res.setHeader('X-Request-ID', requestId);
+    const startedAt = Date.now();
+    // Healthchecks laufen alle 30 s - nur auf debug protokollieren.
+    const level = req.path === '/healthz' ? 'debug' : 'info';
+    let logged = false;
+    res.on('finish', () => {
+      logged = true;
+      const ms = Date.now() - startedAt;
+      log[level]('http', {
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        ms,
+      });
+      // Route statt Pfad als Label: dynamische IDs wuerden die Anzahl der
+      // Zeitreihen unbegrenzt wachsen lassen.
+      const route = req.route?.path ?? 'unmatched';
+      const status = String(res.statusCode);
+      incCounter('smartpilot_http_requests_total', { status, route }, 'HTTP-Anfragen je Status und Route');
+      incCounter('smartpilot_http_request_duration_seconds_sum', {}, 'Summe der Antwortzeiten in Sekunden', ms / 1000);
+      incCounter('smartpilot_http_request_duration_seconds_count', {}, 'Anzahl gemessener Antwortzeiten');
+    });
+    res.on('close', () => {
+      if (logged) return;
+      log.warn('http abgebrochen', { method: req.method, path: req.path, ms: Date.now() - startedAt });
+    });
+    runWithRequestId(requestId, next);
+  });
   // Sicherheits-Header: Die Admin-UI laedt ausschliesslich eigene Module und
   // spricht nur mit der eigenen Origin. Kein Inline-Skript, keine externen
   // Quellen. Der Proxy darf eigene Header (HSTS) zusaetzlich setzen.
@@ -47,6 +85,15 @@ export function createApp(): Express {
       // DB nicht erreichbar oder nicht schreibbar -> Container ist nicht gesund.
       res.status(503).json({ ok: false, error: 'db nicht erreichbar' });
     }
+  });
+
+  // Metriken im Prometheus-Format. Nur mit Admin-Token/Cookie, weil die
+  // Zeitreihen Routen und Fehlerraten des Gateways offenlegen.
+  app.get('/metrics', requireAdminAuth, (_req, res) => {
+    setGauge('smartpilot_uptime_seconds', Math.round(process.uptime()), {}, 'Laufzeit des Prozesses');
+    setGauge('smartpilot_resident_memory_bytes', process.memoryUsage().rss, {}, 'Resident-Speicher des Prozesses');
+    res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+    res.send(renderMetrics());
   });
 
   const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
@@ -140,10 +187,10 @@ app.use(`${adminBase}/api`, (req, res, next) => {
 
   // Zentraler JSON-Fehlerhandler: Parser-Fehler (kaputtes JSON, zu grosser
   // Body) sollen nicht die Express-HTML-Seite ausliefern.
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     const status = Number((err as { status?: number }).status) || 500;
     const tooLarge = (err as { type?: string }).type === 'entity.too.large';
-    if (status >= 500) console.error('[http]', err);
+    if (status >= 500) logError('Anfrage fehlgeschlagen', err, { path: req.path, status });
     res
       .status(status)
       .json({ error: tooLarge ? 'Anfrage zu gross' : status < 500 ? 'Ungueltige Anfrage' : 'Interner Fehler' });

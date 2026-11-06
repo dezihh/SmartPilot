@@ -4,6 +4,7 @@ import { requireApiAuth } from '../auth.js';
 import { checkRateLimit } from '../rateLimit.js';
 import { config } from '../config.js';
 import { processQuery } from '../core/engine.js';
+import { log } from '../core/logger.js';
 import { addLog, getSetting } from '../db.js';
 export const queryRoutes = Router();
 
@@ -23,7 +24,7 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
   // applicationId-Pruefung macht die Lambda (sb.skill_id). Hier nur Warnung.
   const skillId = String(req.headers['x-alexa-skill-id'] ?? '').slice(0, 120);
   if (skillId && config.alexaSkillId && skillId !== config.alexaSkillId) {
-    console.warn('[query] Skill-ID-Mismatch: Header=%s erwartet=%s', skillId, config.alexaSkillId);
+    log.warn('[query] Skill-ID-Mismatch', { header: skillId, expected: config.alexaSkillId });
   }
   const result = await processQuery({
     sessionId: body.sessionId ?? 'api-test',

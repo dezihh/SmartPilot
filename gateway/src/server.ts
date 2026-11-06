@@ -5,6 +5,10 @@ import { stopAllClients } from './mcp/registry.js';
 import { provisionMcpServers, npmInstallRunner, npmPruneRunner } from './mcp/provision.js';
 import { chatCompletion } from './llm/client.js';
 import { createApp } from './app.js';
+import { log, logError, setLogLevel } from './core/logger.js';
+
+// Log-Level vor allem anderen setzen, damit auch die Startmeldungen passen.
+setLogLevel(config.logLevel);
 
 // DB explizit vor dem ersten Zugriff initialisieren (kein Import-Seiteneffekt
 // in db.ts). Tests rufen initDb weiterhin selbst mit Temp-Pfad auf.
@@ -23,21 +27,21 @@ try {
     runInstall: npmInstallRunner,
     runPrune: npmPruneRunner,
   });
-  if (report.installed.length) console.log(`MCP-Artefakte provisioniert: ${report.installed.join(', ')}`);
-  if (report.removed.length) console.log(`MCP-Artefakte entfernt: ${report.removed.join(', ')}`);
-  if (report.failed.length) console.warn('MCP-Provisionierung fehlgeschlagen:', report.failed);
+  if (report.installed.length) log.info('MCP-Artefakte provisioniert', { specs: report.installed });
+  if (report.removed.length) log.info('MCP-Artefakte entfernt', { specs: report.removed });
+  if (report.failed.length) log.warn('MCP-Provisionierung fehlgeschlagen', { failed: report.failed });
 } catch (e) {
-  console.warn('MCP-Provisionierung uebersprungen:', e);
+  logError('MCP-Provisionierung uebersprungen', e);
 }
 
 const server = createApp().listen(config.port, () => {
-  console.log(`SmartPilot Gateway auf Port ${config.port}`);
+  log.info(`SmartPilot Gateway auf Port ${config.port}`, { log_level: config.logLevel });
 });
 
 // Docker/Compose beendet den Container mit SIGTERM. Ohne Handler blieben
 // stdio-Kindprozesse am Leben und die SQLite-WAL unaufgeraeumt.
 function shutdown(signal: string): void {
-  console.log(`Signal ${signal}: Gateway wird beendet`);
+  log.info('Gateway wird beendet', { signal });
   server.close(() => {
     try { stopAllClients(); } catch { /* best effort */ }
     try { closeDb(); } catch { /* best effort */ }

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { parseLogLevel, type LogLevel } from './core/logger.js';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
@@ -30,6 +31,16 @@ export function envPositiveNumber(raw: string | undefined, fallback: number): nu
   if (raw === undefined || raw.trim() === '') return fallback;
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+// Log-Level aus der Umgebung. Ein Tippfehler soll beim Start auffallen statt
+// still auf 'info' zurueckzufallen; fehlend/leer bedeutet 'info'.
+export function resolveLogLevel(raw: string | undefined): LogLevel {
+  const trimmed = (raw ?? '').trim();
+  if (!trimmed) return 'info';
+  const level = parseLogLevel(trimmed);
+  if (!level) throw new Error(`LOG_LEVEL ungueltig: ${trimmed} (erlaubt: debug, info, warn, error)`);
+  return level;
 }
 
 function req(name: string): string {
@@ -85,6 +96,8 @@ export const config = {
   // Zeitzone fuer den Template-Kontext (now.hour/date/time). Der Container
   // laeuft in UTC; ohne explizite Zone waeren "Guten Morgen"-Templates falsch.
   timezone: (process.env.TZ ?? '').trim() || 'Europe/Berlin',
+  // Ausfuehrlichkeit der Logzeilen (debug: zusaetzlich Stacks/Tool-Details).
+  logLevel: resolveLogLevel(process.env.LOG_LEVEL),
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),
