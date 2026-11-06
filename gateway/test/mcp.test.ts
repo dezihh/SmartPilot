@@ -307,3 +307,11 @@ test('getMcpContext: parallele Kaltstarts laden einen Server nur einmal (F-32)',
     getDb().prepare("DELETE FROM mcp_servers WHERE name = 'audit-cold'").run();
   }
 });
+
+test('stdio: listTools JSON-RPC-Fehler wird geworfen', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.listTools();
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'kaputt' } })}\n`);
+  await assert.rejects(p, /kaputt/);
+});

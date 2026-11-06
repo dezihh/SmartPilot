@@ -10,6 +10,9 @@ export interface McpTransport {
 // Ein haengender MCP-Server darf Template-Preheat/Render nicht unendlich
 // blockieren (deterministic-Pfad hat keine eigene Gesamt-Deadline).
 export const MCP_TIMEOUT_MS = 30_000;
+// Tool-Aufrufe duerfen laenger dauern als init/listTools; HTTP und stdio
+// verwenden denselben Wert, damit sich ein Server je Transport gleich verhaelt.
+export const MCP_CALL_TIMEOUT_MS = 60_000;
 
 // Gemeinsame Auswertung einer tools/call-Antwort fuer HTTP- und stdio-Client.
 // MCP-Fehler kommen oft als erfolgreiches Result mit isError=true (statt
@@ -49,7 +52,8 @@ export class McpClient implements McpTransport {
     method: string,
     params: unknown,
     notify = false,
-    allowReinit = true
+    allowReinit = true,
+    timeoutMs = this.timeoutMs
   ): Promise<{ result?: unknown; error?: { code: number; message: string } } | null> {
     const id = notify ? undefined : this.nextId++;
     const body: Record<string, unknown> = { jsonrpc: '2.0', method, params };
@@ -65,7 +69,7 @@ export class McpClient implements McpTransport {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const sid = res.headers.get('mcp-session-id');
     if (sid) this.sessionId = sid;
@@ -127,7 +131,7 @@ export class McpClient implements McpTransport {
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    const res = await this.rpc('tools/call', { name, arguments: args });
+    const res = await this.rpc('tools/call', { name, arguments: args }, false, true, MCP_CALL_TIMEOUT_MS);
     return unwrapToolResult(name, res);
   }
 }

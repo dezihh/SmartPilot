@@ -32,6 +32,11 @@ const IPV4_PRIVATE_RANGES: Array<{ base: number; mask: number }> = (
     ['192.0.0.0', 24],
     ['192.168.0.0', 16],
     ['198.18.0.0', 15],
+    // Multicast, reserviert und Broadcast duerfen ebenfalls nie Ziel eines
+    // dynamischen http()-Aufrufs sein (F-11).
+    ['224.0.0.0', 4],
+    ['240.0.0.0', 4],
+    ['255.255.255.255', 32],
   ] as Array<[string, number]>
 ).map(([base, bits]) => {
   const bytes = ipv4ToBytes(base)!;

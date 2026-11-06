@@ -343,7 +343,13 @@ test('Backup/Restore: Paket-Provenienz wird mitgesichert und wiederhergestellt',
       method: 'POST', headers: auth, body: JSON.stringify({ backup: ohneProvenienz, confirm: true }),
     });
     assert.equal(restore2.status, 200);
-    assert.equal(listInstalledPackages().length, 0, 'ohne Provenienz verworfen');
+    assert.equal(listInstalledPackages().length, 1, 'Teil-Restore laesst bestehende Provenienz stehen');
+
+    // Unbekannte formatVersion wird abgelehnt (F-10).
+    const badVersion = await fetch(`${base}/admin/api/backup/restore`, {
+      method: 'POST', headers: auth, body: JSON.stringify({ backup: { ...backup, formatVersion: 99 }, confirm: true }),
+    });
+    assert.equal(badVersion.status, 400);
   } finally {
     server.close();
   }

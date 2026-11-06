@@ -367,6 +367,11 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
   if (!backup || backup.kind !== 'smartpilot-config-backup') {
     return res.status(400).json({ error: 'Keine gueltige Sicherung (kind fehlt)' });
   }
+  // Aeltere Sicherungen kennen formatVersion nicht; neue muessen zu dieser
+  // Version passen, sonst ist die Bedeutung der Felder unklar.
+  if (backup.formatVersion !== undefined && backup.formatVersion !== 1) {
+    return res.status(400).json({ error: `Nicht unterstuetzte formatVersion: ${String(backup.formatVersion)}` });
+  }
   const db = getDb();
   try {
   db.transaction(() => {
@@ -423,9 +428,12 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
     }
     // Paket-Provenienz: mit der Konfiguration ersetzen. Alte Sicherungen ohne
     // diese Felder: die Metadaten passen nicht mehr zur ersetzten Konfiguration
-    // und werden bewusst verworfen.
-    db.prepare('DELETE FROM packages').run();
-    db.prepare('DELETE FROM package_items').run();
+    // und werden bewusst verworfen. Fehlt das Feld komplett, bleibt die
+    // bestehende Provenienz unangetastet (Teil-Restore).
+    if (Array.isArray(backup.packages) || Array.isArray(backup.package_items)) {
+      db.prepare('DELETE FROM packages').run();
+      db.prepare('DELETE FROM package_items').run();
+    }
     for (const p of (backup.packages as Record<string, unknown>[] | undefined) ?? []) {
       if (!p.id) continue;
       db.prepare(

@@ -37,8 +37,8 @@ async function readCapped(res: Response, cap: number): Promise<string> {
   return out.slice(0, cap);
 }
 
-// F-07: dynamische Hostnamen vorab aufloesen. null = keine Aufloesung
-// (NXDOMAIN/offline) -> der Aufrufer faellt auf den normalen fetch zurueck.
+// F-07: dynamische Hostnamen vorab aufloesen. Fail-closed: null = keine
+// Aufloesung (NXDOMAIN/offline) -> der Aufrufer blockiert den Request.
 async function resolveDynamicHost(hostname: string): Promise<{ address: string; family: number }[] | null> {
   try {
     const addrs = await dns.lookup(hostname, { all: true });
@@ -83,11 +83,17 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
       let dispatcher: PinnedDispatcher | undefined;
       if (dynamic) {
         const addrs = await resolveDynamicHost(u.hostname);
-        if (addrs && addrs.some((a) => isPrivateHost(a.address))) {
+        // Fail-closed: ohne aufloesbaren Host keine Verbindung, auch wenn
+        // fetch spaeter selbst noch einmal aufloesen wuerde (Rebinding).
+        if (!addrs || addrs.length === 0) {
+          trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS nicht aufloesbar' } });
+          return null;
+        }
+        if (addrs.some((a) => isPrivateHost(a.address))) {
           trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
           return null;
         }
-        const pin = addrs?.[0];
+        const pin = addrs[0];
         if (pin) dispatcher = pinDispatcherFactory(pin);
       }
       const init: RequestInit = {

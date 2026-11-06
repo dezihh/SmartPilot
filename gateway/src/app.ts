@@ -29,6 +29,9 @@ export function createApp(): Express {
     );
     next();
   });
+  // Restore traegt die komplette Konfiguration im Body; das globale 1-MB-Limit
+  // wuerde groessere Sicherungen (Prompts/Manifeste) mit 413 abweisen.
+  app.use(`${config.basePath}/admin/api/backup/restore`, express.json({ limit: '25mb' }));
   app.use(express.json({ limit: '1mb' }));
 
   // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).

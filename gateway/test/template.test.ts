@@ -2,6 +2,7 @@ import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as dns } from 'node:dns';
 import { renderActionTemplate, renderFunction, setPinDispatcherFactoryForTests } from '../src/core/template.js';
+import { isPrivateHost } from '../src/core/ssrf.js';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
 import { resetHttpCacheForTests } from '../src/core/httpCache.js';
@@ -163,9 +164,14 @@ test('http: TTL-Cache verhindert zweites Fetchen', async () => {
 
 test('http: dynamische URL aus args.x wird aufgeloest', async () => {
   stubFetch();
-  const r = await renderFunction('test_fn_http', mcp, [], { path: 'v1/x' });
-  assert.match(r.speech, /"quelle":"test"/);
-  assert.deepEqual(fetchCalls, ['https://api.example.org/v1/x']);
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]);
+  try {
+    const r = await renderFunction('test_fn_http', mcp, [], { path: 'v1/x' });
+    assert.match(r.speech, /"quelle":"test"/);
+    assert.deepEqual(fetchCalls, ['https://api.example.org/v1/x']);
+  } finally {
+    lk.mock.restore();
+  }
 });
 
 test('http: dynamische URL auf privaten Host -> blockiert (SSRF)', async () => {
@@ -185,7 +191,12 @@ test('http: dynamische Redirect-Kette ins private Netz -> blockiert (SSRF)', asy
     headers: { get: (n) => (n.toLowerCase() === 'location' ? 'http://169.254.169.254/latest/meta-data/' : null) },
   }));
   const trace: TraceEvent[] = [];
-  await renderFunction('test_fn_ssrf', mcp, trace, { host: 'redirect.example.org' });
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]);
+  try {
+    await renderFunction('test_fn_ssrf', mcp, trace, { host: 'redirect.example.org' });
+  } finally {
+    lk.mock.restore();
+  }
   // 1. Hop extern ok, 2. Hop private -> blocked; kein zweiter Fetch auf die Privat-IP
   assert.ok(findStep(trace, 'template.http.blocked'));
   assert.ok(fetchCalls.length >= 1);
@@ -329,4 +340,26 @@ before(async () => {
     inventory_prompt: null,
     enabled: 1,
   });
+});
+
+test('ssrf: Multicast, reserviert und Broadcast gelten als privat (F-11)', () => {
+  assert.equal(isPrivateHost('224.0.0.1'), true);
+  assert.equal(isPrivateHost('240.0.0.1'), true);
+  assert.equal(isPrivateHost('255.255.255.255'), true);
+});
+
+test('http: nicht aufloesbarer dynamischer Host wird blockiert (fail-closed, F-11)', async () => {
+  stubFetch();
+  const lk = mock.method(dns, 'lookup', async () => {
+    throw new Error('ENOTFOUND');
+  });
+  try {
+    const trace: TraceEvent[] = [];
+    const r = await renderFunction('test_fn_ssrf', mcp, trace, { host: 'nxdomain.example' });
+    assert.equal(r.speech, '');
+    assert.equal(fetchCalls.length, 0, 'kein Fetch ohne DNS-Aufloesung');
+    assert.ok(findStep(trace, 'template.http.blocked'));
+  } finally {
+    lk.mock.restore();
+  }
 });

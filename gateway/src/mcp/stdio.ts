@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { ToolDef } from '../types.js';
-import { unwrapToolResult, type McpTransport } from './client.js';
+import { MCP_CALL_TIMEOUT_MS, MCP_TIMEOUT_MS, unwrapToolResult, type McpTransport } from './client.js';
 
 interface RpcMessage {
   id?: number;
@@ -113,7 +113,7 @@ export class McpStdioClient implements McpTransport {
     method: string,
     params: unknown,
     notify = false,
-    timeoutMs = 15_000
+    timeoutMs = MCP_TIMEOUT_MS
   ): Promise<RpcMessage | null> {
     const child = this.ensureChild();
     const id = notify ? undefined : this.nextId++;
@@ -135,7 +135,7 @@ export class McpStdioClient implements McpTransport {
   }
 
   async init(): Promise<void> {
-    const t = this.config.initTimeoutMs ?? 15_000;
+    const t = this.config.initTimeoutMs ?? MCP_TIMEOUT_MS;
     await this.rpc('initialize', {
       protocolVersion: '2025-03-26',
       capabilities: {},
@@ -145,14 +145,14 @@ export class McpStdioClient implements McpTransport {
   }
 
   async listTools(): Promise<ToolDef[]> {
-    const res = await this.rpc('tools/list', {}, false, this.config.initTimeoutMs ?? 15_000);
+    const res = await this.rpc('tools/list', {}, false, this.config.initTimeoutMs ?? MCP_TIMEOUT_MS);
     if (res?.error) throw new Error(`MCP tools/list: ${res.error.message}`);
     const result = res?.result as { tools?: ToolDef[] } | undefined;
     return result?.tools ?? [];
   }
 
   async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-    const res = await this.rpc('tools/call', { name, arguments: args }, false, 60_000);
+    const res = await this.rpc('tools/call', { name, arguments: args }, false, MCP_CALL_TIMEOUT_MS);
     return unwrapToolResult(name, res);
   }
 

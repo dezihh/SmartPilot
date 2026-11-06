@@ -35,6 +35,23 @@ export interface LogEntry {
 
 let logInserts = 0;
 
+// Schluesselnamen sind der einzige verlaessliche Hinweis auf Secrets in
+// Trace-Details (Tool-Argumente, URLs). Redaktion vor dem Persistieren, damit
+// weder DB noch Admin-API Tokens ausliefern (F-13).
+const SECRET_KEY = /token|secret|passw|api[-_]?key|authorization|cookie/i;
+
+export function redactTrace(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactTrace);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = SECRET_KEY.test(k) ? '***' : redactTrace(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 export function addLog(entry: LogEntry): void {
   getDb().prepare(
     `INSERT INTO logs (session_id, query, route, action_id, score, response, duration_ms, trace, prompt_tokens, completion_tokens, llm_model)
@@ -47,7 +64,7 @@ export function addLog(entry: LogEntry): void {
     entry.score ?? null,
     entry.response,
     entry.durationMs,
-    JSON.stringify(entry.trace),
+    JSON.stringify(redactTrace(entry.trace)),
     entry.promptTokens ?? null,
     entry.completionTokens ?? null,
     entry.model ?? null

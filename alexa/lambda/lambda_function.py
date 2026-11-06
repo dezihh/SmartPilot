@@ -268,7 +268,9 @@ def call_gateway(query, session_id, user_id, skill_id=None):
     speech = resp.get("speech") or SPEAK_ERROR
     follow_up = bool(resp.get("followUp"))
     followup_prompt = (resp.get("followupPrompt") or "").strip() or None
-    ssml = bool(resp.get("ssml")) or speech.strip().startswith("<speak")
+    # SSML nur, wenn das Gateway es ausdruecklich flaggt. Ein Text, der mit
+    # "<speak" beginnt, ist Klartext (LLM/MCP) und wird escaped.
+    ssml = bool(resp.get("ssml"))
     display = resp.get("display") or {}
     display_text = (display.get("text") or "").strip() or None
     return speech, follow_up, ssml, display_text, followup_prompt

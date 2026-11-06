@@ -103,7 +103,13 @@ mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
 mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   const id = Number(req.params.id);
   try {
-    const updated = updateMcpServer(id, normalizeServerInput(req.body as Record<string, unknown>));
+    const updated = updateMcpServer(
+      id,
+      normalizeServerInput(req.body as Record<string, unknown>),
+      Array.isArray((req.body as { clear_secrets?: unknown }).clear_secrets)
+        ? ((req.body as { clear_secrets: unknown[] }).clear_secrets.filter((v): v is string => typeof v === 'string'))
+        : []
+    );
     invalidateMcpCache();
     if (!updated) {
       res.status(404).json({ error: 'nicht gefunden' });

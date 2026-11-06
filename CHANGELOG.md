@@ -56,8 +56,25 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   geänderter Parameter in `shell()`, `command`, `args` oder `env`, verlangt
   das Speichern erneut eine Bestätigung — nicht mehr erst bei geänderter
   Anzahl der Gefahrenpunkte.
+- **Einheitliche MCP-Timeouts:** HTTP und stdio nutzen dieselben Grenzen —
+  30 s für `init`/`tools/list`, 60 s für `tools/call`.
+- **Restore prüft Format und Teil-Sicherungen:** Unbekannte `formatVersion`
+  wird abgelehnt; fehlen `packages`/`package_items`, bleibt die bestehende
+  Provenienz stehen. Der Body darf bis 25 MB groß sein (vorher 1 MB).
+- **Secrets bewusst löschbar:** `PUT /admin/api/mcp-servers/:id` akzeptiert
+  `clear_secrets` (`auth_token`, `env`, `headers`); ohne den Hinweis bleibt
+  der bestehende Wert wie bisher erhalten.
+- **Trace-Redaktion:** Secrets in Tool-Argumenten (`token`, `api_key`,
+  `authorization`, …) werden vor dem Speichern maskiert.
 
 ### Sicherheit
+
+- **DNS fail-closed:** Dynamische `http()`-URLs werden blockiert, wenn der
+  Host nicht auflösbar ist; Multicast (`224/4`), reservierte Bereiche
+  (`240/4`) und Broadcast gelten zusätzlich als privat.
+- **SSML nur mit explizitem Flag:** Die Lambda escaped Text auch dann, wenn
+  er mit `<speak` beginnt — SSML wird nicht mehr aus dem Textpräfix
+  abgeleitet.
 
 - **Sicherheits-Header:** CSP, `X-Content-Type-Options`, `X-Frame-Options`
   und `Referrer-Policy` werden jetzt serverseitig gesetzt. Die Admin-UI

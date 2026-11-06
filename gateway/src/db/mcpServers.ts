@@ -39,14 +39,19 @@ export function createMcpServer(data: McpServerInput): McpServerRow {
   return getMcpServer(Number(info.lastInsertRowid)) as McpServerRow;
 }
 
-export function updateMcpServer(id: number, data: McpServerInput): McpServerRow | undefined {
-  // auth_token/env = COALESCE: null (Feld im UI leer gelassen bzw. maskiert)
-  // behaelt den bestehenden Wert statt ihn zu wischen (PUT ist sonst ein
-  // Full-Replace).
+export function updateMcpServer(id: number, data: McpServerInput, clearSecrets: string[] = []): McpServerRow | undefined {
+  // auth_token/env/headers = COALESCE: null (Feld im UI leer gelassen bzw.
+  // maskiert) behaelt den bestehenden Wert statt ihn zu wischen (PUT ist sonst
+  // ein Full-Replace). Zum bewussten Loeschen nennt der Aufrufer die Spalte in
+  // clearSecrets; die Whitelist verhindert beliebiges SQL.
+  const clear = new Set(clearSecrets.filter((c) => c === 'auth_token' || c === 'env' || c === 'headers'));
+  const auth = clear.has('auth_token') ? 'NULL' : 'COALESCE(@auth_token, auth_token)';
+  const env = clear.has('env') ? 'NULL' : 'COALESCE(@env, env)';
+  const headers = clear.has('headers') ? 'NULL' : 'COALESCE(@headers, headers)';
   getDb().prepare(
     `UPDATE mcp_servers SET name = @name, url = @url,
-     auth_token = COALESCE(@auth_token, auth_token), transport = @transport,
-     command = @command, args = @args, env = COALESCE(@env, env), headers = COALESCE(@headers, headers), npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
+     auth_token = ${auth}, transport = @transport,
+     command = @command, args = @args, env = ${env}, headers = ${headers}, npm_spec = @npm_spec, inventory_prompt = @inventory_prompt, side_effect = @side_effect, enabled = @enabled WHERE id = @id`
   ).run({ ...data, headers: data.headers ?? null, npm_spec: data.npm_spec ?? null, side_effect: data.side_effect ?? 'write', id });
   return getMcpServer(id);
 }

@@ -307,6 +307,19 @@ test('mcp-servers: CRUD, Maskierung und env-COALESCE', async () => {
   assert.equal(healthErr.status, 200);
   assert.equal((healthErr.json as { ok: boolean }).ok, false, 'stdio-Fehler wird als ok:false gemeldet');
 
+  // F-09: Secrets lassen sich nur ueber clear_secrets bewusst loeschen.
+  const clear = await call('PUT', `/admin/api/mcp-servers/${id}`, {
+    cookie,
+    body: { name: 'route-srv', url: 'http://127.0.0.1:9/x', transport: 'stdio', command: 'true', args: [], clear_secrets: ['auth_token', 'env', 'headers'] },
+  });
+  assert.equal(clear.status, 200);
+  const cleared = getDb().prepare('SELECT auth_token, env, headers FROM mcp_servers WHERE id = ?').get(id) as {
+    auth_token: string | null; env: string | null; headers: string | null;
+  };
+  assert.equal(cleared.auth_token, null);
+  assert.equal(cleared.env, null);
+  assert.equal(cleared.headers, null);
+
   const del = await call('DELETE', `/admin/api/mcp-servers/${id}`, { cookie });
   assert.equal(del.status, 200);
 });

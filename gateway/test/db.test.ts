@@ -150,3 +150,22 @@ test('Migration: Alt-DB ohne function_args wird migriert, Daten bleiben erhalten
     | undefined;
   assert.ok(row, 'Alt-Vorgang darf die Migration nicht verlieren');
 });
+
+test('addLog: Secrets in Trace-Details werden redigiert (F-13)', () => {
+  addLog({
+    sessionId: 'redact-test',
+    query: 'q',
+    route: 'test',
+    response: 'r',
+    durationMs: 1,
+    trace: [
+      { ts: 1, step: 'tool', detail: { token: 'geheim', args: { api_key: 'k', frage: 'ok' }, authorization: 'Bearer x' } },
+    ],
+  });
+  const row = getDb().prepare("SELECT trace FROM logs WHERE session_id = 'redact-test'").get() as { trace: string };
+  const trace = JSON.parse(row.trace) as { detail: { token: string; args: { api_key: string; frage: string }; authorization: string } }[];
+  assert.equal(trace[0]!.detail.token, '***');
+  assert.equal(trace[0]!.detail.authorization, '***');
+  assert.equal(trace[0]!.detail.args.api_key, '***');
+  assert.equal(trace[0]!.detail.args.frage, 'ok');
+});

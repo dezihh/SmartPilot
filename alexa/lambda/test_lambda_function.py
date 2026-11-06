@@ -255,11 +255,12 @@ class CallGatewayTest(unittest.TestCase):
         self.assertTrue(follow_up)
         self.assertTrue(is_ssml)
 
-    def test_speak_erkennung_aus_prefix(self):
+    def test_ssml_nur_mit_explizitem_flag(self):
+        # Ein <speak>-Praefix im Klartext darf nicht als SSML gelten (F-12).
         with mock.patch.object(lambda_function, "requests") as req:
             req.post.return_value = fake_response({"speech": "<speak>x"})
             _, _, is_ssml, _, _ = lambda_function.call_gateway("q", "s", None)
-        self.assertTrue(is_ssml)
+        self.assertFalse(is_ssml)
 
     def test_leeres_followupprompt_wird_none(self):
         with mock.patch.object(lambda_function, "requests") as req:
