@@ -90,10 +90,7 @@ automatisch bei Änderungen unter `alexa/lambda/**` (oder am Workflow selbst).
 | `sync-model.yml` | Rendert die Aufrufnamen aus `skill.config.json` und lädt die Interaction Models aller eingetragenen Locales in den development-Stage; pollt den Build-Status |
 | `deploy-alexa.yml` | Optional/Legacy: rendert Namen und Aufrufnamen aus `skill.config.json` und pusht das Skill-Package in das Alexa-hosted CodeCommit-Repo (Branch `dev`/`master`) + SMAPI-Build |
 | `ext-check.yml` | Prüft TLS, `POST /api/query` mit `GATEWAY_TOKEN` und dass `/alexa`, `/privacy`, `/admin` öffentlich nicht erreichbar sind. Sendet keine direkten Alexa-Requests |
-| `debug-lambda-invoke.yml` | Ruft die Lambda direkt mit einem `GptQueryIntent`-Event auf |
-| `debug-lambda-live.yml` | Zeigt Lambda-Env-Namen (URLs/Token maskiert) und testet das Gateway direkt |
-| `debug-lambda-logs.yml` / `lambda-logs.yml` | CloudWatch-Logs der Lambda (`/aws/lambda/smartpilot-alexa`) |
-| `debug-skill.yml` | SMAPI-Diagnose: Invocation/Samples, Manifest-Endpoint je Stage, Build-Status |
+| `lambda-logs.yml` | CloudWatch-Logs der Lambda (`/aws/lambda/smartpilot-alexa`) |
 | `list-skills.yml` | Listet die Skills des Vendors |
 
 ### `lambda-zip.yml`
