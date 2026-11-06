@@ -51,12 +51,14 @@ async function resolveDynamicHost(hostname: string): Promise<{ address: string; 
 // Dispatcher-Factory fuer gepinnte dynamische Requests. Ausgelagert
 // und injizierbar, damit Tests die tatsaechlich verwendete Ziel-IP (nicht nur
 // die Praesenz) pruefen koennen. Default: undici-Agent mit gepinntem lookup.
+// allowH2 bleibt aus: undici 8 verhandelt HTTP/2 sonst per ALPN selbst, was
+// Zielserver mit halbem h2-Support und die IP-Pinnung unnoetig kompliziert.
 interface PinnedDispatcher {
   close: () => Promise<void>;
 }
 type PinDispatcherFactory = (pin: { address: string; family: number }) => PinnedDispatcher;
 const defaultPinDispatcher = (pin: { address: string; family: number }): PinnedDispatcher =>
-  new Agent({ connect: { lookup: (_h, _o, cb) => cb(null, [pin]) } });
+  new Agent({ allowH2: false, connect: { lookup: (_h, _o, cb) => cb(null, [pin]) } });
 let pinDispatcherFactory: PinDispatcherFactory = defaultPinDispatcher;
 export function setPinDispatcherFactoryForTests(factory?: PinDispatcherFactory): void {
   pinDispatcherFactory = factory ?? defaultPinDispatcher;
