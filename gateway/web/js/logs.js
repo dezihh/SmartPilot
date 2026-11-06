@@ -1,6 +1,6 @@
 import { $, api, esc } from './lib.js';
 
-async function loadLogs() {
+export async function loadLogs() {
   try {
     const res = await api('/logs?limit=50');
     let usage = {};

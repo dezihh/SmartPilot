@@ -50,6 +50,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Admin-UI wieder bedienbar:** `web/js/logs.js` exportierte `loadLogs`
+  nicht und `app.js` importierte `token` nicht — der Browser brach die
+  Modulkette mit einem SyntaxError ab, die Seite lud zwar (alle Dateien 200),
+  aber die Seitenleiste reagierte nicht. Beides korrigiert; ein statischer
+  Modul-Test (`test/web-modules.test.ts`) prüft jetzt Importe gegen Exporte.
 - **Login-Seite wieder bedienbar:** Inline-Styles und Inline-Skripte sind per
   CSP (`style-src 'self'`, `script-src 'self'`) blockiert — die Login-Seite
   war dadurch ungestylt und der Anmelde-Knopf ohne Funktion. CSS und JS liegen
