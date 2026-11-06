@@ -30,7 +30,8 @@ import {
 } from '../db.js';
 import { invalidateMcpCache } from '../mcp/registry.js';
 import { invalidateIndex } from '../core/entityIndex.js';
-import { meetsMinVersion } from '../core/packages.js';
+import { meetsMinVersion, verifyManifestIntegrity } from '../core/packages.js';
+import { log } from '../core/logger.js';
 import { GATEWAY_VERSION } from '../version.js';
 import { config } from '../config.js';
 
@@ -60,6 +61,8 @@ interface RegistryEntry {
   summary: string;
   version: string;
   category?: 'driver' | 'function' | 'mixed';
+  /** SHA-256 der Manifest-Datei (seit Index-Format mit Integritaetspruefung). */
+  sha256?: string;
 }
 interface RegistryIndex {
   registryVersion: number;
@@ -77,10 +80,19 @@ function registryUrl(): string {
   return `${REGISTRY_URL.replace(/\/$/, '')}/${registryLanguage()}`;
 }
 
-async function fetchJson(url: string): Promise<unknown> {
+async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status} bei ${url}`);
-  return res.json() as unknown;
+  return res.text();
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const text = await fetchText(url);
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Ungueltiges JSON bei ${url}`);
+  }
 }
 
 async function registryEntries(force: boolean): Promise<RegistryEntry[]> {
@@ -96,9 +108,23 @@ async function registryEntries(force: boolean): Promise<RegistryEntry[]> {
 
 async function fetchManifest(id: string): Promise<PackageManifest> {
   const base = registryUrl().replace(/\/$/, '');
-  const raw = (await fetchJson(`${base}/${id}/manifest.json`)) as unknown;
+  const entry = (await registryEntries(false)).find((e) => e.id === id);
+  // Rohtext laden (nicht JSON.parse): der Hash bezieht sich auf die Datei-Bytes.
+  const text = await fetchText(`${base}/${id}/manifest.json`);
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(`Ungueltiges JSON bei ${base}/${id}/manifest.json`);
+  }
   const parsed = validateManifest(raw);
   if (!parsed.ok) throw new Error(parsed.errors.join('; '));
+  if (entry && !entry.sha256) {
+    // Alte Registry ohne Hashes: nicht blockieren, aber sichtbar machen.
+    log.warn('Registry-Index ohne Manifest-Hash', { id });
+  }
+  const problem = verifyManifestIntegrity(entry, text, parsed.manifest.version);
+  if (problem) throw new Error(problem);
   return parsed.manifest;
 }
 

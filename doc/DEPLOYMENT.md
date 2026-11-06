@@ -274,7 +274,13 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, ADMI
   pro Client (ein Angreifer könnte den Admin-Login global sperren).
 - `/api/lambda-trace` ist reine Diagnose und bleibt im öffentlichen VHost
   gesperrt.
-- **Paket-Registry = Code-Vertrauensgrenze:** Manifeste sind nicht signiert.
+- **Paket-Registry = Code-Vertrauensgrenze:** Manifeste sind nicht signiert;
+  `index.json` führt aber je Paket Version und SHA-256 der Manifest-Datei.
+  Das Gateway lädt das Manifest als Rohtext und lehnt es ab, wenn Hash oder
+  Version nicht zum Index passen. Das schützt vor nachträglich getauschten
+  Inhalten und halb aktualisierten Registries — nicht vor einer vollständig
+  übernommenen Registry (Index und Manifeste stammen von derselben Quelle).
+
   `shell()`/stdio verlangen ein Ack; die Konfigurationsansicht verlangt es
   erneut, sobald ein Parameter ein gefährliches Feld (`shell()`, `command`,
   `args`, `env`) verändert. `http()`-Ziele in Manifesten gelten als

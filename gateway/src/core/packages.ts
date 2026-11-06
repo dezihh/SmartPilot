@@ -6,6 +6,29 @@ import { createHash } from 'node:crypto';
 import type { SideEffect } from '../types.js';
 import { isPrivateHost, isSensitiveHost } from './ssrf.js';
 
+// Registry-Integritaet: index.json fuehrt je Paket Version und SHA-256 der
+// Manifest-Datei. Das Gateway laedt Manifeste vom selben Branch - ein
+// nachtraeglich getauschtes Manifest (oder eine halb aktualisierte Registry)
+// faellt damit auf. Reine Funktion fuer Tests.
+export function sha256Hex(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex');
+}
+
+export function verifyManifestIntegrity(
+  entry: { id: string; version?: string; sha256?: string } | undefined,
+  rawText: string,
+  manifestVersion: string
+): string | null {
+  if (!entry) return 'Paket fehlt im Registry-Index (index.json)';
+  if (entry.sha256 && sha256Hex(rawText) !== entry.sha256) {
+    return `Manifest von ${entry.id} passt nicht zum Hash in index.json`;
+  }
+  if (entry.version && entry.version !== manifestVersion) {
+    return `Index nennt Version ${entry.version}, Manifest ${manifestVersion}`;
+  }
+  return null;
+}
+
 export interface PackageParam {
   key: string;
   label: string;

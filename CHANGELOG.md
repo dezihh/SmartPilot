@@ -87,6 +87,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Sicherheit
 
+- **Registry-Integrität:** `packages/<lang>/index.json` führt je Paket die
+  Version und den SHA-256 der Manifest-Datei. Das Gateway lädt das Manifest
+  als Rohtext, prüft Hash und Version gegen den Index und lehnt Abweichungen
+  ab. Alte Registries ohne Hash funktionieren weiter, melden aber eine
+  Warnung. Die Registry-CI erkennt jetzt auch ein Manifest, das ohne
+  Index-Aktualisierung geändert wurde.
 - **undici 8.12.4 statt 6.29.0:** behebt die letzten drei High-Advisories
   (TLS-Zertifikatsprüfung, TLS-Renegotiation, Content-Encoding-DoS);
   `npm audit --omit=dev` meldet keine offenen Befunde mehr. Der gepinnte
