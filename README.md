@@ -163,7 +163,7 @@ Für den Betrieb hinter dem Reverse-Proxy:
 SmartPilot/
 ├── alexa/              Alexa-Skill: Lambda-Adapter (Python/ask-sdk),
 │                       Interaktionsmodell, Sync-Skripte
-├── gateway/            Gateway (Node.js 22 + TypeScript): Router,
+├── gateway/            Gateway (Node.js 26 + TypeScript): Router,
 │                       MCP-Clients, LLM-Agent, Admin-API
 │   └── web/            Admin-Weboberfläche (vanilla HTML/CSS/JS)
 ├── packages/           Installationspakete (Registry + Manifeste)
