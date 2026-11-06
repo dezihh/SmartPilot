@@ -87,6 +87,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Sicherheit
 
+- **undici 8.12.4 statt 6.29.0:** behebt die letzten drei High-Advisories
+  (TLS-Zertifikatsprüfung, TLS-Renegotiation, Content-Encoding-DoS);
+  `npm audit --omit=dev` meldet keine offenen Befunde mehr. Der gepinnte
+  Dispatcher setzt `allowH2: false`, damit undici 8 nicht stillschweigend
+  HTTP/2 verhandelt. `engines.node` steigt auf `>=22.19.0` (Mindestversion
+  von undici 8).
 - **Provisioner ohne Gateway-Secrets:** `npm install` für stdio-Pakete erhält
   nur ein minimales Environment (kein `ADMIN_TOKEN`/`API_TOKEN`/`LLM_API_KEY`)
   und läuft mit `--ignore-scripts`. Opt-out für Pakete, die bauen müssen:
