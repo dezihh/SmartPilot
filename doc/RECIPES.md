@@ -19,6 +19,7 @@ Vertrauensmodell stehen in [`packages/README.md`](../packages/README.md).
 | `home-assistant` | HA-MCP-Registry, Standard-Index, Schalten-Kaskade | Home Assistant + `ha-mcp` |
 | `music-assistant` | MA-Registry, Wiedergabe-Kaskade + ASR-Falscherkennung, `ma_players` | Music Assistant + MCP-Plugin |
 | `searxng` | SearXNG-Brücke (stdio) + Such-Allowlist | SearXNG-Instanz |
+| `mqtt` | MQTT-Broker (stdio, interner Server) + `mqtt_get`/`mqtt_snapshot`/`mqtt_set` | MQTT-Broker (z. B. Mosquitto) |
 | `brave-search` | Brave-Brücke (stdio) + `recherche` | Brave-API-Key |
 | `open-meteo-wetter` | `wetter` | keine (öffentliche API) |
 | `autobahn` | `autobahn` (Region anpassen!) | keine (öffentliche API) |
