@@ -131,7 +131,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Entwicklung
 
-- **Audit-Gate (`npm run audit:gate`):** High/Critical in den
+- **Abhängigkeiten aktualisiert:** `better-sqlite3` 13.0.3 (N-API, fertige
+  Binaries im Paket), `dotenv` 18.0.9, `@types/node` 26.6.6, `tsx` 4.23.15.
+  Die Images nutzen `npm ci --ignore-scripts`, damit kein `node-gyp`-Build im
+  slim-Image nötig ist.
+ High/Critical in den
   Produktionsabhängigkeiten blockieren die Pipeline. Ausnahmen stehen mit
   Begründung, Doku-Verweis, Trigger und Ablaufdatum in
   `gateway/audit-allowlist.json`; abgelaufene, verwaiste oder undokumentierte
