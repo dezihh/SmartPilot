@@ -6,84 +6,96 @@
       "name": "Home Assistant Anbindung",
       "summary": "MCP-Server (ha-mcp), Entity-Index (alle HA-States) und Schalten-Kaskade.",
       "version": "1.0.4",
-      "category": "driver"
+      "category": "driver",
+      "sha256": "6aa81727a5cf93a805fe658bb631ba0d4235a5f86a88b5384afc878584f5abf9"
     },
     {
       "id": "music-assistant",
       "name": "Music Assistant Anbindung",
       "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
       "version": "1.1.5",
-      "category": "mixed"
+      "category": "mixed",
+      "sha256": "0df48ed4ee54cc70732ddd29472c89bd12297d65545717f5ecd8b5127072f1e0"
     },
     {
       "id": "searxng",
       "name": "Websuche SearXNG",
       "summary": "Metasuche ueber eine selbst gehostete SearXNG-Instanz (stdio-Bruecke mcp-searxng).",
       "version": "1.0.3",
-      "category": "driver"
+      "category": "driver",
+      "sha256": "3aab2b161e695ed9f680945f51f7bb579b968887871fc1e31cb9fa7c9c9d91c2"
     },
     {
       "id": "brave-search",
       "name": "Websuche Brave",
       "summary": "Brave Search API als Such-Connector inkl. Recherche-Funktion (Suche + Feed-Lese in einem Call).",
       "version": "1.1.2",
-      "category": "mixed"
+      "category": "mixed",
+      "sha256": "b53b382d972de213bf4ce2dab05f8effddf040eb94f91b2ceceed56e654c4c70"
     },
     {
       "id": "system-info",
       "name": "System-Info (Shell)",
       "summary": "Gateway-Uptime und CPU-Typ via shell() - als gefaehrliche Aktion markiert.",
       "version": "1.0.2",
-      "category": "function"
+      "category": "function",
+      "sha256": "fac7e25d33a9b0bc0722dc22230311b564bdc905bf9e4d1960d5cb8c70118669"
     },
     {
       "id": "open-meteo-wetter",
       "name": "Wetter (Open-Meteo)",
       "summary": "Aktuelles Wetter und 3-Tage-Vorhersage via Open-Meteo (oeffentliche API, ohne Key), Koordinaten-Parameter.",
       "version": "1.0.1",
-      "category": "function"
+      "category": "function",
+      "sha256": "3e7ca6973ba11bd0697d14d2f407b75a0970ddd2389bcd12056258dc97dfc6e8"
     },
     {
       "id": "autobahn",
       "name": "Autobahn-Verkehr",
       "summary": "Baustellen und Verkehrsmeldungen der Autobahnen (oeffentliche Autobahn-App-API, ohne Key) mit Geo-Filter.",
       "version": "1.0.1",
-      "category": "function"
+      "category": "function",
+      "sha256": "fc5b972987ead01409272627a16dd16feadc7591537816e9b0786643502c070e"
     },
     {
       "id": "beispiel-home-assistant",
       "name": "Beispiel: Home Assistant",
       "summary": "Beispiel-Rezept: generischer Hausstatus aus sun.sun und zone.home.",
       "version": "1.0.0",
-      "category": "function"
+      "category": "function",
+      "sha256": "919d39ab2ecf8b977b8d84a452f33b9b670318509ffc02de551dfaac6409c66d"
     },
     {
       "id": "beispiel-http",
       "name": "Beispiel: HTTP",
       "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über öffentliche APIs.",
       "version": "1.0.0",
-      "category": "function"
+      "category": "function",
+      "sha256": "f0ae7fa694ee5a5563fdd1107fd469dc73a715c9bde9be1ee56dcae9397e1dad"
     },
     {
       "id": "beispiel-llm",
       "name": "Beispiel: LLM-Vorgang",
       "summary": "Beispiel-Rezept: ein reiner LLM-Vorgang (Allgemeinwissen, ohne Werkzeuge).",
       "version": "1.0.0",
-      "category": "function"
+      "category": "function",
+      "sha256": "92edc63de68b132f91bdcbec8f868e35b2c7bab916c09566eed11208a2c278d4"
     },
     {
       "id": "strompreis",
       "name": "Strompreis (aWATTar/EPEX)",
       "summary": "Aktueller Börsenstrompreis sowie günstigster und teuerster Slot der nächsten 24 Stunden (aWATTar, ohne Key).",
       "version": "1.0.0",
-      "category": "function"
+      "category": "function",
+      "sha256": "e96edea68401b44b49f0ad52372ea46b98428f95a63270ec709967f8f033eda9"
     },
     {
       "id": "victoriametrics-telegraf",
       "name": "VictoriaMetrics/Telegraf Host-Status",
       "summary": "CPU, RAM, Root-Disk und Uptime eines Hosts aus VictoriaMetrics (Telegraf-Metriken), inklusive Quellen-Label.",
       "version": "1.0.0",
-      "category": "function"
+      "category": "function",
+      "sha256": "df11eeefa8f6d754c49242fdf788549bf01a292111d1497ce429bca1793f26b9"
     }
   ]
 }

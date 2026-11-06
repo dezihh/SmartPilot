@@ -15,6 +15,7 @@ import {
   deriveCategory,
   manifestDangerous,
   meetsMinVersion,
+  sha256Hex,
   validateManifest,
   type PackageManifest,
 } from '../src/core/packages.js';
@@ -32,6 +33,7 @@ interface RegistryEntry {
   summary: string;
   version: string;
   category?: string;
+  sha256?: string;
 }
 
 interface Shipped {
@@ -126,6 +128,10 @@ t('index.json passt zu den Manifesten', () => {
         deriveCategory(actual),
         `${entry.id}: category im Index passt nicht zum Manifest`,
       );
+      // Der Hash bezieht sich auf die Datei-Bytes; das Gateway laedt genau
+      // diese Datei und vergleicht sie mit dem Index.
+      const shipped = manifests.find((m) => m.id === entry.id)!;
+      assert.equal(sha256Hex(readFileSync(shipped.file, 'utf8')), entry.sha256, `${entry.id}: sha256 im Index passt nicht zur Datei`);
     }
   }
 });

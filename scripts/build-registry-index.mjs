@@ -6,6 +6,7 @@
 // Nutzung:
 //   node scripts/build-registry-index.mjs          # Index schreiben
 //   node scripts/build-registry-index.mjs --check   # nur pruefen (CI), Exit 1 bei Abweichung
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +55,8 @@ function buildIndex(lang) {
   const kept = prevOrder.filter((id) => ids.includes(id));
   const added = ids.filter((id) => !kept.includes(id)).sort();
   const packages = [...kept, ...added].map((id) => {
-    const m = readJson(join(dir, id, 'manifest.json'));
+    const manifestPath = join(dir, id, 'manifest.json');
+    const m = readJson(manifestPath);
     if (m.id !== id) {
       console.error(`Manifest-id "${m.id}" passt nicht zum Ordner "${lang}/${id}"`);
       process.exit(1);
@@ -69,6 +71,10 @@ function buildIndex(lang) {
       summary: m.summary,
       version: m.version,
       category: m.category ?? deriveCategory(m),
+      // Hash der Datei-Bytes: das Gateway lehnt ein Manifest ab, das nicht
+      // exakt zu diesem Index-Eintrag passt (Schutz vor nachtraeglich
+      // getauschten Inhalten und vor halb aktualisierten Registries).
+      sha256: createHash('sha256').update(readFileSync(manifestPath)).digest('hex'),
     };
   });
   return { registryVersion, packages };
