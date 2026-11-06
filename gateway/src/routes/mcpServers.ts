@@ -6,16 +6,13 @@ import {
   createMcpServer,
   getMcpServer,
   listFunctions,
-  listLogs,
   listMcpServers,
-  setPrompt,
-  summarizeUsage,
   updateMcpServer,
   type McpServerInput,
 } from '../db.js';
 import { createClient, getMcpContext, invalidateMcpCache } from '../mcp/registry.js';
 import { normalizeHeaders } from '../core/normalize.js';
-export const mcpRoutes = Router();
+export const mcpServersRoutes = Router();
 
 function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
   const name = String(body.name ?? '').trim();
@@ -75,12 +72,12 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
   };
 }
 
-mcpRoutes.get('/admin/api/mcp-servers', requireAdminAuth, (_req, res) => {
+mcpServersRoutes.get('/admin/api/mcp-servers', requireAdminAuth, (_req, res) => {
   res.json({ servers: listMcpServers(false) });
 });
 
 // Alle fuer LLM-Actions verfuegbaren Tools (Facade + MCP) fuer den Web-Editor
-mcpRoutes.get('/admin/api/tools', requireAdminAuth, async (_req, res) => {
+mcpServersRoutes.get('/admin/api/tools', requireAdminAuth, async (_req, res) => {
   try {
     const mcp = await getMcpContext();
     const serverTools = mcp.servers.map((s) => ({ server: s.name, tools: s.tools.map((t) => t.name) }));
@@ -91,7 +88,7 @@ mcpRoutes.get('/admin/api/tools', requireAdminAuth, async (_req, res) => {
   }
 });
 
-mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
+mcpServersRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
   try {
     const server = createMcpServer(normalizeServerInput(req.body as Record<string, unknown>));
     invalidateMcpCache();
@@ -101,7 +98,7 @@ mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
   }
 });
 
-mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
+mcpServersRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   const id = parseId(req.params.id);
   if (id === null) {
     res.status(400).json({ error: 'ungueltige ID' });
@@ -126,7 +123,7 @@ mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   }
 });
 
-mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
+mcpServersRoutes.delete('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   const id = parseId(req.params.id);
   if (id === null) {
     res.status(400).json({ error: 'ungueltige ID' });
@@ -137,7 +134,7 @@ mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req, res) => {
+mcpServersRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req, res) => {
   const id = parseId(req.params.id);
   if (id === null) {
     res.status(400).json({ error: 'ungueltige ID' });
@@ -160,23 +157,4 @@ mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req
     // (Prozessleck bei wiederholten Health-Checks).
     if (typeof client.stop === 'function') client.stop();
   }
-});
-
-mcpRoutes.put('/admin/api/prompts/:key', requireAdminAuth, (req, res) => {
-  const body = req.body as { content?: string };
-  if (typeof body.content !== 'string') {
-    res.status(400).json({ error: 'content erforderlich' });
-    return;
-  }
-  setPrompt(String(req.params.key), body.content);
-  res.json({ ok: true });
-});
-
-mcpRoutes.get('/admin/api/logs', requireAdminAuth, (req, res) => {
-  const limit = Math.min(Number(req.query.limit ?? 50) || 50, 200);
-  res.json({ logs: listLogs(limit) });
-});
-
-mcpRoutes.get('/admin/api/usage', requireAdminAuth, (_req, res) => {
-  res.json({ usage: summarizeUsage() });
 });

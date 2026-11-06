@@ -7,7 +7,9 @@ import { config } from './config.js';
 import { getSchemaVersion, getDb } from './db.js';
 import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
-import { mcpRoutes } from './routes/mcp.js';
+import { mcpServersRoutes } from './routes/mcpServers.js';
+import { promptsRoutes } from './routes/prompts.js';
+import { logsRoutes } from './routes/logs.js';
 import { packagesRoutes } from './routes/packages.js';
 import { runWithRequestId, log, logError } from './core/logger.js';
 import { incCounter, setGauge, renderMetrics } from './core/metrics.js';
@@ -177,7 +179,9 @@ app.use(`${adminBase}/api`, (req, res, next) => {
 
   // Admin-API-Routen (Pfade sind relativ zum Mount, z. B. '/admin/api/...')
   admin.use(adminRoutes);
-  admin.use(mcpRoutes);
+  admin.use(mcpServersRoutes);
+  admin.use(promptsRoutes);
+  admin.use(logsRoutes);
   admin.use(packagesRoutes);
   // Admin-Aliase der Adapter-API - unter dem Prefix statt auf der Wurzel.
   admin.post('/admin/api/query', requireAdminAuth, handleQuery);
