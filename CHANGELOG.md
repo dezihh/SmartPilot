@@ -128,6 +128,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Entwicklung
 
+- **Audit-Gate (`npm run audit:gate`):** High/Critical in den
+  Produktionsabhängigkeiten blockieren die Pipeline. Ausnahmen stehen mit
+  Begründung, Doku-Verweis, Trigger und Ablaufdatum in
+  `gateway/audit-allowlist.json`; abgelaufene, verwaiste oder undokumentierte
+  Einträge machen das Gate rot, ein nicht bewertbarer Bericht endet mit
+  Exit 2. Damit ist der frühere `continue-on-error`-Audit-Schritt ersetzt.
+- **Vertragstest für ausgelieferte Pakete:** Prüft Manifeste, Platzhalter,
+  Versionen und die Sicherheitswirkung der Registry-Pakete; in CI ist ein
+  fehlendes Paketverzeichnis ein Fehler statt eines stillen Skips.
 - **Actions auf Commit-SHAs gepinnt:** Alle Workflows referenzieren die
   GitHub-Actions per SHA (Kommentar nennt die Version) statt per beweglichem
   Tag.
