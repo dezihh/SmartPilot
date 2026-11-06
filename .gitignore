@@ -18,6 +18,8 @@ cdk.out/
 
 # --- Python ---
 __pycache__/
+.coverage
+
 *.py[cod]
 .venv/
 venv/
