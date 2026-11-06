@@ -6,6 +6,7 @@ import { parseHeaders } from '../core/normalize.js';
 import type { McpServerRow, SideEffect, ToolDef } from '../types.js';
 import { McpClient, type McpTransport } from './client.js';
 import { McpStdioClient } from './stdio.js';
+import { logError } from '../core/logger.js';
 
 // stdio-Command aufloesen: Ein relativer `node_modules/.bin/<bin>` zeigt im
 // Betrieb auf das Image-/Dev-Volume; fehlt er dort, auf das provisionierte
@@ -127,7 +128,7 @@ async function refreshLater(id: number, row: McpServerRow): Promise<void> {
       cache.set(id, fresh);
     } catch (e) {
       // Fehler beim Refresh: alten Cache unveraendert weiterverwenden
-      console.error(`MCP-Refresh ${id} fehlgeschlagen:`, e);
+      logError(`MCP-Refresh ${id} fehlgeschlagen`, e);
     } finally {
       REFRESH_IN_FLIGHT.delete(id);
     }
@@ -169,7 +170,7 @@ export async function getMcpContext(): Promise<McpContext> {
         return { id: row.id, name: row.name, sideEffect: row.side_effect, client: fresh.client, tools: fresh.tools };
       } catch (e) {
         failures.set(row.id, Date.now());
-        console.error(`MCP-Init ${row.id} fehlgeschlagen:`, e);
+        logError(`MCP-Init ${row.id} fehlgeschlagen`, e);
         return null;
       }
     })

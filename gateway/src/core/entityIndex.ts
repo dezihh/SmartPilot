@@ -1,6 +1,7 @@
 import nunjucks from 'nunjucks';
 import { getSetting, getSettings } from '../db.js';
 import { getMcpContext } from '../mcp/registry.js';
+import { logError } from './logger.js';
 
 // Generischer Entity-Index: quelle = 1 parametrierter MCP-Call (Settings),
 // Parsing/Scoring/Lookups laufen lokal im RAM (60 s TTL). Kein Systembezug im
@@ -125,7 +126,7 @@ function loadConfig(key = ''): IndexConfig {
     }
     if (parsed.stopwords) cfg.stopwords = new Set(parsed.stopwords.map(fold));
   } catch (e) {
-    console.error(`${settingName}-Setting ungueltig, nutze Defaults:`, e);
+    logError(`${settingName}-Setting ungueltig, nutze Defaults`, e);
   }
   configCache.set(settingName, { raw, cfg });
   return cfg;
@@ -261,8 +262,8 @@ export async function getIndexSnapshot(indexKey = '', force = false): Promise<In
     // Nur innerhalb einer Altersgrenze und mit Warnung , damit still
     // veraltete Daten nicht beliebig alt werden.
     if (cached && Date.now() - cached.ts <= staleFallbackLimitMs(cfg.ttlMs)) {
-      console.warn(
-        `entity_index ${settingName}: liefere veralteten Stand (Alter ${Math.round((Date.now() - cached.ts) / 1000)}s) nach Fehler:`,
+      logError(
+        `entity_index ${settingName}: liefere veralteten Stand (Alter ${Math.round((Date.now() - cached.ts) / 1000)}s)`,
         e
       );
       return cached.entries;

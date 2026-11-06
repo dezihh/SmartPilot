@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_PROMPT, SEED_SETTINGS } from './seeds.js';
 import { runMigrations, type Migration } from './migrations/runner.js';
 import { backupDatabase } from './migrations/backup.js';
+import { logError } from '../core/logger.js';
 import { hashContent, serverContentOld, serverContentNew, serverContentV6, type ServerHashRow } from './itemHash.js';
 
 // DB-Handle + Migrationen: getDb() lazily nach initDb(path) - so ist die DB
@@ -38,7 +39,7 @@ export function initDb(path: string, withReferenceSeed = false): void {
       try {
         backupDatabase(db, path);
       } catch (e) {
-        console.warn('DB-Backup vor Migration fehlgeschlagen:', e);
+        logError('DB-Backup vor Migration fehlgeschlagen', e);
       }
     }
   });

@@ -241,6 +241,29 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, ADMI
 | `gateway/scripts/smoke-test.mjs` | End-to-End-Smoke-Tests gegen ein laufendes Gateway |
 | `alexa/lambda/test_lambda_function.py` | Lambda-Tests (stubben das ask-sdk, laufen ohne AWS/Netz) |
 
+## Logs und Metriken
+
+- **Logformat:** eine Zeile pro Ereignis, z. B.
+  `2026-11-06T20:12:33.456Z INFO  req=3f1a… http method=POST path=/api/query status=200 ms=812`.
+  `LOG_LEVEL` steuert die Ausführlichkeit (`info` Standard; `debug` ergänzt
+  Stacktraces und Tool-Details). Warnungen und Fehler gehen nach stderr.
+- **Anfrage-Kennung:** Das Gateway setzt `X-Request-ID` im Antwortheader und
+  schreibt sie in jede Logzeile des Requests. Ein eingehendes `X-Request-ID`
+  wird übernommen, sofern es aus 8–64 Zeichen `[A-Za-z0-9._-]` besteht
+  (damit nginx-Logs und Gateway-Logs zusammenfinden).
+- **Metriken:** `GET /metrics` (Bearer `ADMIN_TOKEN`) liefert Prometheus-Text:
+  Anfragen und Dauer je Route/Status, Uptime und Speicherverbrauch. Beispiel
+  für einen Scrape-Job:
+
+  ```yaml
+  - job_name: smartpilot
+    metrics_path: /metrics
+    authorization:
+      credentials_file: /etc/prometheus/smartpilot-admin-token
+    static_configs:
+      - targets: ['127.0.0.1:8331']
+  ```
+
 ## Sicherheit
 
 - Keine Secret-Werte in Repo, Doku oder Actions-Logs.
