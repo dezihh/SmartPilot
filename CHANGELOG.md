@@ -147,6 +147,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **CI-Gates erweitert:** Die Lambda-CI misst Coverage für
   `lambda_function.py` (Schwelle 80 %); die Gateway-CI baut zusätzlich das
   Runtime-Image (`docker build --target runtime`).
+- **CI-Matrix 22 + 26:** Die Gateway-CI testet zusätzlich gegen Node 26
+  (Active LTS seit 28.10.2026). Die gepinnte Runtime bleibt vorerst 22.
 - **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
   und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
   und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind
