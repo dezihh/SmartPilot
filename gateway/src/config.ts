@@ -77,7 +77,14 @@ export const config = {
   // stellt Pakete vorab bereit; ein hoeheres Limit faengt kalte Erstinstallation
   // ohne Laufzeit-npx ab.
   mcpInitTimeoutMs: envPositiveNumber(process.env.MCP_INIT_TIMEOUT_MS, 15_000),
+  // Nach einem fehlgeschlagenen MCP-Init wird der Server fuer diese Zeit nicht
+  // erneut versucht (schuetzt das Alexa-Fenster vor wiederholten 15-s-Init-
+  // Timeouts).
+  mcpFailureTtlMs: envPositiveNumber(process.env.MCP_FAILURE_TTL_MS, 30_000),
   basePath: normalizeBasePath(process.env.BASE_PATH),
+  // Zeitzone fuer den Template-Kontext (now.hour/date/time). Der Container
+  // laeuft in UTC; ohne explizite Zone waeren "Guten Morgen"-Templates falsch.
+  timezone: (process.env.TZ ?? '').trim() || 'Europe/Berlin',
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),

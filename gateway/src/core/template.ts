@@ -3,6 +3,7 @@ import type { McpContext } from '../mcp/registry.js';
 import { getIndexSnapshot, listIndexKeys, type IndexEntry } from './entityIndex.js';
 import { findInSnapshot, getFromSnapshot } from './indexTools.js';
 import { getFunctionByName } from '../db.js';
+import { config } from '../config.js';
 import type { AssistantResponse, TraceEvent } from '../types.js';
 import { extractLiterals } from './extract.js';
 import { httpCacheGet, httpCacheSet } from './httpCache.js';
@@ -11,6 +12,20 @@ import { runShell } from './shell.js';
 
 export { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, setPinDispatcherFactoryForTests } from './http.js';
 export { isPrivateHost } from './ssrf.js';
+
+// Kontext fuer Templates. Zeitstempel kommen aus einer expliziten Zeitzone,
+// damit der UTC-Container nicht um 6 Uhr UTC "Guten Morgen" sagt.
+export function nowContext(
+  timeZone: string,
+  now: Date = new Date()
+): { hour: number; weekday: string; date: string; time: string } {
+  return {
+    hour: Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(now)),
+    weekday: new Intl.DateTimeFormat('de-DE', { timeZone, weekday: 'long' }).format(now),
+    date: new Intl.DateTimeFormat('de-DE', { timeZone }).format(now),
+    time: new Intl.DateTimeFormat('de-DE', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now),
+  };
+}
 
 const env = new nunjucks.Environment(null, { autoescape: false });
 
@@ -160,12 +175,7 @@ async function preheat(
   // zuerst mit args/now zu einer URL aufgeloest (Finding #1) und dann normal
   // gecacht/geholt. Ausdruck und Ergebnis-URL stimmen zur Render-Zeit wieder
   // ueberein, weil args innerhalb eines Renders konstant sind.
-  const nowCtx = {
-    hour: new Date().getHours(),
-    weekday: new Date().toLocaleDateString('de-DE', { weekday: 'long' }),
-    date: new Date().toLocaleDateString('de-DE'),
-    time: new Date().toTimeString().slice(0, 5),
-  };
+  const nowCtx = nowContext(config.timezone);
   const dynUrls = await Promise.all(
     httpDyn.map(async (d) => {
       try {

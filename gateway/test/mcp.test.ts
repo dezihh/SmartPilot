@@ -315,3 +315,35 @@ test('stdio: listTools JSON-RPC-Fehler wird geworfen', async () => {
   child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'kaputt' } })}\n`);
   await assert.rejects(p, /kaputt/);
 });
+
+test('getMcpContext: fehlgeschlagener Init wird negativ gecacht', async () => {
+  stubFetch();
+  let calls = 0;
+  handler = () => {
+    calls++;
+    return { status: 500, json: { boom: true } };
+  };
+  const row = createMcpServer({
+    name: 'neg-cache',
+    url: 'https://mcp.example.org/rpc',
+    auth_token: null,
+    transport: 'http',
+    command: null,
+    args: null,
+    env: null,
+    inventory_prompt: null,
+    enabled: 1,
+  });
+  try {
+    const first = await getMcpContext();
+    assert.equal(first.servers.some((s) => s.id === row.id), false);
+    const afterFirst = calls;
+    assert.ok(afterFirst >= 1, 'erster Versuch hat initialisiert');
+    const second = await getMcpContext();
+    assert.equal(second.servers.some((s) => s.id === row.id), false);
+    assert.equal(calls, afterFirst, 'kein zweiter Init-Versuch im TTL-Fenster');
+  } finally {
+    invalidateMcpCache();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name = 'neg-cache'").run();
+  }
+});

@@ -45,6 +45,10 @@ const REFRESH_IN_FLIGHT = new Map<number, Promise<void>>();
 // initialisieren (sonst doppelte stdio-Prozesse; F-32).
 const COLD_IN_FLIGHT = new Map<number, Promise<{ client: McpTransport; tools: ToolDef[]; ts: number }>>();
 const cache = new Map<number, { client: McpTransport; tools: ToolDef[]; ts: number }>();
+// Negativ-Cache: nach einem fehlgeschlagenen Init wird der Server fuer
+// mcpFailureTtlMs nicht erneut versucht. Sonst kostet jede Anfrage erneut den
+// Init-Timeout (stdio bis 15 s) und reisst das Alexa-Fenster.
+const failures = new Map<number, number>();
 
 function stopClient(client: McpTransport | undefined): void {
   if (client && typeof client.stop === 'function') client.stop();
@@ -53,6 +57,7 @@ function stopClient(client: McpTransport | undefined): void {
 export function invalidateMcpCache(): void {
   for (const entry of cache.values()) stopClient(entry.client);
   cache.clear();
+  failures.clear();
 }
 
 // Beim Shutdown alle offenen stdio-Kinder beenden (SIGTERM/SIGINT in
@@ -137,6 +142,10 @@ export async function getMcpContext(): Promise<McpContext> {
       // Kaltstart: erstmalig laden (blockierend, da Daten zwingend noetig),
       // aber ueber alle Rows parallel statt sequenziell und mit Guard gegen
       // parallele Doppel-Initialisierung.
+      const failedAt = failures.get(row.id);
+      if (failedAt !== undefined && Date.now() - failedAt < config.mcpFailureTtlMs) {
+        return null; // Negativ-Cache: kuerzlich fehlgeschlagen, nicht erneut versuchen
+      }
       try {
         let inflight = COLD_IN_FLIGHT.get(row.id);
         if (!inflight) {
@@ -145,8 +154,10 @@ export async function getMcpContext(): Promise<McpContext> {
         }
         const fresh = await inflight;
         cache.set(row.id, fresh);
+        failures.delete(row.id);
         return { id: row.id, name: row.name, sideEffect: row.side_effect, client: fresh.client, tools: fresh.tools };
       } catch (e) {
+        failures.set(row.id, Date.now());
         console.error(`MCP-Init ${row.id} fehlgeschlagen:`, e);
         return null;
       }

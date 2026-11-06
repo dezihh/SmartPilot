@@ -56,6 +56,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   geänderter Parameter in `shell()`, `command`, `args` oder `env`, verlangt
   das Speichern erneut eine Bestätigung — nicht mehr erst bei geänderter
   Anzahl der Gefahrenpunkte.
+- **Zeitzone im Template-Kontext:** `now.hour`/`now.date`/`now.time` nutzen
+  `TZ` (Default `Europe/Berlin`) statt der Container-Zeitzone (UTC).
+- **MCP-Negativ-Cache:** Ein fehlgeschlagener Init wird für
+  `MCP_FAILURE_TTL_MS` (Default 30 s) nicht erneut versucht.
 - **Einheitliche MCP-Timeouts:** HTTP und stdio nutzen dieselben Grenzen —
   30 s für `init`/`tools/list`, 60 s für `tools/call`.
 - **Restore prüft Format und Teil-Sicherungen:** Unbekannte `formatVersion`

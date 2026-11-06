@@ -1,7 +1,7 @@
 import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as dns } from 'node:dns';
-import { renderActionTemplate, renderFunction, setPinDispatcherFactoryForTests } from '../src/core/template.js';
+import { nowContext, renderActionTemplate, renderFunction, setPinDispatcherFactoryForTests } from '../src/core/template.js';
 import { isPrivateHost } from '../src/core/ssrf.js';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
@@ -362,4 +362,15 @@ test('http: nicht aufloesbarer dynamischer Host wird blockiert (fail-closed, F-1
   } finally {
     lk.mock.restore();
   }
+});
+
+test('nowContext: nutzt die konfigurierte Zeitzone statt UTC', () => {
+  const ts = new Date('2026-11-06T07:05:00Z');
+  const utc = nowContext('UTC', ts);
+  assert.equal(utc.hour, 7);
+  assert.equal(utc.time, '07:05');
+  assert.equal(utc.weekday, 'Freitag');
+  const berlin = nowContext('Europe/Berlin', ts);
+  assert.equal(berlin.hour, 8);
+  assert.equal(berlin.time, '08:05');
 });
