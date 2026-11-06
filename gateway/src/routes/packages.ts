@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { errMsg } from './helpers.js';
 import { requireAdminAuth } from '../auth.js';
 import {
   installPackage,
@@ -32,6 +33,17 @@ import { invalidateIndex } from '../core/entityIndex.js';
 import { meetsMinVersion } from '../core/packages.js';
 import { GATEWAY_VERSION } from '../version.js';
 import { config } from '../config.js';
+
+
+// Gemeinsame Projektion fuer die Admin-API (Registry-Vorschau und Offline-Import).
+function manifestView(m: PackageManifest) {
+  return {
+    id: m.id, version: m.version, name: m.name, summary: m.summary,
+    description: m.description, requires: m.requires, setupDocs: m.setupDocs, params: m.params ?? [],
+    author: m.author, license: m.license, language: m.language ?? 'de', homepage: m.homepage,
+    minGatewayVersion: m.minGatewayVersion, changelog: m.changelog,
+  };
+}
 
 export const packagesRoutes = Router();
 
@@ -95,7 +107,7 @@ packagesRoutes.get('/admin/api/packages/registry', requireAdminAuth, async (_req
   try {
     res.json({ packages: await registryEntries(true) });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -105,19 +117,14 @@ packagesRoutes.get('/admin/api/packages/manifest/:id', requireAdminAuth, async (
     const m = await fetchManifest(String(req.params.id ?? ''));
     const danger = manifestDangerous(m);
     res.json({
-      manifest: {
-        id: m.id, version: m.version, name: m.name, summary: m.summary,
-        description: m.description, requires: m.requires, setupDocs: m.setupDocs, params: m.params ?? [],
-        author: m.author, license: m.license, language: m.language ?? 'de', homepage: m.homepage,
-        minGatewayVersion: m.minGatewayVersion, changelog: m.changelog,
-      },
+      manifest: manifestView(m),
       items: manifestItems(m),
       dangerous: danger.dangerous,
       dangerousItems: danger.items,
       infoItems: danger.info,
     });
   } catch (e) {
-    res.status(502).json({ error: `Manifest nicht ladbar (${String(e instanceof Error ? e.message : e)})` });
+    res.status(502).json({ error: `Manifest nicht ladbar (${errMsg(e)})` });
   }
 });
 
@@ -130,12 +137,7 @@ packagesRoutes.post('/admin/api/packages/preview', requireAdminAuth, (req, res) 
     const m = parsed.manifest;
     const danger = manifestDangerous(m);
     res.json({
-      manifest: {
-        id: m.id, version: m.version, name: m.name, summary: m.summary,
-        description: m.description, requires: m.requires, setupDocs: m.setupDocs, params: m.params ?? [],
-        author: m.author, license: m.license, language: m.language ?? 'de', homepage: m.homepage,
-        minGatewayVersion: m.minGatewayVersion, changelog: m.changelog,
-      },
+      manifest: manifestView(m),
       items: manifestItems(m),
       dangerous: danger.dangerous,
       dangerousItems: danger.items,
@@ -143,7 +145,7 @@ packagesRoutes.post('/admin/api/packages/preview', requireAdminAuth, (req, res) 
       requiredParams: requiredParams(m),
     });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -192,7 +194,7 @@ packagesRoutes.post('/admin/api/packages/:id/install', requireAdminAuth, async (
     }
     res.json({ report });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -202,7 +204,7 @@ packagesRoutes.post('/admin/api/packages/:id/uninstall', requireAdminAuth, (req,
     invalidateMcpCache();
     invalidateIndex();
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -233,7 +235,7 @@ packagesRoutes.get('/admin/api/packages/:id/conflicts', requireAdminAuth, (req, 
   try {
     res.json({ conflicts: conflictItems(String(req.params.id ?? '')) });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -254,7 +256,7 @@ packagesRoutes.post('/admin/api/packages/:id/diff', requireAdminAuth, async (req
       .map((s) => s.name);
     res.json({ diffs: packageDiff(manifest), restartRequired: npmServers.length > 0, npmServers });
   } catch (e) {
-    res.status(502).json({ error: `Diff nicht moeglich (${String(e instanceof Error ? e.message : e)})` });
+    res.status(502).json({ error: `Diff nicht moeglich (${errMsg(e)})` });
   }
 });
 
@@ -290,7 +292,7 @@ packagesRoutes.get('/admin/api/packages/:id/config', requireAdminAuth, async (re
       dangerousItems: danger.items,
     });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -328,7 +330,7 @@ packagesRoutes.patch('/admin/api/packages/:id/config', requireAdminAuth, async (
     invalidateIndex();
     res.json({ report });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -460,6 +462,6 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
   invalidateIndex();
   res.json({ ok: true });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });

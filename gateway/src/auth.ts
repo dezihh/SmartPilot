@@ -12,7 +12,7 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
   res.status(401).json({ error: 'unauthorized' });
 }
 
-// Bearer-Token aus dem Authorization-Header lesen (zentral, F-D4).
+// Bearer-Token aus dem Authorization-Header lesen (zentral).
 export function bearerToken(req: Request): string {
   const header = req.headers.authorization ?? '';
   return header.startsWith('Bearer ') ? header.slice(7) : '';
@@ -21,7 +21,7 @@ export function bearerToken(req: Request): string {
 // Gemeinsamer Auth-Helper fuer UI und API: ein gueltiges Bearer-Token ODER ein
 // gueltiger Session-Cookie autorisiert. So kann ein vorgelagerter Reverse-Proxy
 // `Authorization: Bearer <ADMIN_TOKEN>` serverseitig injizieren, ohne dass das
-// Token je in den Browser gelangt (kein doppelter App-Login, Issue #10).
+// Token je in den Browser gelangt (kein doppelter App-Login).
 export function requestAuthorized(req: Request): boolean {
   return tokenValid(bearerToken(req)) || sessionValid(req);
 }

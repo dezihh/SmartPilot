@@ -17,7 +17,7 @@ export interface LiteralCalls {
   mcpCallDyn: { tool: string; expr: string; fallback?: string }[];
   // http('url') bzw. http('url', ttlMs) - ttl > 0 aktiviert den Antwort-Cache
   httpCalls: { url: string; ttl: number }[];
-  // http(<nunjucks-Expression>) - URL wird aus args/now berechnet (Finding #1)
+  // http(<nunjucks-Expression>) - URL wird aus args/now berechnet 
   httpDyn: { expr: string; ttl: number }[];
   shells: string[];
   fns: string[];
@@ -29,9 +29,9 @@ export interface LiteralCalls {
 // Aufgerufene caller() nutzt, raw/verbatim sind reiner Text ohne Auswertung.
 // Seiteneffekt-behaftete Aufrufe (shell, mcp.call) in solchen Zweigen duerfen
 // nicht vorgewaermt werden, weil der Zweig sonst auch bei nicht erfuellter
-// Bedingung liefe (F-01). Bloecke, deren Inhalt beim Rendern ausgewertet wird
+// Bedingung liefe . Bloecke, deren Inhalt beim Rendern ausgewertet wird
 // (filter/autoescape/block/apply und Block-{% set %}), bleiben UNANGETASTET -
-// sonst verlieren gerenderte shell-/mcp.call-Aufrufe ihr Ergebnis (F-36).
+// sonst verlieren gerenderte shell-/mcp.call-Aufrufe ihr Ergebnis .
 // Tags ausserhalb der Bloecke - etwa {% set x = http(...) %} - bleiben erhalten.
 function stripControlBlocks(tpl: string): string {
   const openers = new Set(['if', 'for', 'macro', 'call', 'raw', 'verbatim']);
@@ -57,10 +57,10 @@ function stripControlBlocks(tpl: string): string {
 
 export function extractLiterals(rawTemplate: string): LiteralCalls {
   // nunjucks-Kommentare {# ... #} werden nie gerendert -> nicht vorwaermen
-  // (F-01). Wortgrenzen in den Regexen verhindern Fehltreffer wie
-  // xfn()/myshell()/myhttp() (F-02).
+  // . Wortgrenzen in den Regexen verhindern Fehltreffer wie
+  // xfn()/myshell()/myhttp() .
   const template = rawTemplate.replace(/\{#[\s\S]*?#\}/g, '');
-  // Seiteneffekt-Aufrufe zusaetzlich ohne Kontrollbloecke auswerten (F-01).
+  // Seiteneffekt-Aufrufe zusaetzlich ohne Kontrollbloecke auswerten .
   const sideEffectSrc = stripControlBlocks(template);
   // 2. String-Arg eines index.*-Aufrufs = Index-Key ('' = Default-Index).
   const indexKeys = new Set<string>();

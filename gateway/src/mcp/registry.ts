@@ -3,7 +3,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { listMcpServers } from '../db.js';
 import { config } from '../config.js';
 import { parseHeaders } from '../core/normalize.js';
-import type { SideEffect, ToolDef } from '../types.js';
+import type { McpServerRow, SideEffect, ToolDef } from '../types.js';
 import { McpClient, type McpTransport } from './client.js';
 import { McpStdioClient } from './stdio.js';
 
@@ -42,7 +42,7 @@ export interface McpContext {
 const FRESH_MS = 300_000;
 const REFRESH_IN_FLIGHT = new Map<number, Promise<void>>();
 // Kaltstart-Guard: parallele Anfragen duerfen denselben Server nicht mehrfach
-// initialisieren (sonst doppelte stdio-Prozesse; F-32).
+// initialisieren (sonst doppelte stdio-Prozesse).
 const COLD_IN_FLIGHT = new Map<number, Promise<{ client: McpTransport; tools: ToolDef[]; ts: number }>>();
 const cache = new Map<number, { client: McpTransport; tools: ToolDef[]; ts: number }>();
 // Negativ-Cache: nach einem fehlgeschlagenen Init wird der Server fuer
@@ -85,7 +85,19 @@ function parseJsonObject(raw: string | null): Record<string, string> {
   }
 }
 
-function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null; headers?: string | null }): McpTransport {
+// Nur die Felder, die der Transport braucht; Tests und Aufrufer mit vollen
+// McpServerRow-Objekten sind damit kompatibel.
+type McpClientRow = {
+  transport: 'http' | 'stdio';
+  url: string;
+  auth_token: string | null;
+  command: string | null;
+  args: string | null;
+  env: string | null;
+  headers?: string | null;
+};
+
+export function createClient(row: McpClientRow): McpTransport {
   if (row.transport === 'stdio') {
     return new McpStdioClient({
       command: resolveStdioCommand(row.command ?? ''),
@@ -97,16 +109,15 @@ function createClient(row: { transport: 'http' | 'stdio'; url: string; auth_toke
   return new McpClient(row.url, row.auth_token, { headers: parseHeaders(row.headers ?? null) });
 }
 
-export { createClient };
 
-async function loadServer(row: { id: number; transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null }): Promise<{ client: McpTransport; tools: ToolDef[]; ts: number }> {
+async function loadServer(row: McpServerRow): Promise<{ client: McpTransport; tools: ToolDef[]; ts: number }> {
   const client = createClient(row);
   await client.init();
   const tools = await client.listTools();
   return { client, tools, ts: Date.now() };
 }
 
-async function refreshLater(id: number, row: { id: number; transport: 'http' | 'stdio'; url: string; auth_token: string | null; command: string | null; args: string | null; env: string | null }): Promise<void> {
+async function refreshLater(id: number, row: McpServerRow): Promise<void> {
   if (REFRESH_IN_FLIGHT.has(id)) return REFRESH_IN_FLIGHT.get(id);
   const p = (async () => {
     try {

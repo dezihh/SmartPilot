@@ -14,7 +14,7 @@ interface PendingRequest {
   timer: NodeJS.Timeout;
 }
 
-// Injizierbar fuer Tests (F-16): im Betrieb node:child_process.spawn.
+// Injizierbar fuer Tests : im Betrieb node:child_process.spawn.
 type SpawnFn = (command: string, args: string[], options: object) => ChildProcess;
 
 // Obergrenze fuer eine unvollstaendige JSON-Zeile (Schutz vor Speicher-DoS
@@ -70,7 +70,7 @@ export class McpStdioClient implements McpTransport {
   private onExit(err: Error): void {
     if (this.exited) return;
     this.exited = true;
-    // Kind freigeben (F-37): ohne kill bliebe der alte Prozess nach einem
+    // Kind freigeben : ohne kill bliebe der alte Prozess nach einem
     // stdin-EPIPE am Leben und der naechste ensureChild() wuerde einen zweiten
     // Prozess starten -> Prozess-Leck.
     const child = this.child;

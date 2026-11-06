@@ -64,7 +64,7 @@ app.use(`${adminBase}/api`, (req, res, next) => {
 });
 
   // Oeffentliche Adapter-API bleibt auf der Wurzel (Lambda/Alexa): /api/query,
-  // /api/lambda-trace. Der Prefix gilt nur fuer die Admin-UI (Issue #10).
+  // /api/lambda-trace. Der Prefix gilt nur fuer die Admin-UI .
   app.use(queryRoutes);
 
   // Admin-Bereich - optional unter BASE_PATH (Sub-URL hinter einem Reverse-Proxy,
@@ -98,7 +98,7 @@ app.use(`${adminBase}/api`, (req, res, next) => {
   });
 
   // Statische Admin-UI: Bearer-Token ODER Session-Cookie. Ein vorgelagerter
-  // Proxy kann so die UI ohne App-Login bedienen (Issue #10); das Token bleibt
+  // Proxy kann so die UI ohne App-Login bedienen ; das Token bleibt
   // proxy-seitig und gelangt nie in den Browser.
   admin.use('/admin', (req, res, next) => {
     if (!requestAuthorized(req)) {

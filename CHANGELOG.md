@@ -125,6 +125,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Actions auf Commit-SHAs gepinnt:** Alle Workflows referenzieren die
   GitHub-Actions per SHA (Kommentar nennt die Version) statt per beweglichem
   Tag.
+- **Code-Slop aufgeräumt:** Audit-/Issue-Referenzen aus `src/` entfernt
+  (Begründungen bleiben), `errMsg`/`parseId` als gemeinsame Helfer,
+  Manifest-Projektion einmal statt zweimal, `McpServerRow` statt drei
+  Inline-Typen, Template-Re-Exports entfernt.
 - **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
   und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
   und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind

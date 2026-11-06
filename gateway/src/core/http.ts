@@ -37,7 +37,7 @@ async function readCapped(res: Response, cap: number): Promise<string> {
   return out.slice(0, cap);
 }
 
-// F-07: dynamische Hostnamen vorab aufloesen. Fail-closed: null = keine
+// Dynamische Hostnamen vorab aufloesen. Fail-closed: null = keine
 // Aufloesung (NXDOMAIN/offline) -> der Aufrufer blockiert den Request.
 async function resolveDynamicHost(hostname: string): Promise<{ address: string; family: number }[] | null> {
   try {
@@ -48,7 +48,7 @@ async function resolveDynamicHost(hostname: string): Promise<{ address: string; 
   }
 }
 
-// F-07/N-01: Dispatcher-Factory fuer gepinnte dynamische Requests. Ausgelagert
+// Dispatcher-Factory fuer gepinnte dynamische Requests. Ausgelagert
 // und injizierbar, damit Tests die tatsaechlich verwendete Ziel-IP (nicht nur
 // die Praesenz) pruefen koennen. Default: undici-Agent mit gepinntem lookup.
 interface PinnedDispatcher {
@@ -77,7 +77,7 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
         trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
         return null;
       }
-      // F-07: DNS-Rebinding - oeffentlichen Hostnamen vorab aufloesen, private
+      // DNS-Rebinding - oeffentlichen Hostnamen vorab aufloesen, private
       // Ziele blockieren UND die gepruefte IP im Request pinnen (dispatcher).
       // So ist ein Rebinding zwischen Pruefung und Verbindungsaufbau wirkungslos.
       let dispatcher: PinnedDispatcher | undefined;

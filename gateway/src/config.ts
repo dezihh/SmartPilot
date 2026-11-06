@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 const CURRENT_DB_PATH = './data/smartpilot.db';
 const LEGACY_DB_PATH = './data/meinhelfer.db';
 
-// Upgrade-Kompatibilitaet (F-D6): ohne explizites DB_PATH die bestehende
+// Upgrade-Kompatibilitaet : ohne explizites DB_PATH die bestehende
 // Legacy-Datei weiterverwenden, statt nach dem Default-Wechsel eine leere neue
 // DB anzulegen. Reine Funktion fuer Tests.
 export function resolveDbPath(envPath: string | undefined, exists: (p: string) => boolean): string {
@@ -14,7 +14,7 @@ export function resolveDbPath(envPath: string | undefined, exists: (p: string) =
   return CURRENT_DB_PATH;
 }
 
-// Admin-Pfad-Prefix (Issue #10 Ausbaustufe): '' (Wurzel) oder '/prefix' ohne
+// Admin-Pfad-Prefix : '' (Wurzel) oder '/prefix' ohne
 // Trailing-Slash. Betrifft nur die Admin-UI; die oeffentliche API bleibt unter
 // '/api/...'. Reine Funktion fuer Tests.
 export function normalizeBasePath(raw: string | undefined): string {

@@ -33,7 +33,7 @@ const IPV4_PRIVATE_RANGES: Array<{ base: number; mask: number }> = (
     ['192.168.0.0', 16],
     ['198.18.0.0', 15],
     // Multicast, reserviert und Broadcast duerfen ebenfalls nie Ziel eines
-    // dynamischen http()-Aufrufs sein (F-11).
+    // dynamischen http()-Aufrufs sein .
     ['224.0.0.0', 4],
     ['240.0.0.0', 4],
     ['255.255.255.255', 32],

@@ -45,7 +45,7 @@ let logInserts = 0;
 
 // Schluesselnamen sind der einzige verlaessliche Hinweis auf Secrets in
 // Trace-Details (Tool-Argumente, URLs). Redaktion vor dem Persistieren, damit
-// weder DB noch Admin-API Tokens ausliefern (F-13).
+// weder DB noch Admin-API Tokens ausliefern .
 const SECRET_KEY = /token|secret|passw|api[-_]?key|authorization|cookie/i;
 
 export function redactTrace(value: unknown): unknown {

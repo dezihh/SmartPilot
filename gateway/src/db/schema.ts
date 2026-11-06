@@ -443,7 +443,7 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
 }
 // Bestands-DBs: den Hilfe-Hauptsatz haerten (kein Erfinden von Faehigkeiten).
 // Nur die alte Seed-Formulierung ersetzen - Nutzer-Anpassungen bleiben erhalten
-// (F-D2; kein Voll-Ersetzen des Prompts).
+// (kein Voll-Ersetzen des Prompts).
 {
   const row = db.prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt?: string } | undefined;
   const sp = row?.system_prompt;

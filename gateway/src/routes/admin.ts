@@ -23,7 +23,8 @@ import {
 import { SEED_SETTINGS } from '../db/schema.js';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY } from '../db/seeds.js';
 import { normalizeActionInput, normalizeFunctionInput } from '../core/normalize.js';
-import { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, renderActionTemplate } from '../core/template.js';
+import { HTTP_BODY_CAP, HTTP_TIMEOUT_MS } from '../core/http.js';
+import { renderActionTemplate } from '../core/template.js';
 import { assistIndex, applyDraft, type IndexDraft } from '../core/indexAssistant.js';
 import { invalidateIndex } from '../core/entityIndex.js';
 import { getMcpContext } from '../mcp/registry.js';

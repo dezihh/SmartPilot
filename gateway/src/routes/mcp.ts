@@ -39,7 +39,7 @@ function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
     const envRaw = body.env;
     if (envRaw === undefined || envRaw === null || envRaw === '') {
       // Nicht ueberschreiben (COALESCE): die Admin-UI zeigt maskierte env nicht
-      // an, ein leeres Feld darf die bestehenden Secrets nicht wischen (F-34).
+      // an, ein leeres Feld darf die bestehenden Secrets nicht wischen .
       env = null;
     } else {
       const envObj: Record<string, string> = {};
@@ -97,7 +97,7 @@ mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
     invalidateMcpCache();
     res.json({ server });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 

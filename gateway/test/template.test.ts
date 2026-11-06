@@ -1,7 +1,8 @@
 import { test, before, after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { promises as dns } from 'node:dns';
-import { nowContext, renderActionTemplate, renderFunction, setPinDispatcherFactoryForTests } from '../src/core/template.js';
+import { nowContext, renderActionTemplate, renderFunction } from '../src/core/template.js';
+import { setPinDispatcherFactoryForTests } from '../src/core/http.js';
 import { isPrivateHost } from '../src/core/ssrf.js';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';

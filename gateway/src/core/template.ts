@@ -10,8 +10,6 @@ import { httpCacheGet, httpCacheSet } from './httpCache.js';
 import { fetchUrl } from './http.js';
 import { runShell } from './shell.js';
 
-export { HTTP_BODY_CAP, HTTP_TIMEOUT_MS, setPinDispatcherFactoryForTests } from './http.js';
-export { isPrivateHost } from './ssrf.js';
 
 // Kontext fuer Templates. Zeitstempel kommen aus einer expliziten Zeitzone,
 // damit der UTC-Container nicht um 6 Uhr UTC "Guten Morgen" sagt.
@@ -156,7 +154,7 @@ async function preheat(
   const fnMap = new Map<string, string | null>();
   const httpMap = new Map<string, unknown | null>();
 
-  // HTTP-Cache (Finding #7): nur aktiv, wenn der Call eine TTL > 0 mitgibt
+  // HTTP-Cache : nur aktiv, wenn der Call eine TTL > 0 mitgibt
   // (http('url', 300000)). Cache lebt pro URL im Prozess, laeuft mit eigener TTL ab.
   const fetchCached = async (url: string, ttl: number, dynamic: boolean): Promise<unknown | null> => {
     if (ttl > 0) {
@@ -172,7 +170,7 @@ async function preheat(
   };
 
   // HTTP-URLs parallel laden (dedupliziert); dynamische Expressionen werden
-  // zuerst mit args/now zu einer URL aufgeloest (Finding #1) und dann normal
+  // zuerst mit args/now zu einer URL aufgeloest  und dann normal
   // gecacht/geholt. Ausdruck und Ergebnis-URL stimmen zur Render-Zeit wieder
   // ueberein, weil args innerhalb eines Renders konstant sind.
   const nowCtx = nowContext(config.timezone);
@@ -258,7 +256,7 @@ async function preheat(
     callMap.set(normKey, await invokeWithFallback(mcp, call.tool, parsedArgs ?? {}, call.fallback, trace, 'template.mcp'));
   }
 
-  // Dynamische mcp.call-Args (Finding #1-Parallele fuer mcp): die
+  // Dynamische mcp.call-Args (Parallele fuer mcp): die
   // Args-Expression wird mit args/now zu einem JSON-Objekt evaluiert
   // (nunjucks '| dump'), live gecallt und unter dem normalisierten Key
   // gecacht - der Render lookup trifft denselben Key.

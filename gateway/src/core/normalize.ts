@@ -14,7 +14,7 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     throw new Error(`Ungültiger Modus: ${mode}`);
   }
   // Akzeptiert raw- (trigger_phrases/tools) UND geparste Felder (triggers/toolList),
-  // damit ein PUT mit dem Bootstrap-Body keine Trigger leert (Finding #12).
+  // damit ein PUT mit dem Bootstrap-Body keine Trigger leert .
   // Auch JSON-Strings von der GET-API werden geparst.
   const parseMaybeJsonArray = (v: unknown): unknown[] | null => {
     if (Array.isArray(v)) return v.map(String);

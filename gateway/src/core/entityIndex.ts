@@ -181,7 +181,7 @@ function parseLine(line: string): IndexEntry | null {
 
 const cache = new Map<string, { ts: number; entries: IndexEntry[] }>();
 // In-Flight-Guard: parallele Kaltabrufe desselben Index teilen sich einen
-// Fetch (sonst mehrfache Tool-Calls). Siehe getIndexSnapshot (F-15).
+// Fetch (sonst mehrfache Tool-Calls). Siehe getIndexSnapshot .
 const inflight = new Map<string, Promise<IndexEntry[]>>();
 
 export function invalidateIndex(): void {
@@ -235,7 +235,7 @@ async function fetchSnapshot(settingName: string, cfg: IndexConfig): Promise<Ind
   return entries;
 }
 
-// F-38: Wie alt darf ein veralteter Index nach einem Fehler noch sein, bevor
+// Wie alt darf ein veralteter Index nach einem Fehler noch sein, bevor
 // der Fehler durchgereicht wird? Mindestens 5 Minuten, sonst das Zehnfache der
 // TTL. Reine Funktion -> deterministisch testbar (ohne Zeit-Injektion).
 export function staleFallbackLimitMs(ttlMs: number): number {
@@ -258,7 +258,7 @@ export async function getIndexSnapshot(indexKey = '', force = false): Promise<In
     return await p;
   } catch (e) {
     // Stale-while-error: letzten bekannten Stand liefern, statt hart zu werfen.
-    // Nur innerhalb einer Altersgrenze und mit Warnung (F-38), damit still
+    // Nur innerhalb einer Altersgrenze und mit Warnung , damit still
     // veraltete Daten nicht beliebig alt werden.
     if (cached && Date.now() - cached.ts <= staleFallbackLimitMs(cfg.ttlMs)) {
       console.warn(

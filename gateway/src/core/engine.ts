@@ -354,7 +354,7 @@ async function executeAction(
   if (action.mode === 'llm') {
     // Das Inventory wird nur in Prompts eingefuegt, die den Marker tragen. Ein
     // solcher Vorgang OHNE eigene Tools (Hilfe) beschreibt ALLE eingerichteten
-    // Systeme; ein Vorgang mit Tool-Liste bleibt darauf gescopt (F-D1).
+    // Systeme; ein Vorgang mit Tool-Liste bleibt darauf gescopt .
     const showsCatalog = action.system_prompt?.includes('{agent_inventory}') ?? false;
     const noTools = !action.toolList || action.toolList.length === 0;
     const inventoryScope = showsCatalog && noTools ? null : activeServerNames(mcp, action.toolList);
@@ -393,8 +393,8 @@ function isSeededHelp(action: ParsedAction): boolean {
 // MCP-Kontext nur laden, wenn der Weg ihn tatsaechlich braucht: der Agent und
 // LLM-Vorgaenge immer, deterministische/hybride Vorgaenge nur, wenn ihre
 // Funktion MCP/index/fn nutzt (reine http-/shell-Funktionen sparen den
-// Kaltstart; F-11). Die Hilfe braucht ihn nur bei eingeschraenkter Allowlist
-// (System-Filter); bei "alle"/"keine" spart sie den Kaltstart (F-D13).
+// Kaltstart). Die Hilfe braucht ihn nur bei eingeschraenkter Allowlist
+// (System-Filter); bei "alle"/"keine" spart sie den Kaltstart .
 function actionNeedsMcp(action: ParsedAction, helpAllow?: string[] | null): boolean {
   if (isSeededHelp(action)) return helpAllow != null && helpAllow.length > 0;
   if (action.mode === 'llm') return true;
@@ -446,7 +446,7 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
   const fuzzyGlobal = getSetting('fuzzy_global') !== '0';
   const match: RouteMatch | null = routeAction(query.text, actions, fuzzyGlobal);
   // Hilfe: Allowlist einmal auswerten - sie entscheidet auch ueber den MCP-Bedarf
-  // (nur bei eingeschraenkter Liste; sonst MCP-Kaltstart sparen, F-D13).
+  // (nur bei eingeschraenkter Liste; sonst MCP-Kaltstart sparen).
   const helpAllow = match && isSeededHelp(match.action) ? agentFnAllowlist() : undefined;
   const needsMcp = !match || actionNeedsMcp(match.action, helpAllow);
   const mcp = needsMcp

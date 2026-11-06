@@ -14,7 +14,7 @@ export type ToolRoute =
 
 export type ToolRouteMap = { specs: ToolSpec[]; routes: Map<string, ToolRoute>; budgets: Map<string, number> };
 
-// Leerer Code-Default: keine instanzspezifischen Tool-Namen im Kern (F-17).
+// Leerer Code-Default: keine instanzspezifischen Tool-Namen im Kern .
 export const LLM_BLOCKED_TOOLS = new Set<string>();
 
 // Blockliste: per Setting 'llm_blocked_tools' (Komma-Liste) pflegbar.

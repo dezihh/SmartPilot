@@ -22,7 +22,7 @@ export function listMcpServers(enabledOnly: boolean, reveal = false): McpServerR
     : (getDb().prepare('SELECT * FROM mcp_servers ORDER BY name').all() as McpServerRow[]);
   // Secrets (auth_token UND env) standardmaessig fuer die Admin-API maskieren;
   // nur interne Nutzer (MCP-Aufbau, Backup mit explizitem Wunsch) fordern
-  // Klartext an (F-09/F-34).
+  // Klartext an .
   return reveal ? rows : rows.map((r) => ({ ...r, auth_token: null, env: null, headers: null }));
 }
 
