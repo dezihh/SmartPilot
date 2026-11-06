@@ -539,3 +539,33 @@ test('Sicherheits-Header: CSP und Nosniff auf Admin-Antworten', async () => {
   assert.equal(r.headers['x-content-type-options'], 'nosniff');
   assert.equal(r.headers['x-frame-options'], 'SAMEORIGIN');
 });
+
+test('Routen: ungueltige numerische ID -> 400 statt stiller Aktion', async () => {
+  const del = await call('DELETE', '/admin/api/mcp-servers/abc', { cookie });
+  assert.equal(del.status, 400);
+});
+
+test('Zentraler Fehlerhandler: kaputtes JSON -> 400 mit JSON-Body', async () => {
+  const res = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const req = request(
+      {
+        host: '127.0.0.1',
+        port: PORT,
+        method: 'POST',
+        path: '/admin/api/settings',
+        headers: { 'content-type': 'application/json' },
+      },
+      (r) => {
+        let b = '';
+        r.setEncoding('utf8');
+        r.on('data', (c: string) => (b += c));
+        r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
+      }
+    );
+    req.on('error', reject);
+    req.write('{bad');
+    req.end();
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.body, /Ungueltige Anfrage/);
+});

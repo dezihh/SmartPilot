@@ -17,6 +17,10 @@ interface PendingRequest {
 // Injizierbar fuer Tests (F-16): im Betrieb node:child_process.spawn.
 type SpawnFn = (command: string, args: string[], options: object) => ChildProcess;
 
+// Obergrenze fuer eine unvollstaendige JSON-Zeile (Schutz vor Speicher-DoS
+// durch einen defekten MCP-Server).
+const MAX_BUFFER = 8 * 1024 * 1024;
+
 export interface StdioConfig {
   command: string;
   args: string[];
@@ -89,6 +93,12 @@ export class McpStdioClient implements McpTransport {
 
   private onData(chunk: string): void {
     this.buffer += chunk;
+    // Schutz vor einem defekten Server: eine Zeile ohne Umbruch darf den
+    // Prozess nicht unbegrenzt Speicher kosten.
+    if (this.buffer.length > MAX_BUFFER) {
+      this.onExit(new Error('stdio Puffer zu gross (kein Zeilenumbruch)'));
+      return;
+    }
     let idx: number;
     while ((idx = this.buffer.indexOf('\n')) >= 0) {
       const line = this.buffer.slice(0, idx).trim();
@@ -157,7 +167,17 @@ export class McpStdioClient implements McpTransport {
   }
 
   stop(): void {
-    if (this.child && !this.exited) this.child.kill('SIGTERM');
-    this.child = null;
+    const child = this.child;
+    if (!child || this.exited) return;
+    child.kill('SIGTERM');
+    // Fallback: ignoriert der Prozess SIGTERM, nach 3 s hart beenden.
+    setTimeout(() => {
+      if (this.exited) return;
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* bereits beendet */
+      }
+    }, 3000).unref();
   }
 }

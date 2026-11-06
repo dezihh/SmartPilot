@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAdminAuth } from '../auth.js';
+import { errMsg, parseId } from './helpers.js';
 import {
   deleteMcpServer,
   createMcpServer,
@@ -101,7 +102,11 @@ mcpRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => {
 });
 
 mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
-  const id = Number(req.params.id);
+  const id = parseId(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: 'ungueltige ID' });
+    return;
+  }
   try {
     const updated = updateMcpServer(
       id,
@@ -117,18 +122,28 @@ mcpRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
     }
     res.json({ server: updated });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
 mcpRoutes.delete('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) => {
-  deleteMcpServer(Number(req.params.id));
+  const id = parseId(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: 'ungueltige ID' });
+    return;
+  }
+  deleteMcpServer(id);
   invalidateMcpCache();
   res.json({ ok: true });
 });
 
 mcpRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, async (req, res) => {
-  const server = getMcpServer(Number(req.params.id));
+  const id = parseId(req.params.id);
+  if (id === null) {
+    res.status(400).json({ error: 'ungueltige ID' });
+    return;
+  }
+  const server = getMcpServer(id);
   if (!server) {
     res.status(404).json({ error: 'nicht gefunden' });
     return;

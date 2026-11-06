@@ -1,9 +1,9 @@
-import express, { type Express } from 'express';
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { join } from 'node:path';
 import { createSession, requestAuthorized, bearerToken, cookieFor, requireAdminAuth } from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { config } from './config.js';
-import { getSchemaVersion } from './db.js';
+import { getSchemaVersion, getDb } from './db.js';
 import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
 import { mcpRoutes } from './routes/mcp.js';
@@ -36,13 +36,17 @@ export function createApp(): Express {
 
   // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).
   app.get('/healthz', (_req, res) => {
-    let schemaVersion: number | null = null;
     try {
-      schemaVersion = getSchemaVersion();
+      const schemaVersion = getSchemaVersion();
+      // Schreibfaehigkeit pruefen, ohne Daten zu veraendern (WAL/Read-only-FS).
+      const db = getDb();
+      db.exec('BEGIN IMMEDIATE');
+      db.exec('ROLLBACK');
+      res.json({ ok: true, schema_version: schemaVersion });
     } catch {
-      // DB noch nicht initialisiert - Liveness bleibt ok.
+      // DB nicht erreichbar oder nicht schreibbar -> Container ist nicht gesund.
+      res.status(503).json({ ok: false, error: 'db nicht erreichbar' });
     }
-    res.json({ ok: true, schema_version: schemaVersion });
   });
 
   const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
@@ -133,6 +137,17 @@ app.use(`${adminBase}/api`, (req, res, next) => {
   admin.post('/admin/api/lambda-trace', requireAdminAuth, handleLambdaTrace);
 
   app.use(base || '/', admin);
+
+  // Zentraler JSON-Fehlerhandler: Parser-Fehler (kaputtes JSON, zu grosser
+  // Body) sollen nicht die Express-HTML-Seite ausliefern.
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const status = Number((err as { status?: number }).status) || 500;
+    const tooLarge = (err as { type?: string }).type === 'entity.too.large';
+    if (status >= 500) console.error('[http]', err);
+    res
+      .status(status)
+      .json({ error: tooLarge ? 'Anfrage zu gross' : status < 500 ? 'Ungueltige Anfrage' : 'Interner Fehler' });
+  });
 
   return app;
 }

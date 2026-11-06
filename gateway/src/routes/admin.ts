@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { TraceEvent } from '../types.js';
 import { requireAdminAuth } from '../auth.js';
+import { errMsg, parseId } from './helpers.js';
 import { config } from '../config.js';
 import {
   createAction,
@@ -83,22 +84,26 @@ adminRoutes.post('/admin/api/functions', requireAdminAuth, (req, res) => {
     const fn = createFunction(normalizeFunctionInput(req.body as Record<string, unknown>));
     res.json({ function: fn });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
 adminRoutes.put('/admin/api/functions/:id', requireAdminAuth, (req, res) => {
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'ungueltige ID' });
   try {
-    const fn = updateFunction(Number(req.params.id), normalizeFunctionInput(req.body as Record<string, unknown>));
+    const fn = updateFunction(id, normalizeFunctionInput(req.body as Record<string, unknown>));
     if (!fn) return res.status(404).json({ error: 'Funktion nicht gefunden' });
     res.json({ function: fn });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
 adminRoutes.delete('/admin/api/functions/:id', requireAdminAuth, (req, res) => {
-  deleteFunction(Number(req.params.id));
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'ungueltige ID' });
+  deleteFunction(id);
   res.json({ ok: true });
 });
 
@@ -159,7 +164,7 @@ adminRoutes.post('/admin/api/functions/preview', requireAdminAuth, async (req, r
     const rendered = await renderActionTemplate(template, mcp, trace, args);
     res.json({ rendered, trace });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -175,7 +180,7 @@ adminRoutes.post('/admin/api/index/assist', requireAdminAuth, async (req, res) =
     if (indexKey && !INDEX_KEY_RE.test(indexKey)) return res.status(400).json({ error: INDEX_KEY_ERROR });
     res.json(await assistIndex(goal, indexKey));
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -191,7 +196,7 @@ adminRoutes.post('/admin/api/index/apply', requireAdminAuth, async (req, res) =>
     if (indexKey && !INDEX_KEY_RE.test(indexKey)) return res.status(400).json({ error: INDEX_KEY_ERROR });
     res.json(await applyDraft(draft as IndexDraft, indexKey));
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
@@ -199,12 +204,13 @@ adminRoutes.post('/admin/api/actions', requireAdminAuth, (req, res) => {
   try {
     res.json({ action: createAction(normalizeActionInput(req.body as Record<string, unknown>)) });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
 adminRoutes.put('/admin/api/actions/:id', requireAdminAuth, (req, res) => {
-  const id = Number(req.params.id);
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'ungueltige ID' });
   const existing = getAction(id);
   if (!existing) {
     res.status(404).json({ error: 'nicht gefunden' });
@@ -214,12 +220,14 @@ adminRoutes.put('/admin/api/actions/:id', requireAdminAuth, (req, res) => {
     const updated = updateAction(id, normalizeActionInput(req.body as Record<string, unknown>));
     res.json({ action: updated });
   } catch (e) {
-    res.status(400).json({ error: String(e instanceof Error ? e.message : e) });
+    res.status(400).json({ error: errMsg(e) });
   }
 });
 
 adminRoutes.delete('/admin/api/actions/:id', requireAdminAuth, (req, res) => {
-  deleteAction(Number(req.params.id));
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'ungueltige ID' });
+  deleteAction(id);
   res.json({ ok: true });
 });
 

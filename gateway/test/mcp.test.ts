@@ -347,3 +347,11 @@ test('getMcpContext: fehlgeschlagener Init wird negativ gecacht', async () => {
     getDb().prepare("DELETE FROM mcp_servers WHERE name = 'neg-cache'").run();
   }
 });
+
+test('stdio: uebergrosser Puffer ohne Zeilenumbruch beendet den Client', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.callTool('tool_x', {});
+  child.stdout.emit('data', 'x'.repeat(8 * 1024 * 1024 + 1));
+  await assert.rejects(p, /Puffer zu gross/);
+});

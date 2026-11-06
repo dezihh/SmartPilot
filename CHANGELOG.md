@@ -60,6 +60,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `TZ` (Default `Europe/Berlin`) statt der Container-Zeitzone (UTC).
 - **MCP-Negativ-Cache:** Ein fehlgeschlagener Init wird für
   `MCP_FAILURE_TTL_MS` (Default 30 s) nicht erneut versucht.
+- **Zentraler JSON-Fehlerhandler:** Kaputtes JSON oder ein zu großer Body
+  liefern jetzt 400/413 als JSON statt der Express-HTML-Seite.
+- **ID-Validierung:** Ungültige numerische IDs (`abc`, `0`, `-1`) liefern 400,
+  statt still „nicht gefunden“ oder `ok: true` zu melden.
+- **`/healthz` prüft die Datenbank:** Lese- und Schreibfähigkeit (BEGIN
+  IMMEDIATE/ROLLBACK); sonst 503 statt `ok: true`.
+- **stdio-Robustheit:** 8-MB-Obergrenze für unvollständige Zeilen (Speicher-DoS)
+  und SIGKILL-Fallback, wenn ein Prozess SIGTERM ignoriert.
 - **Einheitliche MCP-Timeouts:** HTTP und stdio nutzen dieselben Grenzen —
   30 s für `init`/`tools/list`, 60 s für `tools/call`.
 - **Restore prüft Format und Teil-Sicherungen:** Unbekannte `formatVersion`
