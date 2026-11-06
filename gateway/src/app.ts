@@ -141,15 +141,30 @@ app.use(`${adminBase}/api`, (req, res, next) => {
     res.json({ ok: true });
   });
 
-  // Login-Seite ist ohne Session erreichbar (legt das Cookie)
+  // Login-Seite samt Assets ist ohne Session erreichbar (legt das Cookie).
   admin.get('/admin/login.html', (_req, res) => {
     res.sendFile(join(process.cwd(), 'web', 'login.html'));
   });
+  admin.get('/admin/css/login.css', (_req, res) => {
+    res.sendFile(join(process.cwd(), 'web', 'css', 'login.css'));
+  });
+  admin.get('/admin/js/login.js', (_req, res) => {
+    res.sendFile(join(process.cwd(), 'web', 'js', 'login.js'));
+  });
+
+  // Die Login-Seite braucht ihre Assets ohne Session. Inline-Styles/-Skripte
+  // sind per CSP verboten, deshalb sind es eigene Dateien - und genau diese
+  // Pfade (kein Verzeichnis, kein Muster) bleiben oeffentlich.
+  const PUBLIC_ADMIN_FILES = new Set(['/admin/login.html', '/admin/css/login.css', '/admin/js/login.js']);
 
   // Statische Admin-UI: Bearer-Token ODER Session-Cookie. Ein vorgelagerter
   // Proxy kann so die UI ohne App-Login bedienen ; das Token bleibt
   // proxy-seitig und gelangt nie in den Browser.
   admin.use('/admin', (req, res, next) => {
+    if (PUBLIC_ADMIN_FILES.has(req.path)) {
+      next();
+      return;
+    }
     if (!requestAuthorized(req)) {
       if (req.headers.accept?.includes('text/html')) {
         res.redirect(`${adminBase}/login.html`);

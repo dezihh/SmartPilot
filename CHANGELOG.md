@@ -50,6 +50,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Login-Seite wieder bedienbar:** Inline-Styles und Inline-Skripte sind per
+  CSP (`style-src 'self'`, `script-src 'self'`) blockiert — die Login-Seite
+  war dadurch ungestylt und der Anmelde-Knopf ohne Funktion. CSS und JS liegen
+  jetzt als `web/css/login.css` und `web/js/login.js` vor; nur diese beiden
+  Dateien und `login.html` sind ohne Session erreichbar, alle übrigen
+  Admin-Assets bleiben gesperrt.
 - **Backup/Restore behält das persistierte Manifest.**
 - **Backup maskiert Header ohne Opt-in:** `GET /admin/api/backup` entfernt
   `headers` wie `auth_token`/`env`; vollständig nur mit `?tokens=1`.
