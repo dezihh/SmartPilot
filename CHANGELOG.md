@@ -108,6 +108,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Entwicklung
 
+- **Actions auf Commit-SHAs gepinnt:** Alle Workflows referenzieren die
+  GitHub-Actions per SHA (Kommentar nennt die Version) statt per beweglichem
+  Tag.
 - **Hygiene-Gate:** ESLint, knip (toter Code), jscpd (Duplikate, Schwelle 3 %)
   und madge (Zyklen) sind als `npm run lint|deadcode|dupes|cycles` eingebunden
   und laufen in der Gateway-CI. `noUnusedLocals`/`noUnusedParameters` sind
