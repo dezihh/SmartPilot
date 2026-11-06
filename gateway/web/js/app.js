@@ -1,4 +1,4 @@
-import { $, api, esc } from './lib.js';
+import { $, api, esc, token } from './lib.js';
 import { loadMaintenance, setTestPackageHandler, getPackageForTest } from './packages.js';
 import { loadLogs } from './logs.js';
 import { initMonitor, testInMonitor, testPackage, sendTest } from './monitor.js';
