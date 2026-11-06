@@ -5,7 +5,7 @@
   "description": "SmartPilot Gateway: Alexa-Adapter, Action-Routing, LLM- und MCP-Orchestrierung, Admin-UI",
   "type": "module",
   "engines": {
-    "node": ">=22.19.0"
+    "node": ">=26.0.0"
   },
   "scripts": {
     "build": "tsc",
