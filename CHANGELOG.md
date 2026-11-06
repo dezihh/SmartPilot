@@ -93,6 +93,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Dispatcher setzt `allowH2: false`, damit undici 8 nicht stillschweigend
   HTTP/2 verhandelt. `engines.node` steigt auf `>=22.19.0` (Mindestversion
   von undici 8).
+- **Lambda-Abhängigkeiten aktualisiert:** `requests` 2.34.2 und `urllib3`
+  2.8.0 (vorher 2.31.0 / 1.26.20, mehrere Advisories). Der Testlauf der
+  Lambda bleibt mit den echten Bibliotheken grün.
 - **Provisioner ohne Gateway-Secrets:** `npm install` für stdio-Pakete erhält
   nur ein minimales Environment (kein `ADMIN_TOKEN`/`API_TOKEN`/`LLM_API_KEY`)
   und läuft mit `--ignore-scripts`. Opt-out für Pakete, die bauen müssen:
