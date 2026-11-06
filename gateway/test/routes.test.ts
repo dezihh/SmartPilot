@@ -569,3 +569,31 @@ test('Zentraler Fehlerhandler: kaputtes JSON -> 400 mit JSON-Body', async () => 
   assert.equal(res.status, 400);
   assert.match(res.body, /Ungueltige Anfrage/);
 });
+
+// Login-Seite: Inline-Styles/-Skripte sind per CSP verboten, also muessen die
+// Assets als eigene Dateien ohne Session erreichbar sein - sonst bleibt die
+// Seite ungestylt und der Anmelde-Knopf ohne Funktion.
+test('Login-Seite laedt ohne Session mit ihren Assets', async () => {
+  const page = await call('GET', '/admin/login.html');
+  assert.equal(page.status, 200);
+  assert.match(page.text, /href="css\/login\.css"/);
+  assert.match(page.text, /src="js\/login\.js"/);
+  assert.doesNotMatch(page.text, /<style>|<script>/);
+
+  const css = await call('GET', '/admin/css/login.css');
+  assert.equal(css.status, 200);
+  assert.match(String(css.headers['content-type']), /text\/css/);
+  assert.match(css.text, /--bg/);
+
+  const js = await call('GET', '/admin/js/login.js');
+  assert.equal(js.status, 200);
+  assert.match(String(js.headers['content-type']), /javascript/);
+  assert.match(js.text, /login-form/);
+});
+
+test('uebrige Admin-Assets bleiben ohne Session gesperrt', async () => {
+  const css = await call('GET', '/admin/css/style.css');
+  assert.equal(css.status, 401);
+  const js = await call('GET', '/admin/js/app.js');
+  assert.equal(js.status, 401);
+});
