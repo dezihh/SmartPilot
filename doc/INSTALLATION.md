@@ -81,8 +81,8 @@ Diese Variablen liest der Gateway-Code beim Start:
 
 | Variable | Pflicht | Bedeutung |
 |---|---|---|
-| `ADMIN_TOKEN` | ja | schützt nur den Admin-Bereich (`/admin/**`) |
-| `API_TOKEN` | ja | schützt nur die Adapter-API (`/api/query`, `/api/lambda-trace`) |
+| `ADMIN_TOKEN` | ja | schützt nur den Admin-Bereich (`/admin/**`); in Produktion mindestens 24 Zeichen, Platzhalter werden abgelehnt |
+| `API_TOKEN` | ja | schützt nur die Adapter-API (`/api/query`, `/api/lambda-trace`); gleiche Längenregel, muss sich von `ADMIN_TOKEN` unterscheiden |
 | `LLM_BASE_URL` | ja | Basis-URL der OpenAI-kompatiblen Schnittstelle |
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
 | `PORT` | nein | Gateway-Port, Standard `3000` |

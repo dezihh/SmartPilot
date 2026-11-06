@@ -2,7 +2,7 @@ const buckets = new Map<string, number[]>();
 const MAX_KEYS = 1000;
 
 /**
- * In-Memory-Rate-Limiter (festes Zeitfenster, pro Schluessel z. B. Client-IP).
+ * In-Memory-Rate-Limiter (gleitendes Fenster, pro Schluessel z. B. Client-IP).
  * `now` ist injizierbar, damit Tests deterministisch sind.
  */
 export function checkRateLimit(

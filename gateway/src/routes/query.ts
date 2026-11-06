@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { requireApiAuth } from '../auth.js';
 import { checkRateLimit } from '../rateLimit.js';
 import { config } from '../config.js';
@@ -25,12 +25,6 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
   if (skillId && config.alexaSkillId && skillId !== config.alexaSkillId) {
     console.warn('[query] Skill-ID-Mismatch: Header=%s erwartet=%s', skillId, config.alexaSkillId);
   }
-  // Key: bevorzugt userId, sonst Client-IP (mit 'trust proxy' korrekt).
-  const key = body.userId ? `query:u:${body.userId}` : `query:ip:${req.ip ?? 'unbekannt'}`;
-  if (!checkRateLimit(key, Date.now(), 60_000, config.queryRateMax)) {
-    res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
-    return;
-  }
   const result = await processQuery({
     sessionId: body.sessionId ?? 'api-test',
     userId: body.userId,
@@ -39,7 +33,18 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
   res.json(result);
 };
 
-queryRoutes.post('/api/query', requireApiAuth, handleQuery);
+// Vor der Auth: fehlgeschlagene Token-Versuche duerfen das Limit nicht
+// umgehen. Schluessel ist die Client-IP, nicht die frei waehlbare userId.
+function queryRateLimit(req: Request, res: Response, next: NextFunction): void {
+  const key = `query:ip:${req.ip ?? 'unbekannt'}`;
+  if (!checkRateLimit(key, Date.now(), 60_000, config.queryRateMax)) {
+    res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
+    return;
+  }
+  next();
+}
+
+queryRoutes.post('/api/query', queryRateLimit, requireApiAuth, handleQuery);
 
 export const handleLambdaTrace = (req: Request, res: Response) => {
   const body = req.body as { sessionId?: string; event?: string; elapsedMs?: number; note?: string };

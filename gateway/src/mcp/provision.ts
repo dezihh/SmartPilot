@@ -19,7 +19,7 @@ export interface ProvisionReport {
   failed: { spec: string; error: string }[];
 }
 
-export type InstallRunner = (dir: string, specs: string[]) => void;
+export type InstallRunner = (dir: string) => void;
 
 // Paketname aus einer npm-Spec: "@scope/name@1.2.3" -> "@scope/name",
 // "name@^1.0.0" -> "name", "name" -> "name".
@@ -110,9 +110,9 @@ export function provisionMcpServers(opts: {
   );
 
   try {
-    opts.runInstall(opts.dir, desired);
+    opts.runInstall(opts.dir);
     // Ueberzaehlige Pakete nach einem Entfernen physisch loeschen.
-    if (report.removed.length > 0 && opts.runPrune) opts.runPrune(opts.dir, []);
+    if (report.removed.length > 0 && opts.runPrune) opts.runPrune(opts.dir);
   } catch (e) {
     report.failed.push({ spec: desired.join(', '), error: e instanceof Error ? e.message : String(e) });
     return report;
@@ -121,27 +121,38 @@ export function provisionMcpServers(opts: {
   return report;
 }
 
-// Standard-Runner: `npm install` im Volume (packages.json steuert deterministisch).
-// Fester Timeout, damit ein Netzhaenger den Containerstart nicht blockiert.
-export const npmInstallRunner: InstallRunner = (dir) => {
-  const res = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
+// Registry-Pakete bringen Lifecycle-Skripte mit. npm darf deshalb nur ein
+// minimales Environment sehen (keine Gateway-Tokens) und standardmaessig
+// keine Skripte ausfuehren. Opt-out fuer Pakete, die zwingend bauen muessen:
+// MCP_NPM_ALLOW_SCRIPTS=1.
+const NPM_ENV_KEYS = [
+  'PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'LANGUAGE',
+  'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'no_proxy',
+  'npm_config_cache', 'npm_config_registry', 'npm_config_prefix',
+];
+
+export function npmEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const key of NPM_ENV_KEYS) if (env[key] !== undefined) out[key] = env[key];
+  return out;
+}
+
+function runNpm(dir: string, command: 'install' | 'prune'): void {
+  const args = [command, '--no-audit', '--no-fund'];
+  if (process.env.MCP_NPM_ALLOW_SCRIPTS !== '1') args.push('--ignore-scripts');
+  const res = spawnSync('npm', args, {
     cwd: dir,
     stdio: 'inherit',
     timeout: 300_000,
-    env: process.env,
+    env: npmEnv(),
   });
   if (res.error) throw res.error;
-  if (res.status !== 0) throw new Error(`npm install fehlgeschlagen (Exit ${res.status ?? 'unbekannt'})`);
-};
+  if (res.status !== 0) throw new Error(`npm ${command} fehlgeschlagen (Exit ${res.status ?? 'unbekannt'})`);
+}
+
+// Standard-Runner: `npm install` im Volume (package.json steuert deterministisch).
+// Fester Timeout, damit ein Netzhaenger den Containerstart nicht blockiert.
+export const npmInstallRunner: InstallRunner = (dir) => runNpm(dir, 'install');
 
 // Entfernt nicht mehr deklarierte Pakete physisch aus node_modules/.bin.
-export const npmPruneRunner: InstallRunner = (dir) => {
-  const res = spawnSync('npm', ['prune', '--no-audit', '--no-fund'], {
-    cwd: dir,
-    stdio: 'inherit',
-    timeout: 300_000,
-    env: process.env,
-  });
-  if (res.error) throw res.error;
-  if (res.status !== 0) throw new Error(`npm prune fehlgeschlagen (Exit ${res.status ?? 'unbekannt'})`);
-};
+export const npmPruneRunner: InstallRunner = (dir) => runNpm(dir, 'prune');

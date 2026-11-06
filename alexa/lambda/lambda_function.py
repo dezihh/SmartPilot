@@ -249,6 +249,8 @@ def _is_timeout(err):
 def call_gateway(query, session_id, user_id, skill_id=None):
     if not gateway_url:
         raise RuntimeError("gateway_url nicht konfiguriert")
+    if not api_token:
+        raise RuntimeError("api_token nicht konfiguriert")
     headers = {
         "Authorization": "Bearer {}".format(api_token),
         "Content-Type": "application/json",
@@ -325,7 +327,7 @@ def gateway_with_watchdog(handler_input, request, query, session_id, user_id, ap
 
 def lambda_trace(session_id, event, elapsed_ms=None):
     """Fire-and-forget: Lambda-Lebenszyklus ins Gateway-Log (CloudWatch-Ersatz)."""
-    if not gateway_url:
+    if not gateway_url or not api_token:
         return
 
     def run():
@@ -521,11 +523,13 @@ class CatchAllExceptionHandler(AbstractExceptionHandler):
 
 
 sb = CustomSkillBuilder(api_client=DefaultApiClient())
+# Die Skill-ID ist Pflicht: ohne sie prueft der eingebaute Verifier die
+# applicationId nicht, und jede Alexa-Skill koennte die Funktion aufrufen.
+if not alexa_skill_id:
+    raise RuntimeError("alexa_skill_id nicht gesetzt - Skill-ID-Pruefung ist Pflicht")
 # Eingebauter Skill-ID-Verifier des ASK SDK: ist sb.skill_id gesetzt, lehnt
 # CustomSkill.invoke jeden Request mit abweichender applicationId ab.
-sb.skill_id = alexa_skill_id or None
-if not alexa_skill_id:
-    logger.warning("alexa_skill_id nicht gesetzt - applicationId wird nicht geprueft")
+sb.skill_id = alexa_skill_id
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(GptQueryIntentHandler())
 sb.add_request_handler(HelpIntentHandler())

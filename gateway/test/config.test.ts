@@ -16,7 +16,7 @@ process.env.AGENT_CLARIFICATION_BUDGET = 'abc';
 process.env.MAX_TOOL_ITERATIONS = 'abc';
 process.env.LLM_TOOL_DEADLINE_MS = 'abc';
 
-const { resolveDbPath, normalizeBasePath, envPositiveNumber, config, assertTokensDistinct } = await import('../src/config.js');
+const { resolveDbPath, normalizeBasePath, envPositiveNumber, config, assertTokensDistinct, assertStrongToken } = await import('../src/config.js');
 
 test('envPositiveNumber: ungueltig/0/negativ -> Default, gueltig -> Wert', () => {
   assert.equal(envPositiveNumber('5', 1), 5);
@@ -70,4 +70,16 @@ test('normalizeBasePath: nur Slashes und umgebende Leerzeichen', () => {
 test('config: identische Tokens verhindern den Start', () => {
   assert.throws(() => assertTokensDistinct('gleich', 'gleich'), /muessen sich unterscheiden/);
   assert.doesNotThrow(() => assertTokensDistinct('a', 'b'));
+});
+
+test('assertStrongToken: Platzhalter und kurze Produktions-Tokens abgelehnt', () => {
+  assert.throws(() => assertStrongToken('ADMIN_TOKEN', 'change-me-bitte-aendern'), /Platzhalter/);
+  const prev = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  try {
+    assert.throws(() => assertStrongToken('ADMIN_TOKEN', 'zu-kurz'), /24 Zeichen/);
+  } finally {
+    process.env.NODE_ENV = prev;
+  }
+  assert.doesNotThrow(() => assertStrongToken('ADMIN_TOKEN', 'x'.repeat(24)));
 });

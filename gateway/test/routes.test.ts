@@ -354,12 +354,17 @@ test('query: fehlender text 400, ohne Auth 401', async () => {
 });
 
 test('#1: /api/query akzeptiert nur API_TOKEN, nicht ADMIN_TOKEN/Session', async () => {
+  resetRateLimitsForTests(); // das Pre-Auth-Limit zaehlt auch Fehlversuche
   // ADMIN_TOKEN (Admin) darf die Adapter-API NICHT oeffnen.
   assert.equal((await call('POST', '/api/query', { token: 'test-secret', body: { text: 'hi' } })).status, 401);
   // Admin-Session ebenso wenig.
   assert.equal((await call('POST', '/api/query', { cookie, body: { text: 'hi' } })).status, 401);
+  // Auth-Fehlversuche verbrauchen das Pre-Auth-Limit; fuer die Erfolgspruefung
+  // zuruecksetzen (QUERY_RATE_MAX=2 im Test).
+  resetRateLimitsForTests();
   // API_TOKEN autorisiert (Route erreicht -> 400 wegen fehlendem text).
   assert.equal((await call('POST', '/api/query', { token: 'test-query-secret', body: {} })).status, 400);
+  resetRateLimitsForTests();
 });
 
 test('#3: /api/query kappt zu langen Text (413) und rate-limitet (429)', async () => {

@@ -48,6 +48,17 @@ export function createApp(): Express {
   const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
   const adminBase = `${base}/admin`;
 
+// Auch fehlgeschlagene Admin-Token-Versuche zaehlen (Brute-Force). Das Limit
+// ist bewusst grosszuegig, damit die UI im Normalbetrieb nicht ausgesperrt wird.
+app.use(`${adminBase}/api`, (req, res, next) => {
+  const key = `admin:ip:${req.ip ?? 'unbekannt'}`;
+  if (!checkRateLimit(key, Date.now(), 60_000, config.adminRateMax)) {
+    res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
+    return;
+  }
+  next();
+});
+
   // Oeffentliche Adapter-API bleibt auf der Wurzel (Lambda/Alexa): /api/query,
   // /api/lambda-trace. Der Prefix gilt nur fuer die Admin-UI (Issue #10).
   app.use(queryRoutes);

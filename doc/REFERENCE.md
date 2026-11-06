@@ -162,11 +162,16 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `TRUST_PROXY` | leer | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); leer = aus |
 | `QUERY_MAX_CHARS` | `500` | max. Zeichen für `/api/query` (Kostenschutz) |
 | `QUERY_RATE_MAX` | `30` | max. `/api/query`-Anfragen pro Minute und Client |
+| `ADMIN_RATE_MAX` | `600` | max. Admin-API-Anfragen pro Minute und Client-IP (auch fehlgeschlagene Tokens) |
+| `MCP_NPM_ALLOW_SCRIPTS` | leer | `1` = Lifecycle-Skripte beim Provisionieren erlauben; Standard aus |
 | `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; prüft den Header `X-Alexa-Skill-Id` der Lambda nur warnend (reine Log-Info, **keine** Sicherheitsgrenze) |
 | `SESSION_MAX_HOURS` | `24` | absolute Obergrenze einer Admin-Session (Sliding-TTL verlängert sonst unbegrenzt) |
 | `GATEWAY_PORT` | `3000` | nur Compose-Host-Mapping (der Code liest `PORT`) |
 
 Pflichtvariablen: `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
+`ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden; die Beispielwerte
+(`change-me…`) und in Produktion (`NODE_ENV=production`) Tokens unter 24
+Zeichen verhindern den Start.
 
 ## Budgets und Tool-Auswahl
 

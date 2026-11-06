@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { provisionMcpServers, specName, type InstallRunner } from '../src/mcp/provision.js';
+import { npmEnv, provisionMcpServers, specName, type InstallRunner } from '../src/mcp/provision.js';
 
 interface Call {
   op: 'install' | 'prune';
@@ -18,10 +18,12 @@ function tmpDir(): string {
 }
 
 function stubInstall(calls: Call[]): InstallRunner {
-  return (dir, specs) => {
-    calls.push({ op: 'install', specs });
-    for (const spec of specs) {
-      mkdirSync(join(dir, 'node_modules', specName(spec)), { recursive: true });
+  return (dir) => {
+    // npm liest die Ziele aus package.json; der Stub bildet das nach.
+    const deps = Object.keys(readDependenciesRaw(dir));
+    calls.push({ op: 'install', specs: deps });
+    for (const name of deps) {
+      mkdirSync(join(dir, 'node_modules', name), { recursive: true });
     }
     mkdirSync(join(dir, 'node_modules', '.bin'), { recursive: true });
   };
@@ -129,4 +131,21 @@ test('Installationsfehler blockiert nicht: failed gefuellt, kein Wurf', () => {
   assert.equal(r.failed.length, 1);
   assert.match(r.failed[0]!.error, /kein Netz/);
   assert.equal(r.installed.length, 0);
+});
+
+test('npmEnv: Gateway-Secrets gelangen nicht in npm-Lifecycle-Skripte', () => {
+  const env = npmEnv({
+    PATH: '/usr/bin',
+    HOME: '/root',
+    ADMIN_TOKEN: 'geheim',
+    API_TOKEN: 'auch-geheim',
+    LLM_API_KEY: 'key',
+    DATABASE_URL: 'db',
+  });
+  assert.equal(env.PATH, '/usr/bin');
+  assert.equal(env.HOME, '/root');
+  assert.equal(env.ADMIN_TOKEN, undefined);
+  assert.equal(env.API_TOKEN, undefined);
+  assert.equal(env.LLM_API_KEY, undefined);
+  assert.equal(env.DATABASE_URL, undefined);
 });

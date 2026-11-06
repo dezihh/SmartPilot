@@ -69,6 +69,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Sicherheit
 
+- **Provisioner ohne Gateway-Secrets:** `npm install` für stdio-Pakete erhält
+  nur ein minimales Environment (kein `ADMIN_TOKEN`/`API_TOKEN`/`LLM_API_KEY`)
+  und läuft mit `--ignore-scripts`. Opt-out für Pakete, die bauen müssen:
+  `MCP_NPM_ALLOW_SCRIPTS=1`.
+- **Starke Tokens erzwungen:** Beispielwerte (`change-me…`) und in Produktion
+  Tokens unter 24 Zeichen verhindern den Start.
+- **Rate-Limit vor der Auth:** `/api/query` zählt pro Client-IP vor der
+  Token-Prüfung; die Admin-API hat ein eigenes Limit (`ADMIN_RATE_MAX`,
+  Standard 600/min), damit auch fehlgeschlagene Tokens begrenzt sind.
+- **Lambda fail-closed:** Fehlendes `api_token` oder `alexa_skill_id` bricht
+  den Aufruf ab, statt `Bearer ` zu senden bzw. ohne Skill-ID-Prüfung zu
+  arbeiten.
 - **DNS fail-closed:** Dynamische `http()`-URLs werden blockiert, wenn der
   Host nicht auflösbar ist; Multicast (`224/4`), reservierte Bereiche
   (`240/4`) und Broadcast gelten zusätzlich als privat.

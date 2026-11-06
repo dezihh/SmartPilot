@@ -45,21 +45,34 @@ const apiToken = req('API_TOKEN');
 export function assertTokensDistinct(admin: string, api: string): void {
   if (admin === api) throw new Error('ADMIN_TOKEN und API_TOKEN muessen sich unterscheiden');
 }
+// Beispielwerte aus .env.example duerfen nie produktiv laufen; in Produktion
+// (Docker-Image setzt NODE_ENV=production) muss der Wert ausserdem lang genug
+// sein. Tests/CI laufen bewusst mit kurzen, eindeutigen Tokens.
+const PLACEHOLDER_TOKEN = /^change-me/i;
+export function assertStrongToken(name: string, value: string): void {
+  if (PLACEHOLDER_TOKEN.test(value)) throw new Error(`${name} ist noch der Platzhalter aus .env.example`);
+  if (process.env.NODE_ENV === 'production' && value.length < 24) {
+    throw new Error(`${name} muss in Produktion mindestens 24 Zeichen haben`);
+  }
+}
+assertStrongToken('ADMIN_TOKEN', adminToken);
+assertStrongToken('API_TOKEN', apiToken);
 assertTokensDistinct(adminToken, apiToken);
+const dbPath = resolveDbPath(process.env.DB_PATH, existsSync);
 
 export const config = {
   port: envPositiveNumber(process.env.PORT, 3000),
   // Zwei getrennte Schluessel (Principle of Least Privilege): ADMIN_TOKEN nur fuer
   // den Admin-Bereich, API_TOKEN nur fuer die Adapter-API (/api/query,
   // /api/lambda-trace). Kein gemeinsamer Token mehr.
-  adminToken: req('ADMIN_TOKEN'),
-  apiToken: req('API_TOKEN'),
-  dbPath: resolveDbPath(process.env.DB_PATH, existsSync),
+  adminToken,
+  apiToken,
+  dbPath,
   // Persistentes Volume fuer provisionierte stdio-MCP-Artefakte (npm-Pakete).
   // Default neben der DB, damit beide zusammen persistieren.
   mcpModulesDir:
     process.env.MCP_MODULES_DIR?.trim() ||
-    join(dirname(resolveDbPath(process.env.DB_PATH, existsSync)), 'mcp_modules'),
+    join(dirname(dbPath), 'mcp_modules'),
   // Zeitlimit fuer den stdio-MCP-Init (initialize/listTools). Der Provisioner
   // stellt Pakete vorab bereit; ein hoeheres Limit faengt kalte Erstinstallation
   // ohne Laufzeit-npx ab.
@@ -93,6 +106,9 @@ export const config = {
   queryMaxChars: envPositiveNumber(process.env.QUERY_MAX_CHARS, 500),
   // Rate-Limit fuer /api/query (Anfragen pro Minute und Client, Kostenschutz).
   queryRateMax: envPositiveNumber(process.env.QUERY_RATE_MAX, 30),
+  // Grosszuegiges Limit fuer die Admin-API pro Client-IP. Auch fehlgeschlagene
+  // Token-Versuche zaehlen, damit Brute-Force nicht unbegrenzt ist.
+  adminRateMax: envPositiveNumber(process.env.ADMIN_RATE_MAX, 600),
   // Erwartete Alexa-Skill-ID. Die Lambda sendet ihre applicationId als Header
   // X-Alexa-Skill-Id; gesetzt + abweichend -> Warnung (spaeter ggf. Ablehnung).
   alexaSkillId: (process.env.ALEXA_SKILL_ID ?? '').trim(),
