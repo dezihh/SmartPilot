@@ -219,7 +219,7 @@ docker compose -f gateway/docker-compose.yml up --build
 
 ### Direkt auf dem Host (Alternative)
 
-Node.js ≥ 22 erforderlich:
+Node.js ≥ 26 erforderlich:
 
 ```bash
 cd gateway

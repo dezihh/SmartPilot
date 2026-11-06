@@ -10,6 +10,8 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
+## [Unreleased]
+
 ## [0.5.0] – 2026-11-06
 
 ### Hinzugefügt
@@ -117,8 +119,7 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   (TLS-Zertifikatsprüfung, TLS-Renegotiation, Content-Encoding-DoS);
   `npm audit --omit=dev` meldet keine offenen Befunde mehr. Der gepinnte
   Dispatcher setzt `allowH2: false`, damit undici 8 nicht stillschweigend
-  HTTP/2 verhandelt. `engines.node` steigt auf `>=22.19.0` (Mindestversion
-  von undici 8).
+  HTTP/2 verhandelt.
 - **Lambda-Abhängigkeiten aktualisiert:** `requests` 2.34.2 und `urllib3`
   2.8.0 (vorher 2.31.0 / 1.26.20, mehrere Advisories). Der Testlauf der
   Lambda bleibt mit den echten Bibliotheken grün.
@@ -173,7 +174,7 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Versionen und die Sicherheitswirkung der Registry-Pakete; in CI ist ein
   fehlendes Paketverzeichnis ein Fehler statt eines stillen Skips.
 - **Paket-Vertrag in der Registry-CI:** Änderungen unter `packages/**` lösen
-  jetzt den Vertragstest aus (eigener Job, Node 22). Vorher lief dort nur die
+  jetzt den Vertragstest aus (eigener Job, Node 26). Vorher lief dort nur die
   Index-Prüfung, ein defektes Manifest erreichte `main` ungeprüft und war nach
   dem Registry-Cache (60 s) für alle Installationen live.
 - **Actions auf Commit-SHAs gepinnt:** Alle Workflows referenzieren die
