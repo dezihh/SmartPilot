@@ -55,7 +55,7 @@ Adapter.
 
 | Pfad | Rolle |
 |---|---|
-| `gateway/` | Node-22-Gateway (TypeScript ESM, Express 5, better-sqlite3, nunjucks): Core, MCP-/LLM-Anbindung, Admin-API/-UI |
+| `gateway/` | Node-26-Gateway (TypeScript ESM, Express 5, better-sqlite3, nunjucks): Core, MCP-/LLM-Anbindung, Admin-API/-UI |
 | `alexa/` | Alexa-Adapter: `lambda/` (Python, ask-sdk), `skill-package/` (Interaktionsmodell + Manifest), `scripts/` (Skill-Sync) |
 | `packages/` | Installationspakete, sprachspezifisch unter `packages/<lang>/<id>/` (Registry für die Admin-UI) |
 | `doc/` | Diese Dokumentation |
