@@ -10,7 +10,12 @@ services:
     env_file: .env
     volumes:
       - .:/app
+      # Ausgelieferte Pakete (Produktionsdaten) readonly, damit der Vertragstest
+      # test/contract-packages-registry.test.ts sie im Container pruefen kann.
+      - ../packages:/packages:ro
       - node_modules:/app/node_modules
+    environment:
+      - PACKAGES_DIR=/packages
     command: npm run dev
     restart: unless-stopped
     healthcheck:

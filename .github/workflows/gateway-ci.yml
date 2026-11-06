@@ -70,12 +70,8 @@ jobs:
       - name: Tests + Coverage-Gate
         run: npm run coverage
 
-      # Blockierendes Gate: critical.
-      - name: Audit (blockierend, critical)
-        run: npm audit --omit=dev --audit-level=critical
-
-      # High-Findings sichtbar machen, ohne die Pipeline dauerhaft rot zu halten
-      # (bekannt: undici 6.x, Fix ueber Dependabot-PR #16).
-      - name: Audit-Report (high, nicht blockierend)
-        continue-on-error: true
-        run: npm audit --omit=dev --audit-level=high
+      # Blockierend ab High. Ausnahmen stehen mit Begruendung, Doku-Verweis,
+      # Trigger und Ablaufdatum in gateway/audit-allowlist.json; ein nicht
+      # bewertbarer Bericht (kein Netz, kaputtes JSON) ist ebenfalls rot.
+      - name: Audit (blockierend, high/critical)
+        run: npm run audit:gate
