@@ -14,6 +14,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Hinzugefügt
 
+- **MQTT-Paket (`packages/de/mqtt`):** Der interne MQTT-MCP-Server
+  (`gateway/src/mcp/mqtt-server.ts`, läuft als stdio-Prozess im Container)
+  hält einen Last-Value-Cache (1000 Topics, 4 KB pro Wert, max. 50 Zeilen pro
+  Snapshot) und bietet `mqtt_get`, `mqtt_snapshot` und `mqtt_set`. Schreiben
+  ist grundsätzlich gesperrt und nur auf Topics aus `MQTT_ALLOW_WRITE`
+  möglich (exakter Name oder Präfix mit `#`/`*`); ohne Freigabeliste bleibt
+  `mqtt_set` aus. Nach dem Verbinden gelten 1,5 s für retained-Nachrichten.
+  Das Paket bringt Parametrierung (Broker-URL, Zugangsdaten, Präfix,
+  Freigabeliste) und Doku mit.
 - **Paket-Kategorien:** Pakete tragen eine Kategorie `driver` (MCP-Treiber),
   `function` (Funktionen/Vorgänge) oder `mixed`. Fehlt der Wert im Manifest,
   wird er aus den Artefakten abgeleitet; `packages/<lang>/index.json` führt
@@ -137,6 +146,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Entwicklung
 
+- **Gateway-Version auf 0.5.0** gehoben (`package.json` und Lockfile-Root);
+  das MQTT-Paket verlangt mindestens diese Version.
 - **Abhängigkeiten aktualisiert:** `better-sqlite3` 13.0.3 (N-API, fertige
   Binaries im Paket), `dotenv` 18.0.9, `@types/node` 26.6.6, `tsx` 4.23.15.
   Die Images nutzen `npm ci --ignore-scripts`, damit kein `node-gyp`-Build im

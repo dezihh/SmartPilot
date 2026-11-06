@@ -1,0 +1,76 @@
+{
+  "id": "mqtt",
+  "version": "1.0.0",
+  "name": "MQTT-Broker",
+  "summary": "MQTT-Topics lesen und erlaubte Topics schalten (interner stdio-Server, kein Container).",
+  "description": "Legt den Registry-Eintrag fuer den internen MQTT-MCP-Server an (laeuft als stdio-Prozess im Gateway-Container). Er haelt einen Last-Value-Cache aller Topics unter dem Praefix und kann Werte setzen - aber nur auf Topics, die in MQTT_ALLOW_WRITE stehen. Ohne Freigabeliste ist Schreiben komplett gesperrt.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Ein erreichbarer MQTT-Broker (z. B. Mosquitto 2.x). Fuer Schalten muss das Topic in der Freigabeliste stehen; das Gateway muss den Broker aus seinem Container heraus erreichen.",
+  "minGatewayVersion": "0.5.0",
+  "params": [
+    {
+      "key": "mqtt_url",
+      "label": "Broker-URL",
+      "placeholder": "mqtt://192.168.1.10:1883",
+      "help": "mqtt:// fuer Port 1883, mqtts:// fuer TLS (Port 8883).",
+      "required": true
+    },
+    {
+      "key": "mqtt_username",
+      "label": "Benutzer",
+      "help": "Leer lassen, wenn der Broker anonym erlaubt.",
+      "required": false
+    },
+    {
+      "key": "mqtt_password",
+      "label": "Passwort",
+      "type": "password",
+      "help": "Wird maskiert gespeichert und nur an den MQTT-Server weitergereicht.",
+      "required": false
+    },
+    {
+      "key": "mqtt_prefix",
+      "label": "Topic-Praefix",
+      "placeholder": "haus/",
+      "help": "Nur Topics unter diesem Praefix werden abonniert. Leer = alle Topics.",
+      "required": false
+    },
+    {
+      "key": "mqtt_allow_write",
+      "label": "Schaltbare Topics",
+      "placeholder": "haus/licht/kuche, haus/heizung/#",
+      "help": "Komma-getrennt. Exakte Namen oder Praefixe mit # bzw. * am Ende. Leer = kein Topic schaltbar.",
+      "required": false
+    }
+  ],
+  "servers": [
+    {
+      "name": "MQTT-Broker",
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "dist/mcp/mqtt-server.js"
+      ],
+      "env": {
+        "MQTT_URL": "${mqtt_url}",
+        "MQTT_USERNAME": "${mqtt_username}",
+        "MQTT_PASSWORD": "${mqtt_password}",
+        "MQTT_PREFIX": "${mqtt_prefix}",
+        "MQTT_ALLOW_WRITE": "${mqtt_allow_write}"
+      },
+      "inventory_prompt": "MQTT: mqtt_snapshot (alle bekannten Topics mit letztem Wert) und mqtt_get (ein Topic, ohne Praefix) sind Lesen. Schalten nur ueber mqtt_set und nur fuer im Paket freigegebene Topics; nicht freigegebene Topics melden '[MQTT] nicht erlaubt'. Werte sind reine Strings (ON/OFF, Zahlen) - keine Topics raten, bei Unbekanntem erst mqtt_snapshot nutzen.",
+      "sideEffect": "write",
+      "enabled": true
+    }
+  ],
+  "allowTools": [
+    "mqtt_get",
+    "mqtt_snapshot",
+    "mqtt_set"
+  ],
+  "setupDocs": "Broker (Beispiel Mosquitto ohne Auth, nur im eigenen Netz):\n\n  mosquitto:\n    image: eclipse-mosquitto:2\n    restart: unless-stopped\n    volumes:\n      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro\n\nWICHTIG: Der Gateway-Container muss den Broker erreichen koennen - beide im selben Docker-Netz betreiben oder den Broker-Host per IP angeben. Die Freigabeliste (mqtt_allow_write) absichtlich klein halten: jedes freigegebene Topic kann SmartPilot auf Zuruf setzen.",
+  "changelog": "1.0.0: Erstes Release - Last-Value-Cache (1000 Topics, 4 KB pro Wert), mqtt_get/mqtt_snapshot/mqtt_set, Schreiben nur auf freigegebene Topics."
+}
