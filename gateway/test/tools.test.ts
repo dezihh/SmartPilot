@@ -188,3 +188,30 @@ test('agent_tool_limit: 0 oder leer = unbegrenzt', () => {
     deleteSetting('agent_tool_limit');
   }
 });
+
+test('agent_tool_limit: ungueltige oder negative Werte bedeuten unbegrenzt', () => {
+  for (const raw of ['', '-1', 'viele', 'NaN']) {
+    setSetting('agent_tool_limit', raw);
+    try {
+      const { routes } = buildTools(mcpWith([{ name: 't1' }, { name: 't2' }]), null);
+      assert.equal(
+        [...routes.entries()].filter(([, r]) => r.kind === 'mcp').length,
+        2,
+        `Wert ${JSON.stringify(raw)} darf nicht als Deckel wirken`,
+      );
+    } finally {
+      deleteSetting('agent_tool_limit');
+    }
+  }
+});
+
+test('agent_tool_limit groesser als das Angebot schneidet nichts ab', () => {
+  setSetting('agent_tool_limit', '10');
+  try {
+    const { routes, specs } = buildTools(mcpWith([{ name: 't1' }, { name: 't2' }]), null);
+    assert.equal([...routes.entries()].filter(([, r]) => r.kind === 'mcp').length, 2);
+    assert.equal(specs.filter((s) => s.function.name.startsWith('t')).length, 2);
+  } finally {
+    deleteSetting('agent_tool_limit');
+  }
+});

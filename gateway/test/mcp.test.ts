@@ -375,3 +375,43 @@ test('stdio: uebergrosser Puffer ohne Zeilenumbruch beendet den Client', async (
   child.stdout.emit('data', 'x'.repeat(8 * 1024 * 1024 + 1));
   await assert.rejects(p, /Puffer zu gross/);
 });
+
+test('stdio: ungueltige JSON-Zeile wird ignoriert', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.callTool('tool_x', {});
+  child.stdout.emit('data', 'kein json\n');
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } })}\n`);
+  await p;
+});
+
+test('stdio: Antwort mit unbekannter id wird ignoriert', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => child as unknown as ChildProcess);
+  const p = client.listTools();
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 999, result: { tools: [] } })}\n`);
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { tools: [] } })}\n`);
+  assert.deepEqual(await p, []);
+});
+
+test('stdio: parallele Aufrufe starten den Prozess nur einmal', async () => {
+  const child = new FakeChild();
+  let spawns = 0;
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => {
+    spawns += 1;
+    return child as unknown as ChildProcess;
+  });
+  const first = client.callTool('a', {});
+  const second = client.listTools();
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [] } })}\n`);
+  child.stdout.emit('data', `${JSON.stringify({ jsonrpc: '2.0', id: 2, result: { tools: [] } })}\n`);
+  await Promise.all([first, second]);
+  assert.equal(spawns, 1);
+});
+
+test('stdio: stop ohne gestarteten Prozess tut nichts', () => {
+  const client = new McpStdioClient({ command: 'x', args: [], env: {} }, () => {
+    throw new Error('es darf kein Prozess gestartet werden');
+  });
+  client.stop();
+});

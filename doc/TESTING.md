@@ -10,21 +10,17 @@ npm run coverage  # dieselben Tests mit Abdeckungsmessung
 
 ## Messbasis
 
-`npm run coverage` schließt das Frontend aus:
+`npm run coverage` misst ausschließlich den Produktivcode:
 
 ```bash
---test-coverage-exclude='web/**'
+--test-coverage-include='src/**'
 ```
 
-**Grund:** `web/js/lib.js` und `web/js/packages.js` sind Browser-Skripte. Die
-Node-Tests laden sie nur über einen DOM-Stub, um reine Helfer wie `esc`,
-`cmpVersion` und `diffValue` zu prüfen; DOM- und Event-Pfade sind ohne Browser
-nicht erreichbar. Ohne Ausschluss ziehen diese Dateien die Quote auf
-92,91 / 81,24 / 90,39 (Lines / Branches / Functions) und das Gate würde nur
-noch zufällig bestehen.
-
-Die Web-Tests bleiben trotzdem im Lauf: sie sichern die Helfer ab, zählen aber
-nicht in die Quote.
+**Grund:** Ohne Eingrenzung zählt der Runner auch `test/*.test.ts` und
+`web/**` mit. Beide verzerren die Quote: Testdateien sind nahezu vollständig
+abgedeckt und heben die Zahl künstlich; die Browser-Skripte unter `web/js/`
+sind unter `node:test` nicht sinnvoll messbar. Die Web-Helfer-Tests laufen
+weiterhin mit, zählen aber nicht in die Quote.
 
 ## Schwellen
 
@@ -34,14 +30,10 @@ nicht in die Quote.
 | Branches | 83 % |
 | Functions | 94 % |
 
-Gemessener Stand (CI und lokal, Node 26.13.0): 97,70 / 83,94–84,13 / 94,39.
+Gemessener Stand (Node 26.13.0, `src/**`): 97,00 / 84,84 / 94,63.
 
-Die Branch-Schwelle liegt bewusst **unter** der Messspanne: CI-Läufe auf
-unverändertem Code streuten zwischen 83,94 und 84,13 Prozent, eine Schwelle
-von 84 ließ das Gate zufällig fehlschlagen. Das ist eine dokumentierte
-Ausnahme von der Regel „Schwellen nur verbessern“ — sie wird nachgezogen,
-sobald zusätzliche Tests den Puffer herstellen (Ziel ≥ 85). Lines und
-Functions bleiben bei 97/94; dort reicht der Abstand.
+Lines liegt knapp über der Schwelle. Neue Tests sollen den Puffer vergrößern;
+die Schwelle zu senken ist der falsche Weg (Audit F-001).
 
 ## Bekannte Grenzen
 

@@ -624,6 +624,32 @@ class CleanQuerySlotTest(unittest.TestCase):
             "Wie ist der hausstatus?",
         )
 
+    def test_laengeres_wort_mit_dem_namen_bleibt_stehen(self):
+        # Nur die exakte Token-Folge ist der Aufrufname; "pilotprojekt" ist
+        # ein eigenes Wort und darf nicht angeschnitten werden.
+        self.assertEqual(
+            lambda_function.clean_query_slot("smart pilotprojekt starten", "smart pilot"),
+            "smart pilotprojekt starten",
+        )
+
+    def test_mehrwort_fuellpartikel_wird_entfernt(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("bitte noch mal hausstatus", "smart pilot"),
+            "hausstatus",
+        )
+
+    def test_fuellpartikel_nur_am_anfang(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("hausstatus bitte", "smart pilot"),
+            "hausstatus bitte",
+        )
+
+    def test_grossschreibung_wird_ignoriert(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("BITTE smart pilot HAUSSTATUS", "smart pilot"),
+            "HAUSSTATUS",
+        )
+
     def test_reine_carrier_phrase_bleibt_stehen(self):
         self.assertEqual(
             lambda_function.clean_query_slot("SmartPilot", "smart pilot"),

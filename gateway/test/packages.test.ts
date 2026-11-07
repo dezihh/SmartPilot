@@ -717,3 +717,20 @@ test('Konfig-Route: Header-Secret wird rekonstruiert und beim PATCH erhalten', a
     server.close();
   }
 });
+
+test('conflictItems: lokal geaenderte Funktion wird als Konflikt gemeldet', () => {
+  const m = {
+    id: 'audit4-conflict-pkg',
+    version: '1.0.0',
+    name: 'Konflikt',
+    summary: 'S',
+    description: 'D',
+    functions: [{ name: 'conf_fn', template: 'a' }],
+    indexes: [{ key: 'conf', config: { tool: 'x', args: {} } }],
+  };
+  installPackage(m as never, { source: 'registry' });
+  assert.deepEqual(conflictItems('audit4-conflict-pkg'), []);
+  getDb().prepare("UPDATE tpl_functions SET template = 'b' WHERE name = 'conf_fn'").run();
+  getDb().prepare("UPDATE settings SET value = ? WHERE key = 'entity_index_conf'").run(JSON.stringify({ tool: 'y', args: {} }));
+  assert.deepEqual(conflictItems('audit4-conflict-pkg').sort(), ['function:conf_fn', 'index:entity_index_conf']);
+});
