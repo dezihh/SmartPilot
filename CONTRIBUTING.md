@@ -60,7 +60,8 @@ npm run lint && npm run deadcode && npm run cycles && npm run dupes
 
 `lint` (ESLint), `deadcode` (knip), `cycles` (madge) und `dupes` (jscpd,
 Schwelle 3 %) müssen grün sein. Eine Schwelle darf nur **besser** werden —
-steigt sie, ist das ein Befund, kein Grund, sie zu erhöhen. Für ein
+steigt sie, ist das ein Befund, kein Grund, sie zu erhöhen. Messbasis und
+Schwellen der Abdeckung stehen in [Tests und Coverage](doc/TESTING.md). Für ein
 vollständiges Hygiene-Audit gibt es den Agenten
 [`.opencode/agents/test-hygiene.md`](.opencode/agents/test-hygiene.md):
 Phasen 0–4 ausführen, Bericht reviewen.
