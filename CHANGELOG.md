@@ -37,6 +37,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **AWS-Deploy reicht den Aufrufnamen durch (F-004):** `skill_config.py
+  --print-env` gibt `SKILL_NAME`, `ASSISTANT_NAME` und `INVOCATION_NAME` in
+  Großbuchstaben aus. GitHub behandelt Env-Namen case-sensitiv, deshalb kamen
+  `SKILL_NAME` und `ASSISTANT_NAME` im Deploy-Workflow bisher leer an;
+  `invocation_name` erreicht die Lambda jetzt ebenfalls. Doku-Beispiele für den
+  hosted Pfad und die Weg-B-Tabelle sind ergänzt.
 - **Paket-`allowTools` verengt die globale Tool-Liste nicht mehr (F-002):** Die
   Allowlist wird nur noch in eine **explizite** `agent_tools`-Liste gemerged;
   „nicht gesetzt“ (= alle) und „keine“ bleiben unangetastet.
