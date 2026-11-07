@@ -271,25 +271,36 @@ def _normalize_name(value):
 
 
 def _strip_invocation(words, invocation):
+    """Entfernt den Aufrufnamen nur am Anfang oder Ende.
+
+    Mittig genannte Namen ("schalte smart pilot lampe an") bleiben stehen -
+    dort sind sie Teil des Satzes und kein Aufruf."""
     target = _normalize_name(invocation)
-    if not target:
+    if not target or not words:
         return words
-    out = []
-    i = 0
-    while i < len(words):
+    words = list(words)
+
+    def match_len(start):
+        # Anzahl Woerter ab start, deren normalisierte Verkettung den Namen
+        # ergibt; None, wenn kein exakter Treffer.
         acc = ""
-        j = i
+        j = start
         while j < len(words) and len(acc) < len(target):
             acc += _normalize_name(words[j])
             j += 1
             if acc == target:
-                break
-        if acc == target:
-            i = j
-            continue
-        out.append(words[i])
-        i += 1
-    return out
+                return j - start
+        return None
+
+    m = match_len(0)
+    if m is not None:
+        words = words[m:]
+    for start in range(len(words) - 1, -1, -1):
+        m = match_len(start)
+        if m is not None and start + m == len(words):
+            words = words[:start]
+            break
+    return words
 
 
 def _strip_fillers(words):
@@ -316,7 +327,10 @@ def clean_query_slot(text, invocation=None):
     if not original:
         return ""
     name = invocation_name if invocation is None else invocation
-    words = _strip_invocation(original.split(" "), name)
+    words = _strip_fillers(original.split(" "))
+    words = _strip_invocation(words, name)
+    # Fuellpartikel, die erst nach dem Namen sichtbar werden ("smart pilot
+    # bitte hausstatus"), noch einmal entfernen.
     words = _strip_fillers(words)
     cleaned = " ".join(words).strip()
     return cleaned or original

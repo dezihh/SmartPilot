@@ -37,6 +37,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Aufrufname nur an den Rändern entfernen (F-010):** Die Lambda beschneidet
+  den Aufrufnamen nur noch am Anfang oder Ende des `query`-Slots; mitten im
+  Satz genannte Namen („schalte smart pilot lampe an") bleiben Teil der Frage.
+  Führende Füllpartikel vor dem Namen werden weiterhin entfernt.
 - **Vorgangs-Tools bleiben vom Tool-Deckel ausgenommen (F-013):**
   `agent_tool_limit` kürzt nur noch die frei gewählten MCP-Tools des Agenten;
   die explizite Tool-Liste eines Vorgangs wird vollständig angeboten und

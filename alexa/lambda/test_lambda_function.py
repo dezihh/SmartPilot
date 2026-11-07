@@ -606,6 +606,20 @@ class CleanQuerySlotTest(unittest.TestCase):
             "hausstatus",
         )
 
+    def test_mittig_genannter_name_bleibt_stehen(self):
+        # F-010: Nur Anfang/Ende sind Aufruf - mitten im Satz ist der Name
+        # Teil der Frage und darf nicht angeschnitten werden.
+        self.assertEqual(
+            lambda_function.clean_query_slot("schalte smart pilot lampe an", "smart pilot"),
+            "schalte smart pilot lampe an",
+        )
+
+    def test_entfernt_name_an_beiden_raendern(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("smart pilot schalte lampe an smart pilot", "smart pilot"),
+            "schalte lampe an",
+        )
+
     def test_entfernt_fuellwoerter_am_anfang(self):
         self.assertEqual(
             lambda_function.clean_query_slot("bitte mal hausstatus", "smart pilot"),
