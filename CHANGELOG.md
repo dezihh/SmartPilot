@@ -12,6 +12,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+## [0.6.0] – 2026-11-07
+
 ### Sicherheit
 
 - **Replay-Schutz für die Adapter-API (Issue #5):** Ist `API_SIGNING_SECRET`
@@ -833,7 +835,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/dezihh/SmartPilot/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/dezihh/SmartPilot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.4.0
 [0.3.7]: https://github.com/dezihh/SmartPilot/releases/tag/v0.3.7
