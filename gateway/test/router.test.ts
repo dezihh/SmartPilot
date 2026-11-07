@@ -19,6 +19,8 @@ function action(overrides: Partial<ParsedAction>): ParsedAction {
     triggers: [],
     toolList: [],
     functionArgs: null,
+    side_effect: 'write',
+    confirm: 0,
     ...overrides,
   };
 }

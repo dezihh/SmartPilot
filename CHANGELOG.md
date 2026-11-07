@@ -73,6 +73,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Hinzugefügt
 
+- **Action-Security: Wirkung und Bestätigung pro Vorgang (#4):** Vorgänge
+  deklarieren `side_effect` (`read`/`write`, Default `write`) und optional
+  `confirm`. Bei schreibenden Vorgängen mit Bestätigung führt das Gateway
+  nicht sofort aus, sondern fragt „Soll ich … ausführen? Sag ja oder nein."
+  und startet erst nach einem „ja" (gleiche Session, 60 s TTL; Trace
+  `action.confirm_pending`/`confirmed`/`cancelled`). Manifest-Actions
+  unterstützen dieselben Felder; `aufgabenliste` nutzt sie als erster
+  Verbraucher.
 - **Paket `aufgabenliste` (Home Assistant):** Liest und schreibt
   HA-Todo-Listen über die bestehende `ha-mcp`-Anbindung
   (`ha_get_todo`, `ha_set_todo_item`, `ha_remove_todo_item`). Der Vorgang

@@ -3,6 +3,7 @@ import { log } from './logger.js';
 import {
   addLog,
   listActions,
+  getAction,
   getFunctionByName,
   getPrompt,
   getSetting,
@@ -21,7 +22,7 @@ import { buildTools, toolSpecStats } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
 import { invalidateIndex } from './entityIndex.js';
 import { traceUsage, sumUsageFromTrace } from './usage.js';
-import { priorTurns as sessionPriorTurns, rememberTurn as sessionRememberTurn, isChatSession as sessionIsChat, setChatMode } from './session.js';
+import { priorTurns as sessionPriorTurns, rememberTurn as sessionRememberTurn, isChatSession as sessionIsChat, setChatMode, setPendingConfirm, takePendingConfirm } from './session.js';
 import type {
   AssistantResponse,
   EngineResult,
@@ -318,8 +319,19 @@ async function executeAction(
   query: VoiceQuery,
   mcp: McpContext,
   trace: TraceEvent[],
-  helpAllow?: string[] | null
+  helpAllow?: string[] | null,
+  confirmed = false
 ): Promise<AssistantResponse> {
+  // Issue #4: schreibender Vorgang mit Bestaetigungspflicht fragt zuerst nach.
+  if (!confirmed && action.side_effect === 'write' && action.confirm === 1) {
+    setPendingConfirm(query.sessionId, action.id, query.text);
+    trace.push({ ts: Date.now(), step: 'action.confirm_pending', detail: { action: action.name } });
+    return {
+      speech: `Soll ich „${action.name}“ ausführen? Sag ja oder nein.`,
+      followUp: true,
+      followupPrompt: 'Sag ja oder nein.',
+    };
+  }
   // Die geseedete Hilfe bekommt einen vollstaendigen Katalog der TATSAECHLICH
   // nutzbaren Faehigkeiten (jede fuer den Agenten freigegebene Funktion mit
   // Beschreibung/Parametern, Systeme soweit nutzbar) - auch von Tools ohne
@@ -410,6 +422,10 @@ function actionNeedsMcp(action: ParsedAction, helpAllow?: string[] | null): bool
 
 const CHAT_ON_RE = /(chat[-\s]?modus|chatmodus|unterhaltung[-\s]?modus|gespraechs?[-\s]?modus|im gespraech bleiben)/i;
 const CHAT_OFF_RE = /(one[-\s]?shot|einzelmodus|alltag[-\s]?modus|beende.*chat|chat[-\s]?beenden|wechsle.*one[-\s]?shot)/i;
+// Issue #4: Antworten auf "Sag ja oder nein." - bewusst eng gefasst, damit
+// "ja, aber ..." nicht versehentlich einen schreibenden Vorgang startet.
+const CONFIRM_YES_RE = /^(ja|jawohl|ja bitte|ja gerne|bestätigen|bestaetigen|ausführen|ausfuehren|mach das|mach es|okay|ok)$/i;
+const CONFIRM_NO_RE = /^(nein|nein danke|abbrechen|stop|stopp|lass es|nichts)$/i;
 
 export function isChatSession(sessionId: string): boolean {
   return sessionIsChat(sessionId);
@@ -423,6 +439,96 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
 
   // Chat-/OneShot-Modus-Wechsel: deterministisch, Session-Zustand
   const qLower = query.text.toLowerCase();
+
+  // Issue #4: offene Bestaetigung zuerst einloesen. Jede andere Aeusserung
+  // verwirft sie und laeuft normal weiter.
+  const pending = takePendingConfirm(query.sessionId);
+  if (pending === 'expired') {
+    trace.push({ ts: Date.now(), step: 'action.confirm_expired' });
+  } else if (pending) {
+    const answer = qLower.trim().replace(/[.!?]+$/, '').replace(/\s+/g, ' ');
+    if (CONFIRM_NO_RE.test(answer)) {
+      trace.push({ ts: Date.now(), step: 'action.cancelled', detail: { actionId: pending.actionId } });
+      const response: AssistantResponse = { speech: 'Okay, ich mache nichts.' };
+      rememberTurn(query.sessionId, query.text, response.speech);
+      const durationMs = Date.now() - start;
+      addLog({
+        sessionId: query.sessionId,
+        query: query.text,
+        route: 'action',
+        actionId: pending.actionId,
+        response: response.speech,
+        durationMs,
+        trace,
+      });
+      return { response, route: 'action', actionId: pending.actionId, durationMs, trace };
+    }
+    if (CONFIRM_YES_RE.test(answer)) {
+      const action = getAction(pending.actionId);
+      if (!action) {
+        trace.push({ ts: Date.now(), step: 'action.confirm_missing', detail: { actionId: pending.actionId } });
+        const response: AssistantResponse = { speech: 'Der Vorgang existiert nicht mehr.' };
+        rememberTurn(query.sessionId, query.text, response.speech);
+        const durationMs = Date.now() - start;
+        addLog({
+          sessionId: query.sessionId,
+          query: query.text,
+          route: 'action',
+          actionId: pending.actionId,
+          response: response.speech,
+          durationMs,
+          trace,
+        });
+        return { response, route: 'action', actionId: pending.actionId, durationMs, trace };
+      }
+      trace.push({ ts: Date.now(), step: 'action.confirmed', detail: { action: action.name } });
+      const helpAllow = isSeededHelp(action) ? agentFnAllowlist() : undefined;
+      const mcp = actionNeedsMcp(action, helpAllow)
+        ? await getMcpContext().catch((e: unknown) => {
+            trace.push({ ts: Date.now(), step: 'mcp.error', detail: String(e) });
+            return { servers: [] } as McpContext;
+          })
+        : ({ servers: [] } as McpContext);
+      try {
+        let response = await executeAction(action, { ...query, text: pending.text }, mcp, trace, helpAllow, true);
+        rememberTurn(query.sessionId, query.text, response.speech);
+        response = withSsmlBreaks(response);
+        response = withDisplay(response);
+        if (sessionIsChat(query.sessionId)) {
+          response = { ...response, followUp: true, followupPrompt: 'Was möchtest du noch wissen?' };
+        }
+        const durationMs = Date.now() - start;
+        addLog({
+          sessionId: query.sessionId,
+          query: query.text,
+          route: 'action',
+          actionId: action.id,
+          score: 1,
+          response: response.speech,
+          durationMs,
+          trace,
+          ...sumUsageFromTrace(trace),
+        });
+        return { response, route: 'action', actionId: action.id, score: 1, durationMs, trace };
+      } catch (e) {
+        trace.push({ ts: Date.now(), step: 'action.error', detail: String(e) });
+        const response: AssistantResponse = { speech: FallbackError };
+        const durationMs = Date.now() - start;
+        addLog({
+          sessionId: query.sessionId,
+          query: query.text,
+          route: 'action',
+          actionId: action.id,
+          response: response.speech,
+          durationMs,
+          trace,
+        });
+        return { response, route: 'action', actionId: action.id, durationMs, trace };
+      }
+    }
+    trace.push({ ts: Date.now(), step: 'action.confirm_discarded', detail: { actionId: pending.actionId } });
+  }
+
   if (CHAT_OFF_RE.test(qLower)) {
     setChatMode(query.sessionId, false);
     trace.push({ ts: Date.now(), step: 'chat.off', detail: { sessionId: query.sessionId } });

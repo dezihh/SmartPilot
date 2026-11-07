@@ -164,3 +164,41 @@ test('Migration 7: Header-Hash-Rebase ohne Scheinkonflikt, echte Aenderung bleib
   assert.deepEqual(conflictItems('hdr'), ['server:Lokal'], 'nur echte Aenderung bleibt Konflikt');
   closeDb();
 });
+
+test('Migration 8: actions traegt side_effect/confirm mit verhaltensneutralen Defaults', () => {
+  const p = tmpDb('mig-action-security');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  const cols = db.prepare('PRAGMA table_info(actions)').all() as { name: string; dflt_value: string | null }[];
+  const side = cols.find((c) => c.name === 'side_effect');
+  const confirm = cols.find((c) => c.name === 'confirm');
+  assert.ok(side && confirm, 'Spalten fehlen');
+  assert.equal(side!.dflt_value, "'write'");
+  assert.equal(confirm!.dflt_value, '0');
+  db.prepare("INSERT INTO actions (name, mode) VALUES ('def-test', 'llm')").run();
+  const row = db.prepare("SELECT side_effect, confirm FROM actions WHERE name = 'def-test'").get() as {
+    side_effect: string; confirm: number;
+  };
+  assert.equal(row.side_effect, 'write');
+  assert.equal(row.confirm, 0);
+  closeDb();
+});
+
+test('Migration 8: Bestands-DB von v7 bekommt die Spalten ohne Datenverlust', () => {
+  const p = tmpDb('mig-action-security-v7');
+  closeDb();
+  initDb(p);
+  let db = getDb();
+  db.prepare("INSERT INTO actions (name, mode) VALUES ('alt', 'llm')").run();
+  db.pragma('user_version = 7');
+  closeDb();
+  initDb(p);
+  db = getDb();
+  const row = db.prepare("SELECT side_effect, confirm FROM actions WHERE name = 'alt'").get() as {
+    side_effect: string; confirm: number;
+  };
+  assert.equal(row.side_effect, 'write');
+  assert.equal(row.confirm, 0);
+  closeDb();
+});

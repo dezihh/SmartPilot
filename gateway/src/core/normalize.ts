@@ -13,6 +13,12 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
   if (mode !== 'deterministic' && mode !== 'llm' && mode !== 'hybrid') {
     throw new Error(`Ungültiger Modus: ${mode}`);
   }
+  // Issue #4: Wirkung ist ein Schalter (read/write); Default 'write' haelt
+  // bestehende Vorgaenge unveraendert.
+  const sideEffect = body.side_effect === undefined ? 'write' : String(body.side_effect);
+  if (sideEffect !== 'read' && sideEffect !== 'write') {
+    throw new Error(`Ungültiger side_effect: ${sideEffect}`);
+  }
   // Akzeptiert raw- (trigger_phrases/tools) UND geparste Felder (triggers/toolList),
   // damit ein PUT mit dem Bootstrap-Body keine Trigger leert .
   // Auch JSON-Strings von der GET-API werden geparst.
@@ -53,6 +59,8 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     tools: tools ? JSON.stringify(tools) : null,
     // GET-Roundtrip liefert enabled als Zahl 0/1 -> 0 muss "aus" bleiben.
     enabled: enabledFlag(body.enabled),
+    side_effect: sideEffect,
+    confirm: body.confirm === true || body.confirm === 1 || body.confirm === '1' ? 1 : 0,
   };
 }
 

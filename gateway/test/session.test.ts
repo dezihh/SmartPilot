@@ -1,6 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { resetSessionsForTests, priorTurns, rememberTurn, isChatSession, setChatMode, HISTORY_MAX_MESSAGES, HISTORY_MAX_SESSIONS } from '../src/core/session.js';
+import { resetSessionsForTests, priorTurns, rememberTurn, isChatSession, setChatMode, setPendingConfirm, takePendingConfirm, HISTORY_MAX_MESSAGES, HISTORY_MAX_SESSIONS, CONFIRM_TTL_MS } from '../src/core/session.js';
 
 beforeEach(() => resetSessionsForTests());
 
@@ -43,4 +43,25 @@ test('Hart-Deckel: aelteste Session fliegt zuerst', () => {
   }
   assert.deepEqual(priorTurns('s0'), []);
   assert.ok(priorTurns(`s${HISTORY_MAX_SESSIONS + 4}`).length > 0);
+});
+
+test('Bestaetigung: setzen, genau einmal einloesen', () => {
+  setPendingConfirm('s1', 7, 'lampe aus', 1000);
+  const pending = takePendingConfirm('s1', 1001);
+  assert.ok(pending && pending !== 'expired');
+  assert.equal(pending.actionId, 7);
+  assert.equal(pending.text, 'lampe aus');
+  assert.equal(takePendingConfirm('s1', 1002), null, 'nach dem Einloesen gibt es nichts mehr');
+});
+
+test('Bestaetigung: laeuft nach CONFIRM_TTL_MS ab', () => {
+  setPendingConfirm('s2', 8, 'x', 1000);
+  assert.equal(takePendingConfirm('s2', 1000 + CONFIRM_TTL_MS + 1), 'expired');
+  assert.equal(takePendingConfirm('s2', 1000 + CONFIRM_TTL_MS + 2), null, 'abgelaufen ist verbraucht');
+});
+
+test('Bestaetigung: resetSessionsForTests raeumt auf', () => {
+  setPendingConfirm('s3', 9, 'y');
+  resetSessionsForTests();
+  assert.equal(takePendingConfirm('s3'), null);
 });

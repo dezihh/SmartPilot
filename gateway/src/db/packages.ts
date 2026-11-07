@@ -84,6 +84,8 @@ function actionContent(a: PackageAction): Record<string, unknown> {
       a.function_args === undefined ? null : typeof a.function_args === 'string' ? a.function_args : JSON.stringify(a.function_args),
     tools: a.tools === undefined ? null : JSON.stringify(a.tools),
     enabled: a.enabled === false ? 0 : 1,
+    side_effect: a.side_effect === 'read' ? 'read' : 'write',
+    confirm: a.confirm === true ? 1 : 0,
   };
 }
 
@@ -385,13 +387,13 @@ export function installPackage(
         db.prepare(
           `UPDATE actions SET name = @name, mode = @mode, trigger_phrases = @trigger_phrases, fuzzy_threshold = @fuzzy_threshold,
            system_prompt = @system_prompt, template = @template, function_ref = @function_ref, function_args = @function_args,
-           tools = @tools, enabled = @enabled, updated_at = datetime('now') WHERE id = @id`
+           tools = @tools, enabled = @enabled, side_effect = @side_effect, confirm = @confirm, updated_at = datetime('now') WHERE id = @id`
         ).run({ ...content, id: existing.id });
         report.updated.push(key);
       } else {
         db.prepare(
-          `INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
-           VALUES (@name, @mode, @trigger_phrases, @fuzzy_threshold, @system_prompt, @template, @function_ref, @function_args, @tools, @enabled)`
+          `INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, side_effect, confirm)
+           VALUES (@name, @mode, @trigger_phrases, @fuzzy_threshold, @system_prompt, @template, @function_ref, @function_args, @tools, @enabled, @side_effect, @confirm)`
         ).run(content);
         report.created.push(key);
       }
@@ -486,7 +488,7 @@ function actionRowContent(name: string): Record<string, unknown> | null {
   return {
     name: row.name, mode: row.mode, trigger_phrases: row.trigger_phrases, fuzzy_threshold: row.fuzzy_threshold,
     system_prompt: row.system_prompt, template: row.template, function_ref: row.function_ref, function_args: row.function_args,
-    tools: row.tools, enabled: row.enabled,
+    tools: row.tools, enabled: row.enabled, side_effect: row.side_effect, confirm: row.confirm,
   };
 }
 

@@ -1,5 +1,5 @@
 import { getDb } from './schema.js';
-import type { ActionMode, ActionRow, ParsedAction } from '../types.js';
+import type { ActionMode, ActionRow, ParsedAction, SideEffect } from '../types.js';
 
 export function parseAction(row: ActionRow): ParsedAction {
   let triggers: string[] = [];
@@ -26,7 +26,10 @@ export function parseAction(row: ActionRow): ParsedAction {
   } catch {
     functionArgs = null;
   }
-  return { ...row, triggers, toolList, functionArgs };
+  // Issue #4: Bestandszeilen ohne Spalte (alte Sicherung) fallen auf die
+  // verhaltensneutralen Defaults zurueck.
+  const sideEffect: SideEffect = row.side_effect === 'read' ? 'read' : 'write';
+  return { ...row, triggers, toolList, functionArgs, side_effect: sideEffect, confirm: row.confirm ? 1 : 0 };
 }
 
 export function listActions(enabledOnly: boolean): ParsedAction[] {
@@ -41,10 +44,11 @@ export function getAction(id: number): ParsedAction | undefined {
   return row ? parseAction(row) : undefined;
 }
 
-export function createAction(data: ActionInput): ParsedAction {
+export function createAction(input: ActionInput): ParsedAction {
+  const data = { side_effect: 'write', confirm: 0, ...input };
   const info = getDb().prepare(
-      `INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
-       VALUES (@name, @mode, @trigger_phrases, @fuzzy_threshold, @system_prompt, @template, @function_ref, @function_args, @tools, @enabled)`
+      `INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, side_effect, confirm)
+       VALUES (@name, @mode, @trigger_phrases, @fuzzy_threshold, @system_prompt, @template, @function_ref, @function_args, @tools, @enabled, @side_effect, @confirm)`
     )
     .run(data);
   const row = getAction(Number(info.lastInsertRowid));
@@ -52,11 +56,13 @@ export function createAction(data: ActionInput): ParsedAction {
   return row;
 }
 
-export function updateAction(id: number, data: ActionInput): ParsedAction | undefined {
+export function updateAction(id: number, input: ActionInput): ParsedAction | undefined {
+  const data = { side_effect: 'write', confirm: 0, ...input };
   getDb().prepare(
     `UPDATE actions SET name = @name, mode = @mode, trigger_phrases = @trigger_phrases,
      fuzzy_threshold = @fuzzy_threshold, system_prompt = @system_prompt, template = @template,
-     function_ref = @function_ref, function_args = @function_args, tools = @tools, enabled = @enabled, updated_at = datetime('now')
+     function_ref = @function_ref, function_args = @function_args, tools = @tools, enabled = @enabled,
+     side_effect = @side_effect, confirm = @confirm, updated_at = datetime('now')
      WHERE id = @id`
   ).run({ ...data, id });
   return getAction(id);
@@ -77,4 +83,8 @@ export interface ActionInput {
   function_args: string | null;
   tools: string | null;
   enabled: number;
+  /** Default 'write' (verhaltensneutral); 'read' = nur lesend. */
+  side_effect?: SideEffect;
+  /** 1 = vor dem Ausfuehren nachfragen. */
+  confirm?: number;
 }
