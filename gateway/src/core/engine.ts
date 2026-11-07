@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+import { log } from './logger.js';
 import {
   addLog,
   listActions,
@@ -16,7 +17,7 @@ import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
 import { renderHelpCatalog, renderHelpFallback } from './help.js';
 import { stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
-import { buildTools } from './tools.js';
+import { buildTools, toolSpecStats } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
 import { invalidateIndex } from './entityIndex.js';
 import { traceUsage, sumUsageFromTrace } from './usage.js';
@@ -165,6 +166,9 @@ async function runToolLoop(
   allowlist: string[] | null = null
 ): Promise<AssistantResponse> {
   const { specs, routes, budgets } = buildTools(mcp, allowlist);
+  // Issue #9: Groesse des Tool-Angebots sichtbar machen (Naeherung chars/4);
+  // die echte Prompt-Groesse steht in der LLM-Antwort als usage.prompt_tokens.
+  log.debug('Tool-Specs', toolSpecStats(specs));
   // Tool-Runden mit eigenem (schnellen) Modell: Setting 'tool_model';
   // leer = llm_model wie bisher.
   const roundModel = getSetting('tool_model')?.trim() || undefined;

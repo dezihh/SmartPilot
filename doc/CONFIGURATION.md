@@ -191,7 +191,7 @@ im jeweiligen Editor (MCP-Server, Funktion, Index) angepasst.
 | Ebene | Inhalt | Beispiele |
 |---|---|---|
 | `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `TRUST_PROXY` |
-| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `http_timeout_ms`, `http_body_cap` |
+| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `agent_tool_limit`, `http_timeout_ms`, `http_body_cap` |
 | Paket-Parameter | Werte eines installierten Pakets | `host`, `token`, `port` (aus `manifest.params`) |
 | DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
 

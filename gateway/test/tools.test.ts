@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
 import { setSetting, deleteSetting } from '../src/db/settings.js';
-import { buildTools, buildMcpTools, sanitizeToolName } from '../src/core/tools.js';
+import { buildTools, buildMcpTools, sanitizeToolName, toolSpecStats } from '../src/core/tools.js';
 import type { ToolSpec } from '../src/llm/client.js';
 import type { McpContext, McpServerContext } from '../src/mcp/registry.js';
 import type { ToolRoute } from '../src/core/tools.js';
@@ -148,4 +148,43 @@ test('buildTools: Basis-Werkzeuge sind bei null/gefilterter Liste dabei', () => 
   assert.equal(alle.routes.get('fn_find_entities')?.kind, 'index_find');
   const gefiltert = buildTools(mcpWith([]), ['recherche']);
   assert.ok(gefiltert.routes.has('fn_find_entities'), 'Basis-Werkzeug trotz Allowlist');
+});
+
+test('toolSpecStats: zaehlt Specs, Zeichen und Naeherungstokens', () => {
+  const specs: ToolSpec[] = [
+    { type: 'function', function: { name: 'a', description: 'abcd', parameters: { type: 'object' } } },
+    { type: 'function', function: { name: 'bb', parameters: { type: 'object' } } },
+  ];
+  const stats = toolSpecStats(specs);
+  assert.equal(stats.count, 2);
+  assert.ok(stats.chars > 0, 'Zeichen werden gezaehlt');
+  assert.equal(stats.approxTokens, Math.ceil(stats.chars / 4));
+});
+
+test('agent_tool_limit: begrenzt nur MCP-Tools, Basis und fn_* bleiben', () => {
+  setSetting('agent_tool_limit', '2');
+  try {
+    const { specs, routes } = buildTools(mcpWith([{ name: 't1' }, { name: 't2' }, { name: 't3' }]), null);
+    const mcpNames = [...routes.entries()]
+      .filter(([, r]) => r.kind === 'mcp')
+      .map(([name]) => name)
+      .sort();
+    assert.deepEqual(mcpNames, ['t1', 't2'], 'deterministisch die ersten beiden');
+    assert.ok(routes.has('fn_find_entities'), 'Basis-Werkzeug bleibt');
+    assert.ok(routes.has('fn_recherche'), 'Funktion bleibt');
+    assert.ok(specs.some((s) => s.function.name === 'fn_find_entities'));
+    assert.equal(specs.some((s) => s.function.name === 't3'), false);
+  } finally {
+    deleteSetting('agent_tool_limit');
+  }
+});
+
+test('agent_tool_limit: 0 oder leer = unbegrenzt', () => {
+  setSetting('agent_tool_limit', '0');
+  try {
+    const { routes } = buildTools(mcpWith([{ name: 't1' }, { name: 't2' }, { name: 't3' }]), null);
+    assert.equal([...routes.entries()].filter(([, r]) => r.kind === 'mcp').length, 3);
+  } finally {
+    deleteSetting('agent_tool_limit');
+  }
 });

@@ -12,6 +12,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Geändert
+
+- **Tool-Angebot messbar und begrenzbar (Issue #9):** Das Debug-Log zeigt die
+  Größe des Tool-Angebots (`Tool-Specs`: Anzahl, Zeichen, Näherungstokens
+  `chars/4`). Das neue Setting `agent_tool_limit` begrenzt die MCP-Tool-Specs
+  pro Anfrage deterministisch; Basis-Lesewerkzeuge und `fn_*`-Funktionen
+  bleiben immer erhalten (0/leer = unbegrenzt).
+
 ### Hinzugefügt
 
 - **Paket `aufgabenliste` (Home Assistant):** Liest und schreibt

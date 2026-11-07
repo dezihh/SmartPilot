@@ -139,5 +139,44 @@ export function buildTools(
       },
     });
   }
+  // Issue #9: MCP-Tools deterministisch begrenzen. Basis-Tools und
+  // fn_*-Funktionen bleiben immer - dort haengen die Kernpfade dran.
+  const limit = agentToolLimit();
+  if (limit > 0) {
+    const mcpNames = [...routes.entries()]
+      .filter(([, r]) => r.kind === 'mcp')
+      .map(([name]) => name)
+      .sort();
+    for (const name of mcpNames.slice(limit)) {
+      routes.delete(name);
+      const idx = specs.findIndex((s) => s.function.name === name);
+      if (idx >= 0) specs.splice(idx, 1);
+    }
+  }
   return { specs, routes, budgets };
+}
+
+// Issue #9: Groesse des Tool-Angebots messbar machen (Prompt-Budget).
+// Die Naeherung chars/4 reicht fuer die Beobachtung im Debug-Log; die echte
+// Zahl liefert die LLM-Antwort als `usage.prompt_tokens`.
+export function toolSpecStats(specs: ToolSpec[]): { count: number; chars: number; approxTokens: number } {
+  let chars = 0;
+  for (const s of specs) {
+    chars += s.function.name.length + (s.function.description?.length ?? 0);
+    try {
+      chars += JSON.stringify(s.function.parameters).length;
+    } catch {
+      /* nicht serialisierbare Parameter zaehlen nur mit Namen */
+    }
+  }
+  return { count: specs.length, chars, approxTokens: Math.ceil(chars / 4) };
+}
+
+// Setting `agent_tool_limit`: Obergrenze fuer MCP-Tool-Specs pro Anfrage.
+// 0 oder leer = unbegrenzt (bisheriges Verhalten).
+function agentToolLimit(): number {
+  const raw = (getSetting('agent_tool_limit') ?? '').trim();
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
