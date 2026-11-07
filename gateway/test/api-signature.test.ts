@@ -160,42 +160,74 @@ test('now steuert das Zeitfenster (ok und stale)', () => {
   );
 });
 
-test('abgelaufene Nonces werden beim naechsten Aufruf aufgeraeumt', () => {
+test('abgelaufene Nonces werden aufgeraeumt (gleiche Nonce wieder frei)', () => {
   const ts = 1_700_000_000;
   const n = nonce();
   assert.equal(
     unitCheck({ signature: signApiRequest(SECRET, ts, n, UNIT_BODY), timestamp: String(ts), nonce: n, now: ts * 1000 }),
     'ok',
   );
-  // Spaeterer Aufruf raeumt den abgelaufenen Eintrag weg (kein Replay-Fehler).
+  // Nach Ablauf des doppelten Fensters raeumt der naechste Aufruf den Eintrag
+  // weg: dieselbe Nonce mit frischem Zeitstempel gilt wieder als neu. Ohne
+  // Prune waere das ein Replay.
   const later = ts + TTL * 3;
-  const n2 = nonce();
   assert.equal(
     unitCheck({
-      signature: signApiRequest(SECRET, later, n2, UNIT_BODY),
+      signature: signApiRequest(SECRET, later, n, UNIT_BODY),
       timestamp: String(later),
-      nonce: n2,
+      nonce: n,
       now: later * 1000,
     }),
     'ok',
   );
 });
 
-test('Nonce-Cache bleibt bei Ueberlauf begrenzt', () => {
+test('fester Testvektor (identisch im Python-Test)', () => {
+  // Gemeinsamer Vektor gegen Sprachdrift: Secret "v", ts 1700000000,
+  // Nonce 00112233445566778899aabbccddeeff, Body {"a":1}.
+  const body = '{"a":1}';
+  const ts = 1_700_000_000;
+  const n = '00112233445566778899aabbccddeeff';
+  const expected = 'c41dec5638271b5fd3865efa13d4bcd55a9354dffdecb63f2454a08a44eb5606';
+  assert.equal(signApiRequest('v', ts, n, body), expected);
+  assert.equal(
+    unitCheck({ signature: expected, timestamp: String(ts), nonce: n, rawBody: body, secret: 'v', now: ts * 1000 }),
+    'ok',
+  );
+});
+
+test('signierter Body mit abweichender Formatierung wird akzeptiert', async () => {
+  // Der Server muss die signierten Bytes pruefen, nicht eine Neuserialisierung:
+  // pretty-printed JSON waere nach JSON.stringify anders.
+  const pretty = '{\n  "sessionId": "sig-test",\n  "event": "pretty",\n  "elapsedMs": 1\n}';
+  assert.equal(await post(pretty, headersFor(pretty)), 204);
+});
+
+// Zuletzt: dieser Test fuellt den Cache bis zur Obergrenze und macht danach
+// jede weitere Pruefung fail-closed. Deshalb steht er am Dateiende.
+test('voller Nonce-Cache lehnt ab statt zu verdraengen', () => {
   const ts = Math.floor(Date.now() / 1000);
   const now = ts * 1000;
   const nonceAt = (i: number) => i.toString(16).padStart(32, '0');
-  for (let i = 0; i < 10_001; i += 1) {
+  let filled = 0;
+  for (let i = 0; i < 20_000; i += 1) {
     const n = nonceAt(i);
-    assert.equal(
-      unitCheck({ signature: signApiRequest(SECRET, ts, n, UNIT_BODY), timestamp: String(ts), nonce: n, now }),
-      'ok',
-    );
+    const result = unitCheck({
+      signature: signApiRequest(SECRET, ts, n, UNIT_BODY),
+      timestamp: String(ts),
+      nonce: n,
+      now,
+    });
+    if (result === 'cache-full') break;
+    assert.equal(result, 'ok', `Eintrag ${i} sollte akzeptiert werden`);
+    filled += 1;
   }
-  // Der aelteste Eintrag ist verdraengt: dieselbe Signatur gilt wieder als neu.
+  assert.ok(filled >= 9_000, `Cache wurde nur bis ${filled} gefuellt`);
+  // Der aelteste Eintrag bleibt erhalten: ein Replay wird weiter erkannt,
+  // statt die Signatur durch Verdraengung erneut zuzulassen.
   const oldest = nonceAt(0);
   assert.equal(
     unitCheck({ signature: signApiRequest(SECRET, ts, oldest, UNIT_BODY), timestamp: String(ts), nonce: oldest, now }),
-    'ok',
+    'replayed',
   );
 });

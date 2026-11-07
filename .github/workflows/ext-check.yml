@@ -16,6 +16,7 @@ jobs:
     env:
       EXTERNAL_BASE_URL: ${{ vars.EXTERNAL_BASE_URL }}
       API_TOKEN: ${{ secrets.API_TOKEN }}
+      API_SIGNING_SECRET: ${{ secrets.API_SIGNING_SECRET }}
     steps:
       - name: Voraussetzungen pruefen
         run: |
@@ -46,13 +47,24 @@ jobs:
       - name: POST /api/query mit API_TOKEN pruefen
         run: |
           BASE="${EXTERNAL_BASE_URL%/}"
-          body=$(curl -sS -m 30 -w "\n%{http_code}" -X POST \
+          PAYLOAD='{"sessionId":"extcheck","text":"Hallo"}'
+          sign_args=()
+          # Mit API_SIGNING_SECRET am Gateway muss auch dieser Check signieren,
+          # sonst meldet er faelschlich 401 trotz korrekter Installation.
+          if [ -n "${API_SIGNING_SECRET:-}" ]; then
+            export PAYLOAD
+            sig=$(python3 -c 'import hashlib,hmac,os,secrets,time;body=os.environ["PAYLOAD"].encode();ts=int(time.time());nonce=secrets.token_hex(16);canonical="%d\n%s\n%s"%(ts,nonce,hashlib.sha256(body).hexdigest());print("%d %s %s"%(ts,nonce,hmac.new(os.environ["API_SIGNING_SECRET"].encode(),canonical.encode(),hashlib.sha256).hexdigest()))')
+            read -r TS NONCE SIG <<< "$sig"
+            sign_args=(-H "X-Timestamp: ${TS}" -H "X-Nonce: ${NONCE}" -H "X-Signature: ${SIG}")
+          fi
+          resp=$(curl -sS -m 30 -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer ${API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data '{"sessionId":"extcheck","text":"Hallo"}' \
+            "${sign_args[@]}" \
+            --data "${PAYLOAD}" \
             "${BASE}/api/query") || { echo "::error::POST /api/query nicht erreichbar"; exit 1; }
-          code=$(printf '%s' "$body" | tail -n1)
-          payload=$(printf '%s' "$body" | sed '$d')
+          code=$(printf '%s' "$resp" | tail -n1)
+          payload=$(printf '%s' "$resp" | sed '$d')
           echo "POST /api/query -> HTTP ${code}"
           echo "${payload}" | head -c 400; echo ""
           [ "${code}" = "200" ] || { echo "::error::POST /api/query erwartet 200, war ${code}"; exit 1; }

@@ -18,9 +18,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   gesetzt, muss jede Anfrage an `/api/query` und `/api/lambda-trace` mit
   HMAC-SHA256 über Zeitstempel, Nonce und Body-Hash signiert sein
   (`X-Timestamp`, `X-Nonce`, `X-Signature`). Das Gateway akzeptiert eine
-  Signatur nur innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300 s) und
-  nur einmal pro Nonce; die Lambda signiert automatisch, sobald
-  `api_signing_secret` gesetzt ist. Ohne Secret bleibt es beim Bearer-Token.
+  Signatur nur innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300 s,
+  maximal 3600 s) und nur einmal pro Nonce; ein voller Nonce-Cache lehnt
+  fail-closed ab statt Einträge zu verdrängen. Die Lambda signiert automatisch,
+  sobald `api_signing_secret` gesetzt ist; die Deploy-Workflows geben das
+  Secret an die Funktion weiter, `ext-check` signiert seinen Probeaufruf.
+  Ohne Secret bleibt es beim Bearer-Token.
 
 - **`/metrics` hängt am Admin-Limiter (F-010):** eigener Bucket
   (`adminLimiter('metrics')`) getrennt von der Admin-API, Limit über

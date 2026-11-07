@@ -66,6 +66,7 @@ jobs:
           hosted = {
               "gateway_url": "${{ secrets.GATEWAY_URL }}",
               "api_token": "${{ secrets.API_TOKEN }}",
+              "api_signing_secret": "${{ secrets.API_SIGNING_SECRET }}",
               "alexa_skill_id": os.environ.get("SKILL_ID", ""),
               "watchdog_delay": "5",
               "gateway_timeout": "32",

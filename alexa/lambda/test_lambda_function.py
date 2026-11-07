@@ -565,5 +565,25 @@ class SignatureTest(unittest.TestCase):
         self.assertRegex(first, r"^[a-f0-9]{32}$")
 
 
+    def test_fester_vektor_identisch_zum_gateway(self):
+        # Gemeinsamer Testvektor gegen Sprachdrift (siehe
+        # gateway/test/api-signature.test.ts): gleiches Secret, gleicher
+        # Zeitstempel, gleiche Nonce, gleicher Body -> gleiche Signatur.
+        body = b'{"a":1}'
+        headers = {}
+        with mock.patch.object(lambda_function, "api_signing_secret", "v"):
+            with mock.patch.object(lambda_function, "time") as fake_time:
+                with mock.patch.object(lambda_function, "secrets") as fake_secrets:
+                    fake_time.time.return_value = 1_700_000_000
+                    fake_secrets.token_hex.return_value = "00112233445566778899aabbccddeeff"
+                    lambda_function._apply_signature(headers, body)
+        self.assertEqual(
+            headers["X-Signature"],
+            "c41dec5638271b5fd3865efa13d4bcd55a9354dffdecb63f2454a08a44eb5606",
+        )
+        self.assertEqual(headers["X-Timestamp"], "1700000000")
+        self.assertEqual(headers["X-Nonce"], "00112233445566778899aabbccddeeff")
+
+
 if __name__ == "__main__":
     unittest.main()

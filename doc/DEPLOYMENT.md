@@ -191,6 +191,9 @@ derzeit nur für `de-DE` hinterlegt.
   HMAC-SHA256 (`X-Signature`). Das Gateway akzeptiert die Signatur nur
   innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300 s) und nur einmal pro
   Nonce. Ohne Secret bleibt es beim reinen Bearer-Token.
+  **Reihenfolge beim Aktivieren:** erst die Lambda mit dem Secret deployen,
+  dann das Gateway — das Gateway ignoriert die Header ohne Secret, umgekehrt
+  würde es alle Adapter-Aufrufe mit 401 ablehnen.
 
 ## Deployment-Reihenfolge
 

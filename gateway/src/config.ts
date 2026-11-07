@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { DEFAULT_SIGNATURE_TTL_SECONDS } from './apiSignature.js';
+import { DEFAULT_SIGNATURE_TTL_SECONDS, MAX_SIGNATURE_TTL_SECONDS } from './apiSignature.js';
 import { parseLogLevel, type LogLevel } from './core/logger.js';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -89,9 +89,9 @@ export const config = {
   apiSigningSecret,
   // Gueltigkeitsfenster einer signierten Anfrage in Sekunden (Uhrzeit-Drift
   // zwischen Lambda und Gateway).
-  apiSignatureTtlSeconds: envPositiveNumber(
-    process.env.API_SIGNATURE_TTL_SECONDS,
-    DEFAULT_SIGNATURE_TTL_SECONDS,
+  apiSignatureTtlSeconds: Math.min(
+    MAX_SIGNATURE_TTL_SECONDS,
+    envPositiveNumber(process.env.API_SIGNATURE_TTL_SECONDS, DEFAULT_SIGNATURE_TTL_SECONDS),
   ),
   dbPath,
   // Persistentes Volume fuer provisionierte stdio-MCP-Artefakte (npm-Pakete).

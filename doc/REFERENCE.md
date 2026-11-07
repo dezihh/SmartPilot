@@ -178,6 +178,26 @@ Pflichtvariablen: `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LL
 (`change-me…`) und in Produktion (`NODE_ENV=production`) Tokens unter 24
 Zeichen verhindern den Start.
 
+### Replay-Schutz der Adapter-API
+
+Ist `API_SIGNING_SECRET` gesetzt, muss jede Anfrage an `/api/query` und
+`/api/lambda-trace` signiert sein:
+
+| Header | Inhalt |
+|---|---|
+| `X-Timestamp` | Unix-Zeit in Sekunden |
+| `X-Nonce` | 16–128 Hex-Zeichen, pro Anfrage neu |
+| `X-Signature` | HMAC-SHA256 (hex) über `<timestamp>\n<nonce>\n<sha256-hex(body)>` |
+
+Der Body wird byte-genau geprüft (Roh-Body, nicht das geparste Objekt). Eine
+Signatur gilt nur innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300,
+maximal 3600) und nur einmal pro Nonce; ein voller Nonce-Cache (10 000
+Einträge im Fenster) lehnt fail-closed ab.
+
+Grenzen: Methode und Pfad sind nicht Teil der Signatur (Reverse-Proxy-Prefixe
+bleiben damit unkritisch); der Nonce-Cache ist prozesslokal, bei mehreren
+Gateway-Replicas wirkt der Schutz nur je Instanz.
+
 ## Budgets und Tool-Auswahl
 
 Funktionen besitzen ein eigenes Budget (Spalte `budget`); die beiden

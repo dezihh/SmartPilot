@@ -9,6 +9,9 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 // einen anderen Endpunkt scheitert ohnehin am Nonce-Cache.
 
 export const DEFAULT_SIGNATURE_TTL_SECONDS = 300;
+// Obergrenze: ein sehr grosses Fenster wuerde den Nonce-Cache und das
+// Replay-Fenster unnoetig vergroessern.
+export const MAX_SIGNATURE_TTL_SECONDS = 3600;
 const MAX_NONCES = 10_000;
 const NONCE_PATTERN = /^[a-f0-9]{16,128}$/i;
 
@@ -16,11 +19,11 @@ const NONCE_PATTERN = /^[a-f0-9]{16,128}$/i;
 // relevant; danach ist die Signatur ohnehin zu alt.
 const seenNonces = new Map<string, number>();
 
-export function bodyHash(rawBody: Buffer | string): string {
+function bodyHash(rawBody: Buffer | string): string {
   return createHash('sha256').update(rawBody).digest('hex');
 }
 
-export function canonicalString(timestamp: number, nonce: string, rawBody: Buffer | string): string {
+function canonicalString(timestamp: number, nonce: string, rawBody: Buffer | string): string {
   return `${timestamp}\n${nonce}\n${bodyHash(rawBody)}`;
 }
 
@@ -33,7 +36,7 @@ export function signApiRequest(
   return createHmac('sha256', secret).update(canonicalString(timestamp, nonce, rawBody)).digest('hex');
 }
 
-export type SignatureCheck = 'ok' | 'missing' | 'stale' | 'bad-signature' | 'replayed';
+export type SignatureCheck = 'ok' | 'missing' | 'stale' | 'bad-signature' | 'replayed' | 'cache-full';
 
 export interface SignatureInput {
   signature: string | undefined;
@@ -64,12 +67,10 @@ export function checkApiSignature(input: SignatureInput): SignatureCheck {
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return 'bad-signature';
   pruneNonces(now);
   if (seenNonces.has(nonce)) return 'replayed';
-  // Begrenzte Map: aeltester Eintrag weicht, wenn das Fenster voll ist
-  // (dieselbe Vorgehensweise wie im Rate-Limit).
-  if (seenNonces.size >= MAX_NONCES) {
-    const oldest = seenNonces.keys().next().value;
-    if (oldest !== undefined) seenNonces.delete(oldest);
-  }
+  // Fail-closed: Ist der Cache voll, wird die Anfrage abgelehnt statt den
+  // aeltesten Eintrag zu verdrängen. Verdrängen wuerde dessen Signatur
+  // innerhalb des Gueltigkeitsfensters erneut verwendbar machen (Replay).
+  if (seenNonces.size >= MAX_NONCES) return 'cache-full';
   // Doppeltes Zeitfenster: erst danach koennte dieselbe Nonce wieder greifen,
   // zu diesem Zeitpunkt ist die Signatur aber laengst abgelaufen.
   seenNonces.set(nonce, now + input.ttlSeconds * 2000);
