@@ -1,17 +1,20 @@
 name: Lambda CI
 
-# Tests fuer die Alexa-Lambda. Laeuft nur bei Aenderungen unter alexa/.
-# Der Test (alexa/lambda/test_lambda_function.py) stubbt ask-sdk und requests
+# Tests fuer die Alexa-Lambda und die Skill-Config. Laeuft nur bei
+# Aenderungen unter alexa/. Der Lambda-Test
+# (alexa/lambda/test_lambda_function.py) stubbt ask-sdk und requests
 # per sys.modules - es wird bewusst nichts installiert.
 on:
   push:
     branches: [main]
     paths:
       - 'alexa/lambda/**'
+      - 'alexa/scripts/**'
       - '.github/workflows/lambda-ci.yml'
   pull_request:
     paths:
       - 'alexa/lambda/**'
+      - 'alexa/scripts/**'
   workflow_dispatch:
 
 permissions:
@@ -36,3 +39,7 @@ jobs:
           python -m pip install --quiet coverage==7.17.2
           coverage run test_lambda_function.py
           coverage report --include=lambda_function.py --fail-under=80
+
+      - name: Skill-Config testen
+        working-directory: .
+        run: python3 alexa/scripts/test_skill_config.py
