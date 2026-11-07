@@ -2,6 +2,7 @@ import nunjucks from 'nunjucks';
 import { getSetting, getSettings } from '../db.js';
 import { getMcpContext } from '../mcp/registry.js';
 import { logError } from './logger.js';
+import { TEST_HOOKS_ENABLED } from './testEnv.js';
 
 // Generischer Entity-Index: quelle = 1 parametrierter MCP-Call (Settings),
 // Parsing/Scoring/Lookups laufen lokal im RAM (60 s TTL). Kein Systembezug im
@@ -193,7 +194,7 @@ export function invalidateIndex(): void {
 // Nur fuer Tests: wie oft der Index-Cache verworfen wurde.
 let invalidations = 0;
 export function indexInvalidationsForTests(): number {
-  return invalidations;
+  return TEST_HOOKS_ENABLED ? invalidations : 0;
 }
 
 // Alle konfigurierten Index-Keys ('' = Standard + benannte). Benutzt vom

@@ -43,3 +43,18 @@ test('Rate-Limit: Map waechst ungebunden nicht (Prune bei Ueberlauf)', () => {
   // Danach sind alte Schluessel geprunt, neuer Schluessel funktioniert weiter
   assert.equal(checkRateLimit('neu', now), true);
 });
+
+test('F-015: Ueberlauf verdraengt auch frische Schluessel (harte Obergrenze)', () => {
+  resetRateLimitsForTests();
+  const now = 6_000_000;
+  // 'alt' ist ausgeschoepft und wuerde ohne Verdraengung dauerhaft sperren.
+  for (let i = 0; i < 10; i++) assert.equal(checkRateLimit('alt', now), true);
+  assert.equal(checkRateLimit('alt', now), false);
+  // Mehr als MAX_KEYS frische Schluessel -> die Map wird hart begrenzt.
+  for (let i = 0; i < 1100; i++) checkRateLimit(`flut${i}`, now);
+  assert.equal(
+    checkRateLimit('alt', now),
+    true,
+    'verdraengter Schluessel startet mit leerem Fenster statt unbegrenzt zu wachsen'
+  );
+});

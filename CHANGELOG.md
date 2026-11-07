@@ -14,6 +14,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Sicherheit
 
+- **`/metrics` hängt am Admin-Limiter (F-010):** eigener Bucket
+  (`adminLimiter('metrics')`) getrennt von der Admin-API, Limit über
+  `ADMIN_RATE_MAX`.
+- **Rate-Limit-Map hart begrenzt (F-015):** Bei Überlauf werden zuerst
+  abgelaufene, dann die ältesten Keys entfernt, bis `MAX_KEYS` (1000)
+  erreicht ist — fail-open dokumentiert.
 - **Trace-Leak bei `log_verbatim=0` behoben (F-001):** Der Trace enthält ohne
   Verbatim-Logging nur noch `ts`/`step` sowie das `llm.usage`-Event; Frage,
   Tool-Argumente, URLs und Shell-Kommandos werden nicht mehr persistiert.
@@ -26,10 +32,38 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `/admin/api/mcp-servers` geben `auth_token`, `env` und `headers` nicht mehr
   im Klartext zurück.
 
+### Betrieb
+
+- **Graceful Shutdown ist getestet (F-012):** Der Test startet den echten
+  Serverprozess, sendet `SIGTERM` und prüft Exit-Code 0 samt Shutdown-Log.
+- **Audit-Gate hat ein Zeitlimit (F-016):** `npm audit` bricht nach 120 s ab
+  und meldet „nicht bewertbar" (Exit 2, GRAU) statt den CI-Job zu blockieren.
+
 ### Tests
 
 - Vertragstests für F-001, F-002, F-003 und F-014 sind nicht mehr `todo`,
   sondern scharfe Regressionsproben.
+- **Frontend-Helfer getestet (F-007):** `esc`, `cmpVersion` und `diffValue`
+  haben Verhaltenstests; `web/**` ist aus der Coverage-Messung ausgenommen,
+  weil Browser-Code dort nicht sinnvoll messbar ist (F-009).
+
+### Doku
+
+- **`SECURITY.md` und PR-Template (F-008):** Meldeweg über GitHub
+  Security Advisories, Umfang und Ablauf dokumentiert.
+- **Token-Namen korrigiert (F-004):** `doc/DEPLOYMENT.md` und `doc/ALEXA.md`
+  nennen `API_TOKEN` für `/api/query` und `ADMIN_TOKEN` für die Admin-UI.
+- **Workflow-Rechte eingeschränkt (F-017):** `permissions: contents: read` in
+  `deploy-alexa.yml`, `sync-manifest.yml`, `sync-model.yml` und
+  `list-skills.yml`.
+
+### Code-Hygiene
+
+- **Tote Admin-Routen-Liste entfernt (F-005):** `PUBLIC_ADMIN_FILES` matchte
+  nie; die drei expliziten Login-Asset-Routen bleiben die einzige Quelle.
+- **Test-Hooks im Produktionsbetrieb inaktiv (F-006):** Die `*ForTests`-Exporte
+  sind hinter `TEST_HOOKS_ENABLED` (`NODE_ENV !== 'production'`) gegated; das
+  Image setzt `NODE_ENV=production`.
 
 ## [0.5.0] – 2026-11-06
 
