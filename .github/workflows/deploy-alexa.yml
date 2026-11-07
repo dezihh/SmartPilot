@@ -13,6 +13,9 @@ on:
         description: "Hinweis (wird in Commit-Message geschrieben)"
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
