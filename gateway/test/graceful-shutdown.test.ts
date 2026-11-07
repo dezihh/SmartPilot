@@ -26,7 +26,7 @@ function freePort(): Promise<number> {
   });
 }
 
-test('SIGTERM beendet das Gateway sauber mit Exit-Code 0', { timeout: 45_000 }, async () => {
+async function runShutdownScenario(): Promise<void> {
   const port = await freePort();
   const dir = mkdtempSync(join(tmpdir(), 'sp-shutdown-'));
   const child = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
@@ -80,4 +80,21 @@ test('SIGTERM beendet das Gateway sauber mit Exit-Code 0', { timeout: 45_000 }, 
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+test('SIGTERM beendet das Gateway sauber mit Exit-Code 0', { timeout: 120_000 }, async () => {
+  // Zwischen freePort() und listen() kann der Port belegt werden (bekanntes
+  // Rennen, G-08). Bis zu drei Versuche; echte Fehler sofort melden.
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await runShutdownScenario();
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/EADDRINUSE|endete vorzeitig/.test(message) || attempt === 3) throw error;
+    }
+  }
+  throw lastError;
 });

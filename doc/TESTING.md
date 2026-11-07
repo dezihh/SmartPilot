@@ -47,4 +47,9 @@ Schwelle darf nur **besser** werden, nie gesenkt.
   Parallel-Import derselben Config).
 - **SIGTERM-Test (`test/graceful-shutdown.test.ts`):** Der Server bindet
   einen freien Port; zwischen Portwahl und `listen` bleibt ein kleines
-  Rennen. Bei Fehlschlag erneut ausführen, bevor ein Befund entsteht.
+  Rennen. Der Test wiederholt den Lauf deshalb bis zu dreimal, wenn der Port
+  belegt war.
+- **Reproduzierbarkeit:** CI und Image nutzen dieselbe Node-Version
+  (`26.13.0`, gepinnt in `gateway-ci.yml`/`registry-ci.yml` und per Digest im
+  Dockerfile). Abdeckungszahlen sind nur zwischen gleichen Node-Versionen
+  vergleichbar (V8 zählt Branches je Version etwas anders).

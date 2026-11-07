@@ -12,6 +12,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Tests und Messbasis
+
+- **Coverage-Gate reproduzierbar gemacht:** CI pinnt Node auf `26.13.0` (wie
+  das Image). Der stdio-Fallback-Timer ist injizierbar und wird
+  deterministisch getestet; der SIGTERM-Test wiederholt sich bei
+  Port-Kollision. Vorher schwankte die Zweigabdeckung zwischen 83,94 und
+  84,16 Prozent und ließ das Gate zufällig fehlschlagen.
+
 ## [0.5.1] – 2026-11-07
 
 ### Sicherheit
