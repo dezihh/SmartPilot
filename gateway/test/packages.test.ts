@@ -21,6 +21,7 @@ import {
   substituteParams,
   meetsMinVersion,
   manifestDangerous,
+  dangerSignature,
   manifestItems,
   paramValues,
   manifestHash,
@@ -101,6 +102,33 @@ test('#2: manifestDangerous markiert jeden stdio-Server als gefaehrlich', () => 
     servers: [{ name: 'web', transport: 'http', url: 'https://x/mcp' }],
   });
   assert.equal(http.dangerous, false);
+});
+
+test('F-009: dangerousItems macht ein Paket ohne shell()/stdio gefaehrlich', () => {
+  const d = manifestDangerous({
+    id: 'a',
+    version: '1.0.0',
+    name: 'a',
+    summary: 's',
+    description: 'd',
+    dangerousItems: ['Vorgang "Aufgabenliste" entfernt Eintraege'],
+  });
+  assert.equal(d.dangerous, true);
+  assert.deepEqual(d.items, ['Vorgang "Aufgabenliste" entfernt Eintraege']);
+});
+
+test('F-009: dangerousItems muss ein Array aus Hinweistexten sein', () => {
+  for (const bad of [[''], [42], 'text', [null]]) {
+    const res = validateManifest({ ...OK_MANIFEST, dangerousItems: bad });
+    assert.equal(res.ok, false, `dangerousItems=${JSON.stringify(bad)}`);
+  }
+  assert.equal(validateManifest({ ...OK_MANIFEST, dangerousItems: ['ok'] }).ok, true);
+  assert.equal(validateManifest({ ...OK_MANIFEST, dangerousItems: [] }).ok, true);
+});
+
+test('F-009: dangerSignature aendert sich mit dangerousItems', () => {
+  const a = { ...OK_MANIFEST, dangerousItems: ['A'] };
+  assert.notEqual(dangerSignature(a as never), dangerSignature({ ...a, dangerousItems: ['B'] } as never));
 });
 
 test('parseManifest: JSON + Fehler-Faelle', () => {

@@ -37,6 +37,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **`aufgabenliste` ist als gefährlich markiert (F-009):** Das Manifest
+  deklariert die destruktiven Todo-Werkzeuge (`ha_set_todo_item`,
+  `ha_remove_todo_item`) als `dangerousItems`; die Installation verlangt jetzt
+  eine ausdrückliche Bestätigung. Die neue Manifest-Option `dangerousItems`
+  deckt Risiken ab, die nicht aus `shell()`/stdio ableitbar sind
+  (Paketversion 1.0.1).
 - **Ext-Check-Workflow mit Leserechten (F-008):** `ext-check.yml` deklariert
   jetzt `permissions: contents: read`. Der Job checkt nicht aus und braucht
   keine Schreibrechte; wie die übrigen Workflows ist der Token damit minimal

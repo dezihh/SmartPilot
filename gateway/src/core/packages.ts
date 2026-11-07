@@ -115,6 +115,11 @@ export interface PackageManifest {
   allowTools?: string[];
   setupDocs?: string;
   changelog?: string;
+  /**
+   * Explizite Gefahrenhinweise (z. B. destruktive MCP-Tools ohne shell()).
+   * Sie erzwingen wie shell()/stdio eine Bestaetigung bei der Installation.
+   */
+  dangerousItems?: string[];
 }
 
 // Zahl-fuer-Zahl-Vergleich zweier "x.y.z"-Versionen: <0, 0, >0.
@@ -185,6 +190,9 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
       if (hosts.internal.length) info.push(`Vorgang "${a.name}" ruft interne Adresse ${hosts.internal.join(', ')} auf (literale http()-URL)`);
     }
   }
+  // Vom Paketautor erklaerte Gefahren (z. B. destruktive MCP-Tools), die
+  // nicht aus shell()/stdio ableitbar sind.
+  for (const item of m.dangerousItems ?? []) items.push(item);
   return { dangerous: items.length > 0, items, info };
 }
 
@@ -203,6 +211,7 @@ export function dangerSignature(m: PackageManifest): string {
     actions: (m.actions ?? [])
       .filter((a) => a.template && /\bshell\s*\(/.test(a.template))
       .map((a) => [a.name, a.template]),
+    dangerousItems: m.dangerousItems ?? [],
   });
 }
 
@@ -271,6 +280,14 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
   if (m.allowTools !== undefined) {
     if (!Array.isArray(m.allowTools) || m.allowTools.some((t) => !/^[a-z0-9_*]{1,60}$/.test(t))) {
       errors.push('allowTools muss ein Array aus Tool-Namen sein');
+    }
+  }
+  if (m.dangerousItems !== undefined) {
+    if (
+      !Array.isArray(m.dangerousItems) ||
+      m.dangerousItems.some((t) => typeof t !== 'string' || !t.trim() || t.length > 300)
+    ) {
+      errors.push('dangerousItems muss ein Array aus nicht-leeren Hinweistexten (max. 300 Zeichen) sein');
     }
   }
   if (m.params !== undefined) {
