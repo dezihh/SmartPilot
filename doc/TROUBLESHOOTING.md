@@ -164,6 +164,23 @@ Das Gateway lädt die Registry über `raw.githubusercontent.com`
 3. Ein erneutes Installieren zeigt lokal geänderte Zeilen als Konflikt zur
    Entscheidung.
 
+### Aufgabenliste (Home Assistant) findet keine Listen
+
+Der Vorgang `aufgabenliste` antwortet, ohne eine Liste zu nennen oder zu ändern.
+
+1. Prüfe, ob das Paket `home-assistant` installiert und der `ha-mcp`-Server
+   erreichbar ist (**Tools abfragen**).
+2. Prüfe `ha_get_todo()` ohne Argument im MCP-Test: erscheint keine Liste, gibt
+   es in Home Assistant keine Todo-Liste (z. B. Integration „Local To-do"
+   hinzufügen) oder das Long-Lived-Token darf sie nicht sehen.
+3. Kennt der Server `ha_get_todo`, `ha_set_todo_item` und
+   `ha_remove_todo_item` nicht, ist `ha-mcp` zu alt. Die Werkzeuge gibt es seit
+   mindestens **v7.9.0**; empfohlen ist **v9.1.0 oder neuer**. Ohne die
+   Werkzeuge bleibt der Vorgang ohne Ergebnis — eine Fehlermeldung erscheint
+   nicht.
+4. Nach einem `ha-mcp`-Update die Caches neu laden (**Tools abfragen**,
+   Index-**Probe**) — die Tool-Liste wird gecacht.
+
 ## Alexa
 
 ### Monitor funktioniert, Alexa nicht
