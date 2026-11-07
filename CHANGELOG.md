@@ -12,6 +12,8 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+## [0.5.1] – 2026-11-07
+
 ### Geändert
 
 - **Query-Slot wird vor dem Routing bereinigt (Issue #7):** Die Lambda
@@ -21,20 +23,6 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   bleiben unverändert, damit nie eine leere Frage entsteht. Der Aufrufname
   kommt aus `invocation_name` (Default `smart pilot`, gesetzt aus
   `alexa/skill.config.json`).
-
-### Tests und Messbasis
-
-- **Coverage-Gate reproduzierbar gemacht:** CI pinnt Node auf `26.13.0` (wie
-  das Image). Der stdio-Fallback-Timer ist injizierbar und wird
-  deterministisch getestet; der SIGTERM-Test wiederholt sich bei
-  Port-Kollision. Vorher schwankte die Zweigabdeckung zwischen 83,94 und
-  84,16 Prozent und ließ das Gate zufällig fehlschlagen.
-- **Branch-Schwelle auf 83 % gesenkt (bewusst):** Die Schwelle liegt damit
-  unter der Messspanne 83,94–84,13 und flakt nicht mehr. Dokumentierte
-  Ausnahme von „Schwellen nur verbessern“; Ziel ist die Rückkehr auf ≥ 85,
-  sobald zusätzliche Tests den Puffer herstellen (siehe `doc/TESTING.md`).
-
-## [0.5.1] – 2026-11-07
 
 ### Sicherheit
 
@@ -108,6 +96,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   statt 95/80/90. Der Ausschluss `web/**` ist in
   [Tests und Coverage](doc/TESTING.md) begründet und mit Ist-Werten
   festgehalten; ohne Ausschluss läge die Quote bei 92,91/81,24/90,39.
+- **Branch-Schwelle auf 83 % gesenkt (bewusst):** Die gemessene Spanne liegt
+  bei 83,94–84,13, deshalb flakte die 84er-Schwelle. Dokumentierte Ausnahme
+  von „Schwellen nur verbessern“; Ziel ist die Rückkehr auf ≥ 85, sobald
+  zusätzliche Tests den Puffer herstellen (siehe `doc/TESTING.md`).
+- **CI-Gate reproduzierbar gemacht:** CI pinnt Node auf `26.13.0` (wie das
+  Image). Der stdio-Fallback-Timer ist injizierbar und wird deterministisch
+  getestet; der SIGTERM-Test wiederholt sich bei Port-Kollision.
 - **Produktionszweig der Test-Hooks getestet (G-03):** `contract-test-hooks`
   startet echte Kindprozesse mit und ohne `NODE_ENV=production`.
 - **Bekannte Grenzen dokumentiert (G-06–G-08):** Audit-Gate-Timeout-Zweig,
