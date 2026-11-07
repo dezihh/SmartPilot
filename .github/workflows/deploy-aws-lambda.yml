@@ -107,7 +107,7 @@ jobs:
           fi
 
           # 2) Timeout + Env setzen (als volles Operations-JSON, sicher für Sonderzeichen im Token)
-          python3 -c 'import json,sys; t,u,q,s,n,a,k=sys.argv[1:]; timeout=int(t); v={"gateway_url":u,"api_token":q,"alexa_skill_id":s,"watchdog_delay":"5","gateway_timeout":str(max(9, timeout-3)),"skill_name":n,"assistant_name":a,"apl_exit_delay_ms":"90000"}; v.update({"api_signing_secret":k} if k else {}); open("/tmp/cfg.json","w").write(json.dumps({"FunctionName":"smartpilot-alexa","Timeout":timeout,"MemorySize":512,"Environment":{"Variables":v}}))' "${TIMEOUT}" "${GATEWAY_URL}" "${API_TOKEN}" "${SKILL_ID}" "${SKILL_NAME}" "${ASSISTANT_NAME}" "${API_SIGNING_SECRET:-}"
+          python3 -c 'import json,sys; t,u,q,s,n,a,i,k=sys.argv[1:]; timeout=int(t); v={"gateway_url":u,"api_token":q,"alexa_skill_id":s,"watchdog_delay":"5","gateway_timeout":str(max(9, timeout-3)),"skill_name":n,"assistant_name":a,"invocation_name":i,"apl_exit_delay_ms":"90000"}; v.update({"api_signing_secret":k} if k else {}); open("/tmp/cfg.json","w").write(json.dumps({"FunctionName":"smartpilot-alexa","Timeout":timeout,"MemorySize":512,"Environment":{"Variables":v}}))' "${TIMEOUT}" "${GATEWAY_URL}" "${API_TOKEN}" "${SKILL_ID}" "${SKILL_NAME}" "${ASSISTANT_NAME}" "${INVOCATION_NAME}" "${API_SIGNING_SECRET:-}"
           for attempt in $(seq 1 6); do
             if aws lambda update-function-configuration --cli-input-json file:///tmp/cfg.json
             then

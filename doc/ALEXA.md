@@ -134,6 +134,7 @@ Im `lambda/`-Ordner eine `config.json` anlegen (Vorlage:
   "gateway_timeout": "32",
   "skill_name": "SmartPilot",
   "assistant_name": "Dein SmartPilot",
+  "invocation_name": "smart pilot",
   "alexa_skill_id": "amzn1.ask.skill.<deine-id>"
 }
 ```
@@ -184,6 +185,7 @@ erreichbares Gateway; freie Fragen brauchen `gateway_url` und `api_token`.
 | `gateway_timeout` | z. B. `32` (Timeout der Anfrage ans Gateway; muss unter dem Funktions-Timeout liegen, z. B. Lambda 35 s) |
 | `skill_name` | Anzeigename, z. B. `SmartPilot` |
 | `assistant_name` | Name im Gespräch, z. B. `Dein SmartPilot` |
+| `invocation_name` | Aufrufname, z. B. `smart pilot`; muss zum `invocationName` des Interaktionsmodells passen und wird vor dem Routing aus dem `query`-Slot entfernt |
 | `apl_exit_delay_ms` | z. B. `90000` (Anzeige auf dem Echo Show) |
 
 Weitere optionale Variablen (in Weg A dieselben Namen als
@@ -239,7 +241,7 @@ Gateway und sind **global**.
 
 | Name | Wo | Wirkung | Aktion |
 |---|---|---|---|
-| **Aufrufname** | Alexa-Interaktionsmodell, Feld `invocationName` (Build → **Invocation** oder **JSON Editor**) | „Alexa, öffne …“ | Wert ändern, **Save Model**, **Build Model** |
+| **Aufrufname** | Alexa-Interaktionsmodell, Feld `invocationName` (Build → **Invocation** oder **JSON Editor**); Weg B zusätzlich Env `invocation_name` | „Alexa, öffne …“; wird vor dem Routing aus dem `query`-Slot entfernt | Wert an beiden Stellen ändern, **Save Model**, **Build Model**, Env speichern |
 | **Skill-Anzeigename** | Alexa Developer Console, beim Skill | Name in der Skill-Liste | Anzeigename ändern |
 | **Sprechname der Lambda** | Weg A: `lambda/config.json` → `assistant_name`; Weg B: Env `assistant_name` | Begrüßung und Karte der Lambda | Wert ändern, **Deploy** bzw. Env speichern |
 | **Assistenten-Name** | Gateway-Admin → **Grundeinstellungen** → **Assistenten-Name** | Wie das LLM sich nennt („Ich bin …“) | Wert ändern, **Einstellungen speichern** |

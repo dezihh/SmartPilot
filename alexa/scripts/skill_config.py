@@ -96,7 +96,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--render-all", action="store_true", help="Modell + Manifest aus der Config schreiben")
     ap.add_argument("--check", action="store_true", help="nur validieren")
-    ap.add_argument("--print-env", metavar="LOCALE", help="skill_name/assistant_name als KEY=VALUE ausgeben")
+    ap.add_argument("--print-env", metavar="LOCALE", help="SKILL_NAME/ASSISTANT_NAME/INVOCATION_NAME als KEY=VALUE ausgeben")
     args = ap.parse_args()
 
     cfg = load()
@@ -108,8 +108,9 @@ def main():
         print("gerendert: " + ", ".join(render_all(cfg)))
     elif args.print_env:
         data = cfg["locales"][args.print_env]
-        print("skill_name={}".format(data["skill_name"]))
-        print("assistant_name={}".format(data["assistant_name"]))
+        print("SKILL_NAME={}".format(data["skill_name"]))
+        print("ASSISTANT_NAME={}".format(data["assistant_name"]))
+        print("INVOCATION_NAME={}".format(data["invocation_name"]))
     else:
         ap.print_help()
         sys.exit(2)
