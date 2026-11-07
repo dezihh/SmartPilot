@@ -109,9 +109,9 @@
       "id": "aufgabenliste",
       "name": "Aufgabenliste (Home Assistant)",
       "summary": "Aufgaben- und Einkaufslisten aus Home Assistant lesen, ergänzen, abhaken und entfernen.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "category": "function",
-      "sha256": "e89b8b86adb82cd82774ba97811593675012f38a9ba765079ef6d6164292c4f9"
+      "sha256": "034450c7fd86f885ca5123df11a5799c215e334ca1c7e9f8dc206804ae67455c"
     }
   ]
 }

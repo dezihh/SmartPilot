@@ -36,8 +36,13 @@ weil die Werkzeuge in `agent_tools` stehen.
 | Werkzeug | Zweck | Wichtige Parameter |
 |---|---|---|
 | `ha_get_todo` | Listen oder Einträge lesen | `entity_id` (leer = alle Listen), `status` (`needs_action` / `completed`) |
-| `ha_set_todo_item` | Eintrag anlegen, ändern, umbenennen, verschieben | `entity_id`, `summary` (neu), `item` (bestehend), `status`, `rename`, `due_date`, `move_after` |
-| `ha_remove_todo_item` | Eintrag entfernen | `entity_id`, `item` (UID oder exakter Text), `remove_completed` |
+| `ha_set_todo_item` | Eintrag anlegen, ändern, umbenennen | `entity_id`, `summary` (neu), `item` (bestehend), `status`, `rename`, `description`, `due_date`, `due_datetime` |
+| `ha_remove_todo_item` | Eintrag entfernen | `entity_id`, `item` (UID oder exakter Text) |
+
+Geprüft am 2026-11-08 gegen **ha-mcp 9.0.0** (77 Tools): alle drei Werkzeuge
+vorhanden; `remove_completed` und `move_after` gibt es in diesem Schema nicht.
+Die Bestätigung vor dem Löschen erzwingt das Gateway (schreibender Vorgang mit
+Bestätigung), nicht der Prompt.
 
 Details: <https://homeassistant-ai.github.io/ha-mcp/tools> (Kategorie „Todo Lists“).
 
