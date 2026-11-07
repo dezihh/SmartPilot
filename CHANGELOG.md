@@ -12,6 +12,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Geändert
+
+- **Query-Slot wird vor dem Routing bereinigt (Issue #7):** Die Lambda
+  entfernt Aufrufnamen (auch zusammengeschrieben, `SmartPilot` ≡
+  `smart pilot`) und führende Füllpartikel (`bitte`, `mal`, `sag`, …) aus dem
+  `query`-Slot, bevor die Frage ans Gateway geht. Reine Carrier-Phrasen
+  bleiben unverändert, damit nie eine leere Frage entsteht. Der Aufrufname
+  kommt aus `invocation_name` (Default `smart pilot`, gesetzt aus
+  `alexa/skill.config.json`).
+
 ### Tests und Messbasis
 
 - **Coverage-Gate reproduzierbar gemacht:** CI pinnt Node auf `26.13.0` (wie

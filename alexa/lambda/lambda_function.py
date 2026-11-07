@@ -57,6 +57,10 @@ alexa_skill_id = os.environ.get("alexa_skill_id", "")
 # (API_SIGNING_SECRET). Leer = Signatur aus, nur Bearer-Token wie bisher.
 api_signing_secret = os.environ.get("api_signing_secret", "")
 assistant_name = os.environ.get("assistant_name", "Dein SmartPilot")
+# Issue #7: In-Session landet der ganze Satz inkl. Skill-Aufrufname im
+# query-Slot. Vor dem Routing entfernen (Name + Fuellwoerter), damit die
+# Carrier-Phrase den Router-Score nicht verfaelscht.
+invocation_name = os.environ.get("invocation_name", "smart pilot")
 # Nur Fallback, wenn der Warteton (Progressive Response) aus ist: Alexa erwartet
 # dann innerhalb von ~8 s eine Antwort. Mit Warteton darf gateway_timeout bis
 # unter das Lambda-Timeout (z. B. 35 s) reichen.
@@ -252,6 +256,72 @@ def _is_timeout(err):
     return err.__class__.__name__ in ("Timeout", "ReadTimeout", "ConnectTimeout", "ConnectTimeoutError")
 
 
+# --- Issue #7: Query-Slot-Bereinigung -------------------------------------
+# Fuellwoerter, die am Satzanfang entfernt werden. Nur Praefixe, damit
+# inhaltstragende Woerter mitten im Satz erhalten bleiben.
+_FILLER_PREFIXES = (
+    "bitte", "mal", "doch", "schnell", "kurz",
+    "nochmal", "noch mal", "sag", "sage", "frage", "frag",
+)
+
+
+def _normalize_name(value):
+    """Nur Buchstaben/Ziffern, kleingeschrieben: 'Smart Pilot' == 'SmartPilot'."""
+    return re.sub(r"[^a-z0-9]+", "", (value or "").lower())
+
+
+def _strip_invocation(words, invocation):
+    target = _normalize_name(invocation)
+    if not target:
+        return words
+    out = []
+    i = 0
+    while i < len(words):
+        acc = ""
+        j = i
+        while j < len(words) and len(acc) < len(target):
+            acc += _normalize_name(words[j])
+            j += 1
+            if acc == target:
+                break
+        if acc == target:
+            i = j
+            continue
+        out.append(words[i])
+        i += 1
+    return out
+
+
+def _strip_fillers(words):
+    changed = True
+    # Laengere Partikel zuerst, damit "noch mal" vor "nochmal" greift.
+    fillers = sorted((f.split(" ") for f in _FILLER_PREFIXES), key=len, reverse=True)
+    while changed and words:
+        changed = False
+        for parts in fillers:
+            if [w.lower() for w in words[: len(parts)]] == parts:
+                words = words[len(parts):]
+                changed = True
+                break
+    return words
+
+
+def clean_query_slot(text, invocation=None):
+    """Entfernt Aufrufname und Fuellpartikel aus dem query-Slot.
+
+    Ist danach nichts mehr uebrig (reine Carrier-Phrase), bleibt der
+    Originaltext stehen - eine leere Frage waere schlechter als eine
+    unbereinigte."""
+    original = " ".join((text or "").split()).strip()
+    if not original:
+        return ""
+    name = invocation_name if invocation is None else invocation
+    words = _strip_invocation(original.split(" "), name)
+    words = _strip_fillers(words)
+    cleaned = " ".join(words).strip()
+    return cleaned or original
+
+
 def _canonical_body(data):
     """Bytes, die tatsaechlich gesendet werden - nur so passt die Signatur.
     Sortierte Schluessel und feste Trenner machen die Serialisierung stabil."""
@@ -413,6 +483,9 @@ class GptQueryIntentHandler(AbstractRequestHandler):
         if not query.strip():
             logger.info("GptQueryIntent ohne query-Slot empfangen")
             return response_builder.speak(t(handler_input, "no_query")).set_should_end_session(False).response
+        # Issue #7: Aufrufname/Fuellwoerter aus dem Slot entfernen, bevor die
+        # Frage an das Gateway (und damit an den Router) geht.
+        query = clean_query_slot(query)
         session_id = session.session_id if session else "unknown"
         user_id = None
         if session and session.user:

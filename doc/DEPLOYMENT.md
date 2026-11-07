@@ -152,6 +152,7 @@ aktuelle Zustand angezeigt (kein PUT).
 | `alexa_skill_id` | Secret `ALEXA_SKILL_ID`; wird vor der Verarbeitung gegen die `applicationId` geprüft |
 | `watchdog_delay`, `gateway_timeout`, `apl_exit_delay_ms` | feste Werte aus dem Workflow |
 | `skill_name`, `assistant_name` | aus `alexa/skill.config.json` (primäre Locale) |
+| `invocation_name` | Aufrufname aus `alexa/skill.config.json`; wird vor dem Routing aus dem `query`-Slot entfernt (Default `smart pilot`) |
 
 ## Skill-Namen und Sprachen
 

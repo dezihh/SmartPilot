@@ -591,5 +591,48 @@ class SignatureTest(unittest.TestCase):
         self.assertEqual(headers["X-Nonce"], nonce)
 
 
+class CleanQuerySlotTest(unittest.TestCase):
+    """Issue #7: Invocation-Name und Fuellpartikel vor dem Routing entfernen."""
+
+    def test_entfernt_aufrufnamen_am_anfang(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("SmartPilot hausstatus", "smart pilot"),
+            "hausstatus",
+        )
+
+    def test_entfernt_aufrufnamen_am_ende(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("hausstatus smart pilot", "smart pilot"),
+            "hausstatus",
+        )
+
+    def test_entfernt_fuellwoerter_am_anfang(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("bitte mal hausstatus", "smart pilot"),
+            "hausstatus",
+        )
+
+    def test_entfernt_name_und_fuellwoerter_kombiniert(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("smart pilot bitte hausstatus", "smart pilot"),
+            "hausstatus",
+        )
+
+    def test_normale_frage_bleibt_unveraendert(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("Wie ist der hausstatus?", "smart pilot"),
+            "Wie ist der hausstatus?",
+        )
+
+    def test_reine_carrier_phrase_bleibt_stehen(self):
+        self.assertEqual(
+            lambda_function.clean_query_slot("SmartPilot", "smart pilot"),
+            "SmartPilot",
+        )
+
+    def test_leerer_slot(self):
+        self.assertEqual(lambda_function.clean_query_slot("", "smart pilot"), "")
+
+
 if __name__ == "__main__":
     unittest.main()
