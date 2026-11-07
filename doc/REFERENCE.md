@@ -210,10 +210,11 @@ MCP-Werkzeuge: leer/`alle` = alle Werkzeuge, `keine` = keine, sonst eine
 explizite Liste. Eine explizite Auswahl reduziert Promptgröße und Fehlwahl.
 
 Zusätzlich begrenzt `agent_tool_limit` die Zahl der MCP-Tool-Specs pro Anfrage
-deterministisch (0/leer = unbegrenzt); die Basis-Lesewerkzeuge und
-`fn_*`-Funktionen bleiben immer erhalten. Die Größe des Tool-Angebots steht im
-Debug-Log (`Tool-Specs`: Anzahl, Zeichen, Näherungstokens `chars/4`), die echte
-Prompt-Größe in der LLM-Antwort (`usage.prompt_tokens`).
+deterministisch (0/leer = unbegrenzt); die Basis-Lesewerkzeuge, `fn_*`-
+Funktionen und die explizite Tool-Liste eines Vorgangs bleiben immer erhalten.
+Die Größe des Tool-Angebots steht im Debug-Log (`Tool-Specs`: Anzahl, Zeichen,
+Näherungstokens `chars/4`), die echte Prompt-Größe in der LLM-Antwort
+(`usage.prompt_tokens`).
 
 ## Antwortvertrag
 

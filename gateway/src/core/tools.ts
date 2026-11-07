@@ -109,7 +109,8 @@ export function buildBasisTools(routes: Map<string, ToolRoute>, specs: ToolSpec[
 
 export function buildTools(
   mcp: McpContext,
-  allowlist: string[] | null
+  allowlist: string[] | null,
+  opts: { applyAgentToolLimit?: boolean } = {}
 ): ToolRouteMap {
   const routes = new Map<string, ToolRoute>();
   const specs: ToolSpec[] = [];
@@ -141,7 +142,9 @@ export function buildTools(
   }
   // Issue #9: MCP-Tools deterministisch begrenzen. Basis-Tools und
   // fn_*-Funktionen bleiben immer - dort haengen die Kernpfade dran.
-  const limit = agentToolLimit();
+  // F-013: Vorgangs-Tools (explizite tools-Liste) sind ausgenommen; der
+  // Aufrufer setzt dafuer applyAgentToolLimit: false.
+  const limit = opts.applyAgentToolLimit === false ? 0 : agentToolLimit();
   if (limit > 0) {
     const mcpNames = [...routes.entries()]
       .filter(([, r]) => r.kind === 'mcp')

@@ -150,6 +150,21 @@ test('buildTools: Basis-Werkzeuge sind bei null/gefilterter Liste dabei', () => 
   assert.ok(gefiltert.routes.has('fn_find_entities'), 'Basis-Werkzeug trotz Allowlist');
 });
 
+test('agent_tool_limit: Vorgangs-Tools (applyAgentToolLimit: false) bleiben vollstaendig', () => {
+  setSetting('agent_tool_limit', '1');
+  try {
+    const tools = [{ name: 't1' }, { name: 't2' }, { name: 't3' }];
+    const action = buildTools(mcpWith(tools), ['t3', 't2'], { applyAgentToolLimit: false });
+    assert.ok(action.routes.has('t2') && action.routes.has('t3'), 'explizite Vorgangs-Tools bleiben');
+    // Gleiche Liste ohne Opt-out: der Deckel greift (alphabetisch erste bleibt).
+    const trimmed = buildTools(mcpWith(tools), ['t3', 't2']);
+    assert.ok(trimmed.routes.has('t2'));
+    assert.equal(trimmed.routes.has('t3'), false);
+  } finally {
+    deleteSetting('agent_tool_limit');
+  }
+});
+
 test('toolSpecStats: zaehlt Specs, Zeichen und Naeherungstokens', () => {
   const specs: ToolSpec[] = [
     { type: 'function', function: { name: 'a', description: 'abcd', parameters: { type: 'object' } } },

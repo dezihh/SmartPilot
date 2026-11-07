@@ -163,9 +163,10 @@ async function runToolLoop(
   mcp: McpContext,
   trace: TraceEvent[],
   sessionId: string,
-  allowlist: string[] | null = null
+  allowlist: string[] | null = null,
+  applyAgentToolLimit = true
 ): Promise<AssistantResponse> {
-  const { specs, routes, budgets } = buildTools(mcp, allowlist);
+  const { specs, routes, budgets } = buildTools(mcp, allowlist, { applyAgentToolLimit });
   // Issue #9: Groesse des Tool-Angebots sichtbar machen (Naeherung chars/4);
   // die echte Prompt-Groesse steht in der LLM-Antwort als usage.prompt_tokens.
   log.debug('Tool-Specs', toolSpecStats(specs));
@@ -364,7 +365,7 @@ async function executeAction(
     const inventoryScope = showsCatalog && noTools ? null : activeServerNames(mcp, action.toolList);
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? agentSystemPrompt(mcp, action.toolList))
       .replace('{agent_inventory}', buildInventoryPrompt(inventoryScope));
-    return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList);
+    return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList, false);
   }
   // deterministic/hybrid: Daten kommen ausschliesslich aus einer Funktion
   if (!action.function_ref) {
