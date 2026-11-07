@@ -100,7 +100,7 @@ const SETTINGS_FIELDS = [
     key: 'agent_tool_limit',
     label: 'Agent max. MCP-Tool-Specs',
     type: 'number',
-    help: 'Obergrenze für MCP-Tool-Specs pro Anfrage; die Tools werden alphabetisch sortiert und auf die ersten N gekürzt. Basis-Tools und fn_* bleiben immer, Vorgangs-Tools zählen mit. Leer oder 0 = unbegrenzt. Ein kleiner Deckel spart Prompt-Tokens, kann aber benötigte Tools abschneiden.',
+    help: 'Obergrenze für MCP-Tool-Specs pro Anfrage; die Tools werden alphabetisch sortiert und auf die ersten N gekürzt. Basis-Tools, fn_* und die Tools eines Vorgangs (explizite Tool-Liste) bleiben immer. Leer oder 0 = unbegrenzt. Ein kleiner Deckel spart Prompt-Tokens, kann aber benötigte Tools abschneiden.',
   },
   {
     key: 'fuzzy_global',

@@ -37,6 +37,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Vorgangs-Tools bleiben vom Tool-Deckel ausgenommen (F-013):**
+  `agent_tool_limit` kürzt nur noch die frei gewählten MCP-Tools des Agenten;
+  die explizite Tool-Liste eines Vorgangs wird vollständig angeboten und
+  zählt nicht gegen den Deckel.
 - **`aufgabenliste` ist als gefährlich markiert (F-009):** Das Manifest
   deklariert die destruktiven Todo-Werkzeuge (`ha_set_todo_item`,
   `ha_remove_todo_item`) als `dangerousItems`; die Installation verlangt jetzt
