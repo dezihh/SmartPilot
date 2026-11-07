@@ -1,9 +1,12 @@
 import html
+import hashlib
+import hmac
 import json
 import logging
 import os
 import random
 import re
+import secrets
 import threading
 import time
 import requests
@@ -50,6 +53,9 @@ warteton_phrase = os.environ.get("warteton_phrase", "")
 watchdog_delay = float(os.environ.get("watchdog_delay", "6.5"))
 gateway_timeout = float(os.environ.get("gateway_timeout", "32"))
 alexa_skill_id = os.environ.get("alexa_skill_id", "")
+# Optionaler Replay-Schutz (Issue #5): gemeinsames HMAC-Secret mit dem Gateway
+# (API_SIGNING_SECRET). Leer = Signatur aus, nur Bearer-Token wie bisher.
+api_signing_secret = os.environ.get("api_signing_secret", "")
 assistant_name = os.environ.get("assistant_name", "Dein SmartPilot")
 # Nur Fallback, wenn der Warteton (Progressive Response) aus ist: Alexa erwartet
 # dann innerhalb von ~8 s eine Antwort. Mit Warteton darf gateway_timeout bis
@@ -246,22 +252,48 @@ def _is_timeout(err):
     return err.__class__.__name__ in ("Timeout", "ReadTimeout", "ConnectTimeout", "ConnectTimeoutError")
 
 
+def _canonical_body(data):
+    """Bytes, die tatsaechlich gesendet werden - nur so passt die Signatur.
+    Sortierte Schluessel und feste Trenner machen die Serialisierung stabil."""
+    return json.dumps(data, separators=(",", ":"), sort_keys=True).encode("utf-8")
+
+
+def _apply_signature(headers, body):
+    """Zeitstempel, Nonce und HMAC-Signatur ergaenzen (nur mit Secret).
+    Muss zur Kanonisierung in gateway/src/apiSignature.ts passen."""
+    if not api_signing_secret:
+        return
+    timestamp = int(time.time())
+    nonce = secrets.token_hex(16)
+    canonical = "{}\n{}\n{}".format(timestamp, nonce, hashlib.sha256(body).hexdigest())
+    signature = hmac.new(
+        api_signing_secret.encode("utf-8"),
+        canonical.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    headers["X-Timestamp"] = str(timestamp)
+    headers["X-Nonce"] = nonce
+    headers["X-Signature"] = signature
+
+
 def call_gateway(query, session_id, user_id, skill_id=None):
     if not gateway_url:
         raise RuntimeError("gateway_url nicht konfiguriert")
     if not api_token:
         raise RuntimeError("api_token nicht konfiguriert")
+    data = {"sessionId": session_id, "text": query}
+    if user_id:
+        data["userId"] = user_id
+    body = _canonical_body(data)
     headers = {
         "Authorization": "Bearer {}".format(api_token),
         "Content-Type": "application/json",
     }
     if skill_id:
         headers["X-Alexa-Skill-Id"] = skill_id
-    data = {"sessionId": session_id, "text": query}
-    if user_id:
-        data["userId"] = user_id
+    _apply_signature(headers, body)
     response = requests.post(
-        "{}/api/query".format(gateway_url), headers=headers, json=data, timeout=gateway_timeout
+        "{}/api/query".format(gateway_url), headers=headers, data=body, timeout=gateway_timeout
     )
     response.raise_for_status()
     payload = response.json()
@@ -332,13 +364,17 @@ def lambda_trace(session_id, event, elapsed_ms=None):
 
     def run():
         try:
+            data = {"sessionId": session_id, "event": event, "elapsedMs": elapsed_ms}
+            body = _canonical_body(data)
+            headers = {
+                "Authorization": "Bearer {}".format(api_token),
+                "Content-Type": "application/json",
+            }
+            _apply_signature(headers, body)
             requests.post(
                 "{}/api/lambda-trace".format(gateway_url),
-                headers={
-                    "Authorization": "Bearer {}".format(api_token),
-                    "Content-Type": "application/json",
-                },
-                json={"sessionId": session_id, "event": event, "elapsedMs": elapsed_ms},
+                headers=headers,
+                data=body,
                 timeout=2,
             )
         except Exception as e:

@@ -129,6 +129,7 @@ Im `lambda/`-Ordner eine `config.json` anlegen (Vorlage:
 {
   "gateway_url": "https://<gateway-host>",
   "api_token": "<API_TOKEN>",
+  "api_signing_secret": "",
   "watchdog_delay": "5",
   "gateway_timeout": "32",
   "skill_name": "SmartPilot",
@@ -177,6 +178,7 @@ erreichbares Gateway; freie Fragen brauchen `gateway_url` und `api_token`.
 |---|---|
 | `gateway_url` | öffentliche Basisadresse des Gateways |
 | `api_token` | muss dem `API_TOKEN` des Gateways entsprechen |
+| `api_signing_secret` | optional: gleich dem `API_SIGNING_SECRET` des Gateways; gesetzt = signierte Anfragen (Replay-Schutz), leer = nur Bearer-Token |
 | `alexa_skill_id` | Skill-ID deines Skills (Schritt 1, Punkt 8: **Build → Endpoint → „Your Skill ID“**); abweichende IDs werden abgelehnt |
 | `watchdog_delay` | z. B. `5` (Warteton, wenn das Gateway länger braucht) |
 | `gateway_timeout` | z. B. `32` (Timeout der Anfrage ans Gateway; muss unter dem Funktions-Timeout liegen, z. B. Lambda 35 s) |

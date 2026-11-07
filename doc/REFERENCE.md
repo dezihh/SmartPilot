@@ -149,6 +149,8 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 |---|---:|---|
 | `ADMIN_TOKEN` | – | Bearer-Token nur für den Admin-Bereich (Pflicht) |
 | `API_TOKEN` | – | Bearer-Token nur für `/api/*` (Pflicht; muss sich von `ADMIN_TOKEN` unterscheiden) |
+| `API_SIGNING_SECRET` | leer | gemeinsames HMAC-Secret mit der Alexa-Lambda; gesetzt = jede `/api/*`-Anfrage braucht `X-Timestamp`, `X-Nonce` und `X-Signature` (Replay-Schutz) |
+| `API_SIGNATURE_TTL_SECONDS` | `300` | Gültigkeitsfenster einer signierten Anfrage (Uhren-Drift) |
 | `PORT` | `3000` | HTTP-Port |
 | `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |

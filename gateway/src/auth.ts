@@ -1,5 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { checkApiSignature } from './apiSignature.js';
 import { config } from './config.js';
 
 export function requireAdminAuth(req: Request, res: Response, next: NextFunction): void {
@@ -28,12 +29,45 @@ export function requestAuthorized(req: Request): boolean {
 
 // Adapter-API (Alexa-Lambda): NUR das API_TOKEN als Bearer. Kein Admin-Token
 // und keine Admin-Session - der Query-Zugang darf keine Admin-Rechte bedeuten.
+// Ist API_SIGNING_SECRET gesetzt, muss zusaetzlich die HMAC-Signatur aus
+// Zeitstempel, Nonce und Body gueltig sein (Replay-Schutz, Issue #5).
 export function requireApiAuth(req: Request, res: Response, next: NextFunction): void {
-  if (apiTokenValid(bearerToken(req))) {
-    next();
+  if (!apiTokenValid(bearerToken(req))) {
+    res.status(401).json({ error: 'unauthorized' });
     return;
   }
-  res.status(401).json({ error: 'unauthorized' });
+  if (config.apiSigningSecret) {
+    const check = checkApiSignature({
+      signature: headerValue(req.headers['x-signature']),
+      timestamp: headerValue(req.headers['x-timestamp']),
+      nonce: headerValue(req.headers['x-nonce']),
+      rawBody: rawBodyOf(req),
+      secret: config.apiSigningSecret,
+      ttlSeconds: config.apiSignatureTtlSeconds,
+    });
+    if (check !== 'ok') {
+      // Grund nur intern: die Antwort bleibt gleich, damit ein Angreifer nicht
+      // zwischen "fehlend", "abgelaufen" und "falsch" unterscheiden kann.
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+  }
+  next();
+}
+
+function headerValue(value: string | string[] | undefined): string | undefined {
+  if (typeof value === 'string') return value;
+  return Array.isArray(value) ? value[0] : undefined;
+}
+
+export interface RequestWithRawBody extends Request {
+  rawBody?: Buffer;
+}
+
+// Express' JSON-Parser legt den Roh-Body in app.ts ab; ohne ihn kann die
+// Signatur nicht geprueft werden (dann bleibt nur der leere Body).
+export function rawBodyOf(req: Request): Buffer {
+  return (req as RequestWithRawBody).rawBody ?? Buffer.alloc(0);
 }
 
 export function apiTokenValid(token: string): boolean {

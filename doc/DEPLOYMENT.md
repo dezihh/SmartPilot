@@ -148,6 +148,7 @@ aktuelle Zustand angezeigt (kein PUT).
 |---|---|
 | `gateway_url` | Secret `GATEWAY_URL` |
 | `api_token` | Secret `API_TOKEN` (gleich `API_TOKEN` des Gateways) |
+| `api_signing_secret` | optional, Secret `API_SIGNING_SECRET` (gleich dem Gateway); gesetzt = signierte Anfragen mit `X-Timestamp`, `X-Nonce`, `X-Signature` |
 | `alexa_skill_id` | Secret `ALEXA_SKILL_ID`; wird vor der Verarbeitung gegen die `applicationId` geprüft |
 | `watchdog_delay`, `gateway_timeout`, `apl_exit_delay_ms` | feste Werte aus dem Workflow |
 | `skill_name`, `assistant_name` | aus `alexa/skill.config.json` (primäre Locale) |
@@ -184,6 +185,12 @@ derzeit nur für `de-DE` hinterlegt.
   und **keine Sicherheitsgrenze** (der Header ist frei setzbar; wer das
   `API_TOKEN` hat, kann ihn beliebig wählen). Deshalb prüft das Gateway ihn nur
   warnend (`ALEXA_SKILL_ID`, optional) und lehnt nichts ab.
+- **Optionaler Replay-Schutz:** Mit `API_SIGNING_SECRET` (Gateway) bzw.
+  `api_signing_secret` (Lambda) signiert die Lambda zusätzlich
+  `X-Timestamp`, `X-Nonce` und den SHA-256 des Body-Hashes mit
+  HMAC-SHA256 (`X-Signature`). Das Gateway akzeptiert die Signatur nur
+  innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300 s) und nur einmal pro
+  Nonce. Ohne Secret bleibt es beim reinen Bearer-Token.
 
 ## Deployment-Reihenfolge
 

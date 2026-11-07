@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { DEFAULT_SIGNATURE_TTL_SECONDS } from './apiSignature.js';
 import { parseLogLevel, type LogLevel } from './core/logger.js';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -69,6 +70,11 @@ export function assertStrongToken(name: string, value: string): void {
 assertStrongToken('ADMIN_TOKEN', adminToken);
 assertStrongToken('API_TOKEN', apiToken);
 assertTokensDistinct(adminToken, apiToken);
+// Optionaler Replay-Schutz (Issue #5): Ist das Secret gesetzt, muss jede
+// Adapter-Anfrage gueltig signiert sein. Leer = reines Bearer-Token (bisheriges
+// Verhalten), damit bestehende Installationen nicht brechen.
+const apiSigningSecret = (process.env.API_SIGNING_SECRET ?? '').trim();
+if (apiSigningSecret) assertStrongToken('API_SIGNING_SECRET', apiSigningSecret);
 const dbPath = resolveDbPath(process.env.DB_PATH, existsSync);
 
 export const config = {
@@ -78,6 +84,15 @@ export const config = {
   // /api/lambda-trace). Kein gemeinsamer Token mehr.
   adminToken,
   apiToken,
+  // Gemeinsames HMAC-Secret fuer den Replay-Schutz der Adapter-API. Leer =
+  // Signaturpruefung aus (nur Bearer-Token).
+  apiSigningSecret,
+  // Gueltigkeitsfenster einer signierten Anfrage in Sekunden (Uhrzeit-Drift
+  // zwischen Lambda und Gateway).
+  apiSignatureTtlSeconds: envPositiveNumber(
+    process.env.API_SIGNATURE_TTL_SECONDS,
+    DEFAULT_SIGNATURE_TTL_SECONDS,
+  ),
   dbPath,
   // Persistentes Volume fuer provisionierte stdio-MCP-Artefakte (npm-Pakete).
   // Default neben der DB, damit beide zusammen persistieren.

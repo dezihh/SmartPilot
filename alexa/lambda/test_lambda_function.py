@@ -6,6 +6,9 @@ Import). Keine echten Netzwerke, kein AWS, kein Gateway: requests.post
 wird pro Test gepatcht.
 """
 
+import hashlib
+import hmac
+import json
 import os
 import sys
 import time
@@ -241,7 +244,10 @@ class CallGatewayTest(unittest.TestCase):
         args, kwargs = req.post.call_args
         self.assertEqual(args[0], "https://gw.example.org/api/query")
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-token")
-        self.assertEqual(kwargs["json"], {"sessionId": "sess-1", "text": "frage", "userId": "user-1"})
+        self.assertEqual(
+            json.loads(kwargs["data"]),
+            {"sessionId": "sess-1", "text": "frage", "userId": "user-1"},
+        )
         self.assertEqual(speech, "hallo")
         self.assertFalse(follow_up)
 
@@ -502,6 +508,61 @@ class HelpIntentTest(unittest.TestCase):
             req.post.side_effect = slow
             lambda_function.HelpIntentHandler().handle(hi)
         self.assertEqual(len(hi.directive_service.enqueued), 1, "Warteton nach Watchdog")
+
+
+class SignatureTest(unittest.TestCase):
+    """Replay-Schutz (Issue #5): Die Lambda signiert Zeitstempel, Nonce und
+    Body-Hash, sobald ein gemeinsames Secret konfiguriert ist."""
+
+    def test_ohne_secret_keine_signatur_header(self):
+        with mock.patch.object(lambda_function, "api_signing_secret", ""):
+            with mock.patch.object(lambda_function, "requests") as req:
+                req.post.return_value = fake_response({"speech": "x"})
+                lambda_function.call_gateway("q", "s", None)
+        headers = req.post.call_args.kwargs["headers"]
+        self.assertNotIn("X-Signature", headers)
+        self.assertNotIn("X-Timestamp", headers)
+        self.assertNotIn("X-Nonce", headers)
+
+    def test_signatur_passt_zum_gesendeten_body(self):
+        secret = "gemeinsames-secret"
+        with mock.patch.object(lambda_function, "api_signing_secret", secret):
+            with mock.patch.object(lambda_function, "requests") as req:
+                req.post.return_value = fake_response({"speech": "x"})
+                lambda_function.call_gateway("frage", "sess", "user")
+        kwargs = req.post.call_args.kwargs
+        headers = kwargs["headers"]
+        body = kwargs["data"]
+        self.assertEqual(headers["Content-Type"], "application/json")
+        self.assertEqual(
+            json.loads(body.decode("utf-8")),
+            {"sessionId": "sess", "text": "frage", "userId": "user"},
+        )
+        canonical = "{}\n{}\n{}".format(
+            headers["X-Timestamp"], headers["X-Nonce"], hashlib.sha256(body).hexdigest()
+        )
+        expected = hmac.new(
+            secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        self.assertEqual(headers["X-Signature"], expected)
+
+    def test_body_wird_kanonisch_serialisiert(self):
+        # Sortierte Schluessel: gleicher Inhalt, gleiche Bytes, gleiche Signatur.
+        a = lambda_function._canonical_body({"b": 1, "a": 2})
+        b = lambda_function._canonical_body({"a": 2, "b": 1})
+        self.assertEqual(a, b)
+        self.assertEqual(a, b'{"a":2,"b":1}')
+
+    def test_nonce_ist_zufaellig(self):
+        with mock.patch.object(lambda_function, "api_signing_secret", "s"):
+            with mock.patch.object(lambda_function, "requests") as req:
+                req.post.return_value = fake_response({"speech": "x"})
+                lambda_function.call_gateway("q", "s", None)
+                first = req.post.call_args.kwargs["headers"]["X-Nonce"]
+                lambda_function.call_gateway("q", "s", None)
+                second = req.post.call_args.kwargs["headers"]["X-Nonce"]
+        self.assertNotEqual(first, second)
+        self.assertRegex(first, r"^[a-f0-9]{32}$")
 
 
 if __name__ == "__main__":

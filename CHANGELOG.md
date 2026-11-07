@@ -14,6 +14,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Sicherheit
 
+- **Replay-Schutz für die Adapter-API (Issue #5):** Ist `API_SIGNING_SECRET`
+  gesetzt, muss jede Anfrage an `/api/query` und `/api/lambda-trace` mit
+  HMAC-SHA256 über Zeitstempel, Nonce und Body-Hash signiert sein
+  (`X-Timestamp`, `X-Nonce`, `X-Signature`). Das Gateway akzeptiert eine
+  Signatur nur innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300 s) und
+  nur einmal pro Nonce; die Lambda signiert automatisch, sobald
+  `api_signing_secret` gesetzt ist. Ohne Secret bleibt es beim Bearer-Token.
+
 - **`/metrics` hängt am Admin-Limiter (F-010):** eigener Bucket
   (`adminLimiter('metrics')`) getrennt von der Admin-API, Limit über
   `ADMIN_RATE_MAX`.
