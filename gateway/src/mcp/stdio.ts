@@ -27,6 +27,8 @@ export interface StdioConfig {
   env: Record<string, string>;
   /** Zeitlimit fuer initialize/listTools (Default 15s). */
   initTimeoutMs?: number;
+  /** Wartezeit bis SIGKILL, wenn der Prozess SIGTERM ignoriert (Default 3000 ms). */
+  killFallbackMs?: number;
 }
 
 export class McpStdioClient implements McpTransport {
@@ -170,7 +172,7 @@ export class McpStdioClient implements McpTransport {
     const child = this.child;
     if (!child || this.exited) return;
     child.kill('SIGTERM');
-    // Fallback: ignoriert der Prozess SIGTERM, nach 3 s hart beenden.
+    // Fallback: ignoriert der Prozess SIGTERM, nach killFallbackMs hart beenden.
     setTimeout(() => {
       if (this.exited) return;
       try {
@@ -178,6 +180,6 @@ export class McpStdioClient implements McpTransport {
       } catch {
         /* bereits beendet */
       }
-    }, 3000).unref();
+    }, this.config.killFallbackMs ?? 3000).unref();
   }
 }

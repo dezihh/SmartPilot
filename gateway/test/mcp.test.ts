@@ -235,8 +235,10 @@ class FakeChild extends EventEmitter {
   stdout = new FakeStream();
   stderr = new FakeStream();
   killCalls = 0;
-  kill(): boolean {
+  signals: string[] = [];
+  kill(signal?: string): boolean {
     this.killCalls++;
+    this.signals.push(signal ?? 'SIGTERM');
     return true;
   }
 }
@@ -259,6 +261,24 @@ test('stdio: nach stdin-Fehler wird der Child freigegeben (F-37)', () => {
   child.stdin.emit('error', new Error('EPIPE'));
   client.stop();
   assert.equal(child.killCalls, 1, 'EPIPE-Child muss genau einmal beendet werden');
+});
+
+// Der Fallback-Timer lief bisher nur, wenn der Testprozess lange genug lebte —
+// dadurch schwankte die Coverage zwischen CI-Laeufen. Mit kleiner Wartezeit
+// ist der Pfad SIGTERM -> SIGKILL deterministisch abgedeckt.
+test('stdio: stop beendet nach dem Fallback hart (SIGKILL)', async () => {
+  const child = new FakeChild();
+  const client = new McpStdioClient(
+    { command: 'x', args: [], env: {}, killFallbackMs: 5 },
+    () => child as unknown as ChildProcess,
+  );
+  const pending = client.callTool('tool_x', {}).catch(() => {});
+  client.stop();
+  assert.deepEqual(child.signals, ['SIGTERM']);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.deepEqual(child.signals, ['SIGTERM', 'SIGKILL']);
+  child.emit('close'); // raeumt den offenen Request-Timer ab
+  await pending;
 });
 
 test('stdio: isError=true im Result wird als Fehler geworfen', async () => {
