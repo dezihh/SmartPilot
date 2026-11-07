@@ -37,6 +37,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **`agent_tool_limit` in der Admin-UI (F-005):** Das Setting ist jetzt als
+  Zahlenfeld „Agent max. MCP-Tool-Specs“ in den Grundeinstellungen vorhanden;
+  leer oder 0 = unbegrenzt. Die Doku nannte das Feld bereits, das Formular
+  fehlte.
 - **AWS-Deploy reicht den Aufrufnamen durch (F-004):** `skill_config.py
   --print-env` gibt `SKILL_NAME`, `ASSISTANT_NAME` und `INVOCATION_NAME` in
   Großbuchstaben aus. GitHub behandelt Env-Namen case-sensitiv, deshalb kamen
