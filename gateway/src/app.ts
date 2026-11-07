@@ -1,7 +1,14 @@
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { createSession, requestAuthorized, bearerToken, cookieFor, requireAdminAuth } from './auth.js';
+import {
+  createSession,
+  requestAuthorized,
+  bearerToken,
+  cookieFor,
+  requireAdminAuth,
+  type RequestWithRawBody,
+} from './auth.js';
 import { checkRateLimit } from './rateLimit.js';
 import { config } from './config.js';
 import { getSchemaVersion, getDb } from './db.js';
@@ -72,7 +79,13 @@ export function createApp(): Express {
   // Restore traegt die komplette Konfiguration im Body; das globale 1-MB-Limit
   // wuerde groessere Sicherungen (Prompts/Manifeste) mit 413 abweisen.
   app.use(`${config.basePath}/admin/api/backup/restore`, express.json({ limit: '25mb' }));
-  app.use(express.json({ limit: '1mb' }));
+  // Roh-Body fuer die HMAC-Pruefung der Adapter-API aufbewahren (Replay-Schutz,
+  // Issue #5). Ohne dieses Byte-Original waere die Signatur nicht nachrechenbar,
+  // weil der Parser den Body neu serialisiert.
+  const captureRawBody = (req: Request, _res: Response, buf: Buffer): void => {
+    (req as RequestWithRawBody).rawBody = buf;
+  };
+  app.use(express.json({ limit: '1mb', verify: captureRawBody }));
 
   // Liveness fuer den Container-Healthcheck (keine Geheimnisse, keine Auth).
   app.get('/healthz', (_req, res) => {

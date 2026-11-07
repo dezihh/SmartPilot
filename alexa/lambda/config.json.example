@@ -1,6 +1,7 @@
 {
   "gateway_url": "https://your-gateway.example.com",
   "api_token": "<API_TOKEN aus gateway/.env>",
+  "api_signing_secret": "",
   "watchdog_delay": "5",
   "gateway_timeout": "32",
   "skill_name": "SmartPilot",

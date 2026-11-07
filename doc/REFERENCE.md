@@ -149,6 +149,8 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 |---|---:|---|
 | `ADMIN_TOKEN` | – | Bearer-Token nur für den Admin-Bereich (Pflicht) |
 | `API_TOKEN` | – | Bearer-Token nur für `/api/*` (Pflicht; muss sich von `ADMIN_TOKEN` unterscheiden) |
+| `API_SIGNING_SECRET` | leer | gemeinsames HMAC-Secret mit der Alexa-Lambda; gesetzt = jede `/api/*`-Anfrage braucht `X-Timestamp`, `X-Nonce` und `X-Signature` (Replay-Schutz) |
+| `API_SIGNATURE_TTL_SECONDS` | `300` | Gültigkeitsfenster einer signierten Anfrage (Uhren-Drift) |
 | `PORT` | `3000` | HTTP-Port |
 | `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
@@ -175,6 +177,26 @@ Pflichtvariablen: `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LL
 `ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden; die Beispielwerte
 (`change-me…`) und in Produktion (`NODE_ENV=production`) Tokens unter 24
 Zeichen verhindern den Start.
+
+### Replay-Schutz der Adapter-API
+
+Ist `API_SIGNING_SECRET` gesetzt, muss jede Anfrage an `/api/query` und
+`/api/lambda-trace` signiert sein:
+
+| Header | Inhalt |
+|---|---|
+| `X-Timestamp` | Unix-Zeit in Sekunden |
+| `X-Nonce` | 16–128 Hex-Zeichen, pro Anfrage neu |
+| `X-Signature` | HMAC-SHA256 (hex) über `<timestamp>\n<nonce>\n<sha256-hex(body)>` |
+
+Der Body wird byte-genau geprüft (Roh-Body, nicht das geparste Objekt). Eine
+Signatur gilt nur innerhalb von `API_SIGNATURE_TTL_SECONDS` (Default 300,
+maximal 3600) und nur einmal pro Nonce; ein voller Nonce-Cache (10 000
+Einträge im Fenster) lehnt fail-closed ab.
+
+Grenzen: Methode und Pfad sind nicht Teil der Signatur (Reverse-Proxy-Prefixe
+bleiben damit unkritisch); der Nonce-Cache ist prozesslokal, bei mehreren
+Gateway-Replicas wirkt der Schutz nur je Instanz.
 
 ## Budgets und Tool-Auswahl
 
