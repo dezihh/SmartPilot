@@ -97,6 +97,12 @@ const SETTINGS_FIELDS = [
     help: 'Angehakt = das Tool kommt als Spec in den Agenten-Prompt. Keins angehakt = der Agent läuft ohne Tool-Specs. Die Buttons „Alle anhaken/abwählen" setzen die Auswahl auf einmal; gespeichert wird immer die explizite Liste („keine" bei leerer Auswahl).',
   },
   {
+    key: 'agent_tool_limit',
+    label: 'Agent max. MCP-Tool-Specs',
+    type: 'number',
+    help: 'Obergrenze für MCP-Tool-Specs pro Anfrage; die Tools werden alphabetisch sortiert und auf die ersten N gekürzt. Basis-Tools und fn_* bleiben immer, Vorgangs-Tools zählen mit. Leer oder 0 = unbegrenzt. Ein kleiner Deckel spart Prompt-Tokens, kann aber benötigte Tools abschneiden.',
+  },
+  {
     key: 'fuzzy_global',
     label: 'Fuzzy-Trigger global',
     type: 'select',

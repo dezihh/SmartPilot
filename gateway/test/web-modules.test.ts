@@ -86,3 +86,18 @@ test('alle lokalen Importziele existieren', () => {
     }
   }
 });
+
+test('Grundeinstellungen: agent_tool_limit ist ein Zahlenfeld (F-005)', () => {
+  const src = MODS.get('app.js')!.source;
+  const start = src.indexOf('const SETTINGS_FIELDS = [');
+  assert.ok(start >= 0, 'SETTINGS_FIELDS fehlt in app.js');
+  const block = src.slice(start, src.indexOf('\n];', start));
+  const keys = [...block.matchAll(/key: '([^']+)'/g)].map((m) => m[1]);
+  assert.equal(new Set(keys).size, keys.length, 'doppelte Setting-Keys im Formular');
+
+  const fieldStart = block.indexOf("key: 'agent_tool_limit'");
+  assert.ok(fieldStart >= 0, 'agent_tool_limit fehlt in SETTINGS_FIELDS');
+  const nextField = block.indexOf("key: '", fieldStart + 1);
+  const entry = block.slice(fieldStart, nextField === -1 ? undefined : nextField);
+  assert.match(entry, /type: 'number'/, 'agent_tool_limit muss type number sein');
+});
