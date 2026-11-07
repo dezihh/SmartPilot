@@ -411,13 +411,22 @@ export function installPackage(
       recordItem(m.id, 'index', key, null, hashContent('index', key, ix.config));
     }
     if (applied.allowTools?.length) {
-      const current = (getSetting('agent_tools') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-      const set = new Set(current);
-      const fresh = applied.allowTools.filter((t) => !set.has(t));
-      if (fresh.length) {
-        setSetting('agent_tools', [...current, ...fresh].join(','));
-        report.created.push(`allowTools:${fresh.join(',')}`);
-      } else report.unchanged.push('allowTools');
+      // Nur eine explizite Allowlist ergaenzen. Nicht gesetzt = "alle" und
+      // "keine" = nichts duerfen nicht zu einer Paket-Liste werden, sonst
+      // verengt die Installation eines Pakets den Agenten (Audit F-002).
+      const raw = (getSetting('agent_tools') ?? '').trim();
+      const lower = raw.toLowerCase();
+      if (raw && lower !== 'alle' && lower !== 'keine') {
+        const current = raw.split(',').map((s) => s.trim()).filter(Boolean);
+        const set = new Set(current);
+        const fresh = applied.allowTools.filter((t) => !set.has(t));
+        if (fresh.length) {
+          setSetting('agent_tools', [...current, ...fresh].join(','));
+          report.created.push(`allowTools:${fresh.join(',')}`);
+        } else report.unchanged.push('allowTools');
+      } else {
+        report.unchanged.push('allowTools');
+      }
       recordItem(m.id, 'allowTools', applied.allowTools.join(','), null, hashContent('allowTools', 'agent_tools', applied.allowTools));
     }
     const safeParams: Record<string, string> = {};

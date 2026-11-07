@@ -302,3 +302,73 @@ test('handleRequest: mqtt_set kappt zu grosse Werte', async () => {
   );
   assert.match(text(res), /Wert zu gross/);
 });
+
+// ---- Dispatch: mqtt_set und Restpfade ----
+
+test('handleRequest: Notification ohne id bekommt keine Antwort', async () => {
+  assert.equal(await handleRequest({ method: 'initialize' }, deps()), null);
+});
+
+test('handleRequest: unbekannte Methode liefert -32601', async () => {
+  const res = await handleRequest({ id: 1, method: 'kaputt' }, deps());
+  assert.equal((res as { error?: { code: number } }).error?.code, -32601);
+});
+
+test('handleRequest: mqtt_get mit ungueltigem und unbekanntem Topic', async () => {
+  const invalid = await handleRequest(
+    { id: 1, method: 'tools/call', params: { name: 'mqtt_get', arguments: { topic: '' } } },
+    deps(),
+  );
+  assert.equal((invalid?.result as { isError?: boolean }).isError, true);
+  const unknown = await handleRequest(
+    { id: 2, method: 'tools/call', params: { name: 'mqtt_get', arguments: { topic: 'licht' } } },
+    deps(),
+  );
+  assert.match(text(unknown), /=unbekannt/);
+});
+
+test('handleRequest: mqtt_set ohne Freigabe wird abgelehnt', async () => {
+  const res = await handleRequest(
+    { id: 1, method: 'tools/call', params: { name: 'mqtt_set', arguments: { topic: 'licht', value: 'ON' } } },
+    deps(),
+  );
+  assert.match(text(res), /nicht erlaubt/);
+});
+
+test('handleRequest: mqtt_set publiziert erlaubte Topics', async () => {
+  const published: [string, string][] = [];
+  const d = deps({
+    settings: settings({ allowWrite: ['haus/licht'] }),
+    publish: async (topic, value) => {
+      published.push([topic, value]);
+    },
+  });
+  const res = await handleRequest(
+    { id: 1, method: 'tools/call', params: { name: 'mqtt_set', arguments: { topic: 'licht', value: 'ON' } } },
+    d,
+  );
+  assert.deepEqual(published, [['haus/licht', 'ON']]);
+  assert.match(text(res), /=ON/);
+});
+
+test('handleRequest: mqtt_set meldet Publish-Fehler', async () => {
+  const d = deps({
+    settings: settings({ allowWrite: ['haus/licht'] }),
+    publish: async () => {
+      throw new Error('kaputt');
+    },
+  });
+  const res = await handleRequest(
+    { id: 1, method: 'tools/call', params: { name: 'mqtt_set', arguments: { topic: 'licht', value: 'ON' } } },
+    d,
+  );
+  assert.match(text(res), /Publish fehlgeschlagen/);
+});
+
+test('handleRequest: leerer Snapshot nennt den Verbindungsaufbau', async () => {
+  const res = await handleRequest(
+    { id: 1, method: 'tools/call', params: { name: 'mqtt_snapshot', arguments: {} } },
+    deps({ settling: () => true }),
+  );
+  assert.match(text(res), /verbinde noch/);
+});

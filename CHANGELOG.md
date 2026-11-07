@@ -14,11 +14,24 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Geändert
 
+- **Coverage misst nur noch den Produktivcode (F-001):** `npm run coverage`
+  verwendet `--test-coverage-include='src/**'`. Vorher zählten die Testdateien
+  mit und hielten das Gate künstlich grün (Quell-Coverage lag bei
+  96,16/81,73/93,21). Mit zusätzlichen Tests liegt sie jetzt bei
+  97,00/84,84/94,63 — Schwellen unverändert 97/83/94.
 - **Tool-Angebot messbar und begrenzbar (Issue #9):** Das Debug-Log zeigt die
   Größe des Tool-Angebots (`Tool-Specs`: Anzahl, Zeichen, Näherungstokens
   `chars/4`). Das neue Setting `agent_tool_limit` begrenzt die MCP-Tool-Specs
   pro Anfrage deterministisch; Basis-Lesewerkzeuge und `fn_*`-Funktionen
   bleiben immer erhalten (0/leer = unbegrenzt).
+
+### Behoben
+
+- **Paket-`allowTools` verengt die globale Tool-Liste nicht mehr (F-002):** Die
+  Allowlist wird nur noch in eine **explizite** `agent_tools`-Liste gemerged;
+  „nicht gesetzt“ (= alle) und „keine“ bleiben unangetastet.
+- **`log_verbatim=0` gilt für alle Routen (F-003):** Vorgänge speichern bei
+  deaktiviertem Verbatim-Logging weder Frage/Antwort noch Trace-Details.
 
 ### Hinzugefügt
 

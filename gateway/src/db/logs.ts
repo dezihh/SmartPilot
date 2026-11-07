@@ -70,9 +70,10 @@ function privacySafeTrace(trace: TraceEvent[]): TraceEvent[] {
 }
 
 export function addLog(entry: LogEntry): void {
-  // Datenschutz: Mit log_verbatim=0 werden fuer Agent-Turns keine Frage/
-  // Antwort-Texte gespeichert, nur Metadaten (Route, Dauer, Tokens).
-  const verbatim = entry.route !== 'agent' || getSetting('log_verbatim') !== '0';
+  // Datenschutz: Mit log_verbatim=0 werden fuer alle Routen keine Frage/
+  // Antwort-Texte und keine Trace-Details gespeichert, nur Metadaten
+  // (Route, Dauer, Tokens). Vorgaenge sind davon nicht ausgenommen (Audit F-003).
+  const verbatim = getSetting('log_verbatim') !== '0';
   getDb().prepare(
     `INSERT INTO logs (session_id, query, route, action_id, score, response, duration_ms, trace, prompt_tokens, completion_tokens, llm_model)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

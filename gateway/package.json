@@ -17,7 +17,7 @@
     "deadcode": "knip",
     "dupes": "jscpd src web --threshold 3",
     "cycles": "madge --circular --extensions ts src",
-    "coverage": "node --import tsx --experimental-test-coverage --test-coverage-exclude='web/**' --test-coverage-lines=97 --test-coverage-branches=83 --test-coverage-functions=94 --test test/*.test.ts",
+    "coverage": "node --import tsx --experimental-test-coverage --test-coverage-include='src/**' --test-coverage-lines=97 --test-coverage-branches=83 --test-coverage-functions=94 --test test/*.test.ts",
     "gates": "npm run typecheck && npm run typecheck:tests && npm run lint && npm run deadcode && npm run cycles && npm run dupes && npm run audit:gate",
     "gates:all": "npm run typecheck; npm run typecheck:tests; npm run lint; npm run deadcode; npm run cycles; npm run dupes; npm run audit:gate",
     "audit:gate": "node --import tsx scripts/audit-gate.mjs",

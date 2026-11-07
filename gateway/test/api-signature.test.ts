@@ -208,6 +208,59 @@ test('signierter Body mit abweichender Formatierung wird akzeptiert', async () =
   assert.equal(await post(pretty, headersFor(pretty)), 204);
 });
 
+test('Nonce-Laengengrenze 16..128 Hex-Zeichen', () => {
+  const ts = Math.floor(Date.now() / 1000);
+  const short = 'a'.repeat(15);
+  const max = 'b'.repeat(128);
+  const tooLong = 'c'.repeat(129);
+  assert.equal(
+    unitCheck({ signature: signApiRequest(SECRET, ts, short, UNIT_BODY), timestamp: String(ts), nonce: short }),
+    'bad-signature',
+  );
+  assert.equal(
+    unitCheck({ signature: signApiRequest(SECRET, ts, max, UNIT_BODY), timestamp: String(ts), nonce: max }),
+    'ok',
+  );
+  assert.equal(
+    unitCheck({ signature: signApiRequest(SECRET, ts, tooLong, UNIT_BODY), timestamp: String(ts), nonce: tooLong }),
+    'bad-signature',
+  );
+});
+
+test('Signatur wird case-insensitiv verglichen', () => {
+  const ts = 1_700_000_000;
+  const n = nonce();
+  const signature = signApiRequest(SECRET, ts, n, UNIT_BODY);
+  assert.equal(
+    unitCheck({ signature: signature.toUpperCase(), timestamp: String(ts), nonce: n, now: ts * 1000 }),
+    'ok',
+  );
+});
+
+test('Zeitfenster akzeptiert genau TTL, danach ist es abgelaufen', () => {
+  const ts = 1_700_000_000;
+  const n = nonce();
+  const signature = signApiRequest(SECRET, ts, n, UNIT_BODY);
+  assert.equal(unitCheck({ signature, timestamp: String(ts), nonce: n, now: (ts + TTL) * 1000 }), 'ok');
+  const later = nonce();
+  const laterSignature = signApiRequest(SECRET, ts, later, UNIT_BODY);
+  assert.equal(
+    unitCheck({ signature: laterSignature, timestamp: String(ts), nonce: later, now: (ts + TTL + 1) * 1000 }),
+    'stale',
+  );
+});
+
+test('alte Signatur bleibt nach dem Nonce-Pruning abgelaufen', () => {
+  const ts = 1_700_000_000;
+  const n = nonce();
+  const signature = signApiRequest(SECRET, ts, n, UNIT_BODY);
+  assert.equal(unitCheck({ signature, timestamp: String(ts), nonce: n, now: ts * 1000 }), 'ok');
+  const later = ts + TTL * 3;
+  // Die Nonce ist nach dem Prune wieder frei, die alte Signatur darf aber
+  // nicht wieder gelten - sie ist ausserhalb des Zeitfensters.
+  assert.equal(unitCheck({ signature, timestamp: String(ts), nonce: n, now: later * 1000 }), 'stale');
+});
+
 // Zuletzt: dieser Test fuellt den Cache bis zur Obergrenze und macht danach
 // jede weitere Pruefung fail-closed. Deshalb steht er am Dateiende.
 test('voller Nonce-Cache lehnt ab statt zu verdraengen', () => {
