@@ -104,6 +104,14 @@
       "version": "1.0.0",
       "category": "driver",
       "sha256": "e80a335b1efa18ca3d7726330a280d56b1165b79ae1a5e944f792b0b1366a171"
+    },
+    {
+      "id": "aufgabenliste",
+      "name": "Aufgabenliste (Home Assistant)",
+      "summary": "Aufgaben- und Einkaufslisten aus Home Assistant lesen, ergänzen, abhaken und entfernen.",
+      "version": "1.0.0",
+      "category": "function",
+      "sha256": "8b94cc7682e7892d3b15a569dc3384e7cce505e7ab0991145e500b541ac2e173"
     }
   ]
 }
