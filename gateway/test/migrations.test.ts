@@ -202,3 +202,20 @@ test('Migration 8: Bestands-DB von v7 bekommt die Spalten ohne Datenverlust', ()
   assert.equal(row.confirm, 0);
   closeDb();
 });
+
+test('Migration 9: actions.tool_params ist optional (Issue #4 Stufe 3)', () => {
+  const p = tmpDb('mig-action-tool-params');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  const cols = db.prepare('PRAGMA table_info(actions)').all() as { name: string; dflt_value: string | null }[];
+  const col = cols.find((c) => c.name === 'tool_params');
+  assert.ok(col, 'tool_params fehlt');
+  assert.equal(col!.dflt_value, null);
+  db.prepare("INSERT INTO actions (name, mode) VALUES ('tp-test', 'llm')").run();
+  const row = db.prepare("SELECT tool_params FROM actions WHERE name = 'tp-test'").get() as {
+    tool_params: string | null;
+  };
+  assert.equal(row.tool_params, null);
+  closeDb();
+});

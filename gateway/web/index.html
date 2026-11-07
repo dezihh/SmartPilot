@@ -136,6 +136,11 @@
             <input type="hidden" id="action-tools">
           </div>
           <div class="field">
+            <div class="field-head"><label>Tool-Parameter (JSON, optional)</label><button type="button" class="help" data-help='Beschränkt pro Tool die erlaubten Parameter, z. B. {"ha_set_todo_item": ["entity_id", "item", "status"]}. Leer = keine Einschränkung; das Gateway weist zusätzliche Argumente zur Laufzeit ab.' aria-label="Hilfe zu Tool-Parameter">?</button></div>
+            <div class="field-help hidden">Nur für die LLM-Modi: Das Modell sieht und nutzt nur die hier erlaubten Felder. Format: JSON-Objekt Tool → Liste der Parameter-Keys. Leer lassen = alle Parameter des Tools erlaubt.</div>
+            <textarea id="action-tool-params" rows="3" placeholder='{"ha_set_todo_item": ["entity_id", "item", "status"]}'></textarea>
+          </div>
+          <div class="field">
             <div class="field-head"><label>Wirkung</label><button type="button" class="help" data-help="read = nur lesend; write = kann Daten ändern (Standard). Bei schreibenden Vorgängen lässt sich eine Bestätigung erzwingen." aria-label="Hilfe zu Wirkung">?</button></div>
             <div class="field-help hidden">„Nur lesend“ kennzeichnet Vorgänge ohne Datenänderung (z. B. Statusabfragen). „Schreibend“ ist der Standard und deckt alle Änderungen ab. Nur schreibende Vorgänge können eine Bestätigung verlangen.</div>
             <select id="action-side-effect">

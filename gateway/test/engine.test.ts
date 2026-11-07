@@ -473,3 +473,36 @@ test('Issue #4: nur lesender Vorgang fragt auch mit confirm-Flag nicht nach', as
   assert.match(r.response.speech, /Deterministisch: gelesen/);
   assert.equal(findStep(r.trace, 'action.confirm_pending'), undefined);
 });
+
+test('Issue #4 Stufe 3: Tool-Parameter-Allowlist blockt zusaetzliche Argumente', async () => {
+  createAction({
+    name: 'test_param_limit',
+    mode: 'llm',
+    trigger_phrases: '["param-limit-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: null,
+    function_args: null,
+    tools: '["fn_test_echo"]',
+    enabled: 1,
+    tool_params: '{"fn_test_echo":["x"]}',
+  });
+
+  llmScript = [
+    toolCalls([{ name: 'fn_test_echo', args: '{"x":"ok","y":"blockiert"}' }]),
+    content('Erledigt.'),
+  ];
+  const r = await q('param-limit-test', 'param1');
+  assert.ok(findStep(r.trace, 'tool.param_blocked'), 'Blockade im Trace');
+  assert.equal(findStep(r.trace, 'tool.call'), undefined, 'kein Tool-Aufruf mit Extras');
+
+  llmCalls = 0;
+  llmScript = [
+    toolCalls([{ name: 'fn_test_echo', args: '{"x":"ok"}' }]),
+    content('Erledigt.'),
+  ];
+  const r2 = await q('param-limit-test', 'param2');
+  assert.equal(findStep(r2.trace, 'tool.param_blocked'), undefined);
+  assert.ok(findStep(r2.trace, 'tool.call'), 'erlaubter Aufruf laeuft');
+});

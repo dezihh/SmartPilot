@@ -21,6 +21,8 @@ function action(overrides: Partial<ParsedAction>): ParsedAction {
     functionArgs: null,
     side_effect: 'write',
     confirm: 0,
+    tool_params: null,
+    toolParams: {},
     ...overrides,
   };
 }

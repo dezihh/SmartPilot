@@ -80,7 +80,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   und startet erst nach einem „ja" (gleiche Session, 60 s TTL; Trace
   `action.confirm_pending`/`confirmed`/`cancelled`). Manifest-Actions
   unterstützen dieselben Felder; `aufgabenliste` nutzt sie als erster
-  Verbraucher.
+  Verbraucher. Zusätzlich lässt sich pro Tool eine Parameter-Allowlist
+  (`tool_params`) hinterlegen: Das Schema im Prompt wird gekürzt, zusätzliche
+  Argumente weist die Engine zur Laufzeit ab (`tool.param_blocked`).
 - **Paket `aufgabenliste` (Home Assistant):** Liest und schreibt
   HA-Todo-Listen über die bestehende `ha-mcp`-Anbindung
   (`ha_get_todo`, `ha_set_todo_item`, `ha_remove_todo_item`). Der Vorgang

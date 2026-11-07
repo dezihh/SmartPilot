@@ -165,9 +165,10 @@ async function runToolLoop(
   trace: TraceEvent[],
   sessionId: string,
   allowlist: string[] | null = null,
-  applyAgentToolLimit = true
+  applyAgentToolLimit = true,
+  toolParams?: Record<string, string[]>
 ): Promise<AssistantResponse> {
-  const { specs, routes, budgets } = buildTools(mcp, allowlist, { applyAgentToolLimit });
+  const { specs, routes, budgets } = buildTools(mcp, allowlist, { applyAgentToolLimit, toolParams });
   // Issue #9: Groesse des Tool-Angebots sichtbar machen (Naeherung chars/4);
   // die echte Prompt-Groesse steht in der LLM-Antwort als usage.prompt_tokens.
   log.debug('Tool-Specs', toolSpecStats(specs));
@@ -226,6 +227,19 @@ async function runToolLoop(
           }
           toolCalls[call.function.name] = used + 1;
           const args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
+          // Issue #4 Stufe 3: Parameter-Allowlist je Tool auch zur Laufzeit -
+          // das Schema ist nur ein Hinweis, das Modell kann mehr schicken.
+          const allowedArgs = toolParams?.[call.function.name];
+          if (allowedArgs) {
+            const extra = Object.keys(args).filter((key) => !allowedArgs.includes(key));
+            if (extra.length) {
+              trace.push({ ts: Date.now(), step: 'tool.param_blocked', detail: { tool: call.function.name, extra } });
+              return {
+                id: call.id,
+                content: `Parameter nicht erlaubt: ${extra.join(', ')}. Erlaubt: ${allowedArgs.join(', ')}.`,
+              };
+            }
+          }
           if (typeof args.num_results === 'number' && args.num_results > MAX_SEARCH_RESULTS) {
             args.num_results = MAX_SEARCH_RESULTS;
           }
@@ -377,7 +391,7 @@ async function executeAction(
     const inventoryScope = showsCatalog && noTools ? null : activeServerNames(mcp, action.toolList);
     const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? agentSystemPrompt(mcp, action.toolList))
       .replace('{agent_inventory}', buildInventoryPrompt(inventoryScope));
-    return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList, false);
+    return runToolLoop(system, query.text, mcp, trace, query.sessionId, action.toolList, false, action.toolParams);
   }
   // deterministic/hybrid: Daten kommen ausschliesslich aus einer Funktion
   if (!action.function_ref) {

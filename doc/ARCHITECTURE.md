@@ -122,11 +122,13 @@ EngineResult { response, route, actionId?, score?, durationMs, trace }
   Tools, `keine` = keine, sonst Komma-Liste. Actions haben zusätzlich ihre
   eigene `tools`-Liste. Budgets (`budget`-Spalte) begrenzen Aufrufe pro Frage.
 - **Sicherheitsattribute je Action** (Issue #4): `side_effect` (`read`/`write`,
-  Default `write`) und `confirm`. Ein schreibender Vorgang mit `confirm` führt
-  nicht sofort aus: Das Gateway merkt sich die Anfrage in der Session
-  (`CONFIRM_TTL_MS` = 60 s) und startet erst nach einem „ja"; „nein" oder eine
-  andere Äußerung verwirft sie. Trace: `action.confirm_pending`,
-  `action.confirmed`, `action.cancelled`.
+  Default `write`), `confirm` und optional `tool_params` (Tool → erlaubte
+  Parameter). Ein schreibender Vorgang mit `confirm` führt nicht sofort aus:
+  Das Gateway merkt sich die Anfrage in der Session (`CONFIRM_TTL_MS` = 60 s)
+  und startet erst nach einem „ja"; „nein" oder eine andere Äußerung verwirft
+  sie. Trace: `action.confirm_pending`, `action.confirmed`, `action.cancelled`.
+  `tool_params` kürzt das Tool-Schema und blockt zusätzliche Argumente zur
+  Laufzeit (`tool.param_blocked`).
 - **Agent-Antwortformat**: JSON `{ "needs_clarification", "speech", "keep_open" }`
   (`parseAgentAnswer`, toleriert Text-Reste und filtet Leaks).
 

@@ -154,6 +154,7 @@ Felder:
 | `tools` | nein | erlaubte Tools (Array; `[]` = keine) |
 | `side_effect` | nein | `read`/`write` (Default `write`) — deklarierte Wirkung |
 | `confirm` | nein | `true` = vor dem Ausführen nachfragen (nur bei `write`) |
+| `tool_params` | nein | Objekt Tool → erlaubte Parameter-Keys (LLM-Modi; das Gateway blockt Extras) |
 | `enabled` | nein | Default `true` |
 
 **`indexes[]`** — Index-Quelle:

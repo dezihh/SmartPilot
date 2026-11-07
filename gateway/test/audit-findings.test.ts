@@ -102,6 +102,8 @@ test('routeAction: negativer fuzzy_threshold darf nicht alles treffen', () => {
     functionArgs: null,
     side_effect: 'write' as const,
     confirm: 0,
+    tool_params: null,
+    toolParams: {},
   };
   const m = routeAction('voellig themenfremde frage', [action], false);
   assert.equal(m, null);

@@ -221,6 +221,11 @@ Schreibende Vorgänge (`side_effect: write`) können eine Bestätigung erzwingen
 und führt erst nach einem „ja" aus (gleiche Session, 60 s TTL). Lesende
 Vorgänge fragen nie nach.
 
+Zusätzlich kann ein Vorgang pro Tool die erlaubten Parameter festlegen
+(`tool_params`). Das Tool-Schema im Prompt wird auf diese Felder gekürzt;
+Argumente außerhalb der Liste weist die Engine zur Laufzeit ab
+(Trace `tool.param_blocked`). Leer = alle Parameter erlaubt.
+
 ## Antwortvertrag
 
 Der Core liefert eine neutrale Antwort mit:

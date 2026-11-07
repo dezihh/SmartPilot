@@ -98,3 +98,14 @@ test('Action: side_effect/confirm Defaults und Validierung (Issue #4)', () => {
   assert.equal(num.confirm, 1, 'GET-Roundtrip (1 als String) bleibt an');
   assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', side_effect: 'kaputt' }), /side_effect/);
 });
+
+test('Action: tool_params (Issue #4 Stufe 3) - Objekt/JSON und Validierung', () => {
+  const obj = normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { tool_a: ['x', 'y'] } });
+  assert.deepEqual(JSON.parse(String(obj.tool_params)), { tool_a: ['x', 'y'] });
+  const str = normalizeActionInput({ name: 'a', mode: 'llm', tool_params: '{"tool_a":["x"]}' });
+  assert.deepEqual(JSON.parse(String(str.tool_params)), { tool_a: ['x'] });
+  assert.equal(normalizeActionInput({ name: 'a', mode: 'llm', tool_params: null }).tool_params, null);
+  assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: '{kaputt' }), /tool_params/);
+  assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { tool_a: [] } }), /tool_params/);
+  assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { 'BAD TOOL': ['x'] } }), /tool_params/);
+});
