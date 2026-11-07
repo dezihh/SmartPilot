@@ -3,6 +3,9 @@ name: External Endpoint Check
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Requires the repository variable EXTERNAL_BASE_URL (e.g. https://gateway.example.com)
 # and the secret API_TOKEN (must equal the gateway API_TOKEN). The job is
 # skipped when EXTERNAL_BASE_URL is not configured.

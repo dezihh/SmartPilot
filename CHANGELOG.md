@@ -37,6 +37,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Ext-Check-Workflow mit Leserechten (F-008):** `ext-check.yml` deklariert
+  jetzt `permissions: contents: read`. Der Job checkt nicht aus und braucht
+  keine Schreibrechte; wie die übrigen Workflows ist der Token damit minimal
+  berechtigt.
 - **`agent_tool_limit` in der Admin-UI (F-005):** Das Setting ist jetzt als
   Zahlenfeld „Agent max. MCP-Tool-Specs“ in den Grundeinstellungen vorhanden;
   leer oder 0 = unbegrenzt. Die Doku nannte das Feld bereits, das Formular
