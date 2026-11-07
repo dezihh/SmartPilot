@@ -3,6 +3,7 @@ import { Agent } from 'undici';
 import { getSettingNum } from '../db.js';
 import type { TraceEvent } from '../types.js';
 import { isPrivateHost } from './ssrf.js';
+import { TEST_HOOKS_ENABLED } from './testEnv.js';
 
 // HTTP-Baustein: generischer GET-Fetch fuer beliebige REST-Endpunkte.
 // Absicherungen: Timeout + Groessencap; JSON wird automatisch geparst,
@@ -61,6 +62,7 @@ const defaultPinDispatcher = (pin: { address: string; family: number }): PinnedD
   new Agent({ allowH2: false, connect: { lookup: (_h, _o, cb) => cb(null, [pin]) } });
 let pinDispatcherFactory: PinDispatcherFactory = defaultPinDispatcher;
 export function setPinDispatcherFactoryForTests(factory?: PinDispatcherFactory): void {
+  if (!TEST_HOOKS_ENABLED) return;
   pinDispatcherFactory = factory ?? defaultPinDispatcher;
 }
 

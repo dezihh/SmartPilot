@@ -1,8 +1,9 @@
 // HTTP-Antwort-Cache (TTL-basiert, pro URL im Prozess). Nur aktiv, wenn der
 // Call eine TTL > 0 mitgibt (http('url', ttlMs)). Mit periodischem Prune
 // (statt ungegrenztem Wachstum) und testbarer Injektion der Zeit.
-const MAX_ENTRIES = 200;
+import { TEST_HOOKS_ENABLED } from './testEnv.js';
 
+const MAX_ENTRIES = 200;
 interface CacheEntry {
   ts: number;
   ttl: number;
@@ -13,6 +14,7 @@ const cache = new Map<string, CacheEntry>();
 let pruneCounter = 0;
 
 export function resetHttpCacheForTests(): void {
+  if (!TEST_HOOKS_ENABLED) return;
   cache.clear();
   pruneCounter = 0;
 }

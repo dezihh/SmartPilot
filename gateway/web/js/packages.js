@@ -36,7 +36,7 @@ function fmtVal(v) {
   return typeof v === 'object' ? JSON.stringify(v) : String(v);
 }
 // Kurze Werte inline "alt → neu"; lange Werte einklappbar (Template/Prompt).
-function diffValue(from, to) {
+export function diffValue(from, to) {
   const a = fmtVal(from);
   const b = fmtVal(to);
   const long = a.length > 80 || b.length > 80 || a.includes('\n') || b.includes('\n');
@@ -46,7 +46,7 @@ function diffValue(from, to) {
 }
 
 // Semantischer Versionsvergleich (nur Ziffernteile; robust gegen fehlende Teile).
-function cmpVersion(a, b) {
+export function cmpVersion(a, b) {
   const pa = String(a ?? '').split('.').map((n) => parseInt(n, 10) || 0);
   const pb = String(b ?? '').split('.').map((n) => parseInt(n, 10) || 0);
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {

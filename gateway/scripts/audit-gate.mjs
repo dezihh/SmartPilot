@@ -34,13 +34,23 @@ function fail(message) {
   process.exit(2);
 }
 
+const AUDIT_TIMEOUT_MS = 120_000;
+
 function runNpmAudit() {
   const res = spawnSync('npm', ['audit', '--omit=dev', '--json'], {
     cwd: GATEWAY_DIR,
     encoding: 'utf8',
     maxBuffer: 32 * 1024 * 1024,
+    // Ein haengendes npm (Netz, Registry) darf den CI-Job nicht blockieren;
+    // Timeout endet als "nicht bewertbar" (Exit 2, GRAU) - nie als gruen (F-016).
+    timeout: AUDIT_TIMEOUT_MS,
   });
-  if (res.error) fail(`npm audit nicht ausfuehrbar (${res.error.message})`);
+  if (res.error) {
+    const timedOut = res.error.code === 'ETIMEDOUT';
+    fail(timedOut
+      ? `npm audit nach ${AUDIT_TIMEOUT_MS} ms abgebrochen`
+      : `npm audit nicht ausfuehrbar (${res.error.message})`);
+  }
   const raw = res.stdout ?? '';
   if (raw.trim() === '') fail('npm audit lieferte keine Ausgabe');
   return raw;

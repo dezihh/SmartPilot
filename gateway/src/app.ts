@@ -89,28 +89,33 @@ export function createApp(): Express {
     }
   });
 
+  const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
+  const adminBase = `${base}/admin`;
+
+  // Auch fehlgeschlagene Admin-Token-Versuche zaehlen (Brute-Force). Das Limit
+  // ist bewusst grosszuegig, damit die UI im Normalbetrieb nicht ausgesperrt wird.
+  // `/metrics` haengt am selben Limiter, aber unter eigenem Schluessel, damit
+  // Prometheus-Scrapes nicht das Admin-UI-Budget verbrauchen (F-010).
+  const adminLimiter =
+    (prefix: string) => (req: Request, res: Response, next: NextFunction) => {
+      const key = `${prefix}:ip:${req.ip ?? 'unbekannt'}`;
+      if (!checkRateLimit(key, Date.now(), 60_000, config.adminRateMax)) {
+        res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
+        return;
+      }
+      next();
+    };
+
   // Metriken im Prometheus-Format. Nur mit Admin-Token/Cookie, weil die
   // Zeitreihen Routen und Fehlerraten des Gateways offenlegen.
-  app.get('/metrics', requireAdminAuth, (_req, res) => {
+  app.get('/metrics', adminLimiter('metrics'), requireAdminAuth, (_req, res) => {
     setGauge('smartpilot_uptime_seconds', Math.round(process.uptime()), {}, 'Laufzeit des Prozesses');
     setGauge('smartpilot_resident_memory_bytes', process.memoryUsage().rss, {}, 'Resident-Speicher des Prozesses');
     res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
     res.send(renderMetrics());
   });
 
-  const base = config.basePath; // '' = Wurzel, sonst '/prefix' ohne Trailing-Slash
-  const adminBase = `${base}/admin`;
-
-// Auch fehlgeschlagene Admin-Token-Versuche zaehlen (Brute-Force). Das Limit
-// ist bewusst grosszuegig, damit die UI im Normalbetrieb nicht ausgesperrt wird.
-app.use(`${adminBase}/api`, (req, res, next) => {
-  const key = `admin:ip:${req.ip ?? 'unbekannt'}`;
-  if (!checkRateLimit(key, Date.now(), 60_000, config.adminRateMax)) {
-    res.status(429).json({ error: 'zu viele Anfragen, spaeter erneut' });
-    return;
-  }
-  next();
-});
+  app.use(`${adminBase}/api`, adminLimiter('admin'));
 
   // Oeffentliche Adapter-API bleibt auf der Wurzel (Lambda/Alexa): /api/query,
   // /api/lambda-trace. Der Prefix gilt nur fuer die Admin-UI .
@@ -152,19 +157,12 @@ app.use(`${adminBase}/api`, (req, res, next) => {
     res.sendFile(join(process.cwd(), 'web', 'js', 'login.js'));
   });
 
-  // Die Login-Seite braucht ihre Assets ohne Session. Inline-Styles/-Skripte
-  // sind per CSP verboten, deshalb sind es eigene Dateien - und genau diese
-  // Pfade (kein Verzeichnis, kein Muster) bleiben oeffentlich.
-  const PUBLIC_ADMIN_FILES = new Set(['/admin/login.html', '/admin/css/login.css', '/admin/js/login.js']);
-
   // Statische Admin-UI: Bearer-Token ODER Session-Cookie. Ein vorgelagerter
   // Proxy kann so die UI ohne App-Login bedienen ; das Token bleibt
-  // proxy-seitig und gelangt nie in den Browser.
+  // proxy-seitig und gelangt nie in den Browser. Die drei Login-Dateien sind
+  // bereits oben als eigene Routen oeffentlich; eine zusaetzliche Pfadliste
+  // hier waere toter Code (F-005).
   admin.use('/admin', (req, res, next) => {
-    if (PUBLIC_ADMIN_FILES.has(req.path)) {
-      next();
-      return;
-    }
     if (!requestAuthorized(req)) {
       if (req.headers.accept?.includes('text/html')) {
         res.redirect(`${adminBase}/login.html`);

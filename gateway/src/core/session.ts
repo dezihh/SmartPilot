@@ -2,6 +2,7 @@
 // unbegrenztem Clear) + Chat-Modus-Flag. Rein injizierbar/testbar - die
 // Engine nutzt hier nur die exports; keine DB-Zugriffe.
 import type { ChatMessage } from '../llm/client.js';
+import { TEST_HOOKS_ENABLED } from './testEnv.js';
 
 export const HISTORY_MAX_MESSAGES = 8;
 export const HISTORY_MAX_SESSIONS = 100;
@@ -17,6 +18,7 @@ interface SessionState {
 const sessions = new Map<string, SessionState>();
 
 export function resetSessionsForTests(): void {
+  if (!TEST_HOOKS_ENABLED) return;
   sessions.clear();
 }
 
