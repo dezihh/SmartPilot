@@ -111,9 +111,18 @@ export function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
+function isSensitiveIpv4(ip: string): boolean {
+  const bytes = ipv4ToBytes(ip);
+  if (!bytes) return false;
+  const n = ipv4ToInt(bytes);
+  return (n >>> 24) === 127 || (n >>> 16) === 0xa9fe || (n >>> 24) === 0 || n === 0xffffffff;
+}
+
 // Besonders sensible Ziele: Loopback, Link-Local (inkl. Cloud-Metadata
 // 169.254.169.254), 0.0.0.0/8 und Broadcast. In Paketmanifesten sind sie
 // ack-pflichtig; reine LAN-Ziele (RFC1918) bleiben nur ein Hinweis.
+// IPv6 wird ueber dieselbe Kanonisierung wie in `isPrivateHost` geprueft, damit
+// auch IPv4-gemappte Schreibweisen (`::ffff:169.254.169.254`) greifen.
 export function isSensitiveHost(hostname: string): boolean {
   let h = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   try {
@@ -123,9 +132,16 @@ export function isSensitiveHost(hostname: string): boolean {
     /* kein parsbarer Host - mit dem Rohwert weiterpruefen */
   }
   if (h === 'localhost' || h.endsWith('.localhost')) return true;
-  if (h === '::1' || h === '0:0:0:0:0:0:0:1' || h === 'fe80' || h.startsWith('fe80:')) return true;
-  const bytes = ipv4ToBytes(h);
-  if (!bytes) return false;
-  const n = ipv4ToInt(bytes);
-  return (n >>> 24) === 127 || (n >>> 16) === 0xa9fe || (n >>> 24) === 0 || n === 0xffffffff;
+  if (h === 'fe80') return true;
+  if (isSensitiveIpv4(h)) return true;
+  const g = expandIpv6(h);
+  if (!g) return false;
+  // :: (unspecified) und ::1 (Loopback)
+  if (g.slice(0, 7).every((x) => x === 0) && (g[7] === 0 || g[7] === 1)) return true;
+  if ((g[0]! & 0xffc0) === 0xfe80) return true; // fe80::/10 Link-Local
+  // IPv4-mapped ::ffff:a.b.c.d
+  if (g[0] === 0 && g[1] === 0 && g[2] === 0 && g[3] === 0 && g[4] === 0 && g[5] === 0xffff) {
+    return isSensitiveIpv4(`${(g[6]! >> 8) & 0xff}.${g[6]! & 0xff}.${(g[7]! >> 8) & 0xff}.${g[7]! & 0xff}`);
+  }
+  return false;
 }

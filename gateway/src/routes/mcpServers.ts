@@ -7,6 +7,7 @@ import {
   getMcpServer,
   listFunctions,
   listMcpServers,
+  maskMcpServerSecrets,
   updateMcpServer,
   type McpServerInput,
 } from '../db.js';
@@ -92,7 +93,7 @@ mcpServersRoutes.post('/admin/api/mcp-servers', requireAdminAuth, (req, res) => 
   try {
     const server = createMcpServer(normalizeServerInput(req.body as Record<string, unknown>));
     invalidateMcpCache();
-    res.json({ server });
+    res.json({ server: maskMcpServerSecrets(server) });
   } catch (e) {
     res.status(400).json({ error: errMsg(e) });
   }
@@ -117,7 +118,7 @@ mcpServersRoutes.put('/admin/api/mcp-servers/:id', requireAdminAuth, (req, res) 
       res.status(404).json({ error: 'nicht gefunden' });
       return;
     }
-    res.json({ server: updated });
+    res.json({ server: maskMcpServerSecrets(updated) });
   } catch (e) {
     res.status(400).json({ error: errMsg(e) });
   }
