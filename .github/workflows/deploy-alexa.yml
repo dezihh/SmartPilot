@@ -72,6 +72,7 @@ jobs:
               "gateway_timeout": "32",
               "skill_name": names["skill_name"],
               "assistant_name": names["assistant_name"],
+              "invocation_name": names["invocation_name"],
           }
           json.dump(hosted, open("alexa/lambda/config.json", "w"), ensure_ascii=False, indent=2)
           print("primaere Locale: {} | invocation: {!r}".format(primary, names["invocation_name"]))
