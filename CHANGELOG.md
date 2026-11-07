@@ -14,6 +14,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Geändert
 
+- **Gate-Treppe und Testtiefe nach Risiko:** `npm run gates:fast`
+  (Typecheck, Test-Typecheck, Lint, Tests) läuft vor dem Commit,
+  `npm run gates:full` (zusätzlich Coverage, Build, Dead-Code, Zyklen,
+  Duplikate, Audit) vor Merge und Release. Maßgeblich für neue Änderungen ist
+  die Diff-Coverage (≥ 90 %, kritische Pfade 100 %); die globale Quote ist nur
+  noch Regressionsbremse. Lines-Schwelle 95 %, Functions 93 % (vorher 97/94) —
+  Begründung und Wiederaufnahme-Trigger in `doc/TESTING.md`.
+- **Diff-Coverage messbar:** `src/core/diffCoverage.ts` und
+  `npm run coverage:diff` werten LCOV gegen den Branch-Diff aus und weisen
+  ungetestete geänderte Zeilen aus; kritische Module verlangen 100 %.
 - **Coverage misst nur noch den Produktivcode (F-001):** `npm run coverage`
   verwendet `--test-coverage-include='src/**'`. Vorher zählten die Testdateien
   mit und hielten das Gate künstlich grün (Quell-Coverage lag bei

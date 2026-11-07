@@ -32,6 +32,7 @@ venv/
 node_modules/
 dist/
 build/
+coverage/
 .vite/
 
 # --- IDE / OS ---
