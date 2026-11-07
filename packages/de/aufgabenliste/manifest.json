@@ -1,0 +1,51 @@
+{
+  "id": "aufgabenliste",
+  "version": "1.0.0",
+  "name": "Aufgabenliste (Home Assistant)",
+  "summary": "Aufgaben- und Einkaufslisten aus Home Assistant lesen, ergänzen, abhaken und entfernen.",
+  "description": "Nutzt die Todo-Listen aus Home Assistant über den ha-mcp-Server (ha_get_todo, ha_set_todo_item, ha_remove_todo_item). Der Vorgang 'Aufgabenliste' liest offene und erledigte Punkte, legt neue an, hakt ab, benennt um und entfernt Einträge - immer auf einer ausdrücklich gewählten Liste. Das Paket legt keinen eigenen Server an; es erweitert die bestehende Home-Assistant-Anbindung um die Todo-Werkzeuge.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Installierte Home-Assistant-Anbindung (ha-mcp). Deren Server liefert ha_get_todo, ha_set_todo_item und ha_remove_todo_item. Mindestens eine Todo-Liste (z. B. die Integration 'Local To-do' oder eine Einkaufslisten-Integration) muss in Home Assistant existieren.",
+  "minGatewayVersion": "0.5.1",
+  "params": [],
+  "allowTools": [
+    "ha_get_todo",
+    "ha_set_todo_item",
+    "ha_remove_todo_item"
+  ],
+  "actions": [
+    {
+      "name": "aufgabenliste",
+      "mode": "llm",
+      "trigger_phrases": [
+        "einkaufsliste",
+        "aufgabenliste",
+        "todo liste",
+        "to-do liste",
+        "was steht auf der liste",
+        "was steht auf der einkaufsliste",
+        "setz auf die liste",
+        "auf die einkaufsliste",
+        "auf die liste schreiben",
+        "abhaken",
+        "als erledigt markieren",
+        "von der liste streichen",
+        "erledigte aufgaben",
+        "liste leeren"
+      ],
+      "fuzzy_threshold": 0.82,
+      "tools": [
+        "ha_get_todo",
+        "ha_set_todo_item",
+        "ha_remove_todo_item"
+      ],
+      "enabled": true,
+      "system_prompt": "Aufgabenlisten über Home Assistant (todo-Entities). Arbeite ausschließlich mit ha_get_todo, ha_set_todo_item und ha_remove_todo_item.\n\n1) Liste bestimmen: ha_get_todo() ohne entity_id liefert alle todo-Listen mit entity_id und friendly_name. Wähle die passende über den Namen (z. B. 'Einkaufsliste' -> todo.einkaufsliste). Gibt es genau eine plausible Liste, nutze sie ohne Rückfrage; bei keiner oder mehreren plausiblen Listen frage kurz nach und nenne die Kandidaten - erfinde niemals eine entity_id.\n2) Lesen: ha_get_todo(entity_id, status='needs_action') für offene Punkte, status='completed' für erledigte, ohne status alle. Lies nur die summaries vor, keine uids.\n3) Hinzufügen: ha_set_todo_item(entity_id, summary='<Punkt>') legt einen neuen Eintrag an (ohne item). Mehrere Punkte einzeln anlegen. due_date (YYYY-MM-DD) nur, wenn ausdrücklich genannt.\n4) Erledigen: ha_set_todo_item(entity_id, item='<uid oder exakte summary>', status='completed'); wieder öffnen mit status='needs_action'. Ist der Punkt nicht eindeutig, frage nach.\n5) Umbenennen: ha_set_todo_item(entity_id, item='<alt>', rename='<neu>').\n6) Entfernen: ha_remove_todo_item(entity_id, item='<uid oder exakte summary>'). remove_completed=True nur nach ausdrücklicher Bestätigung.\n7) Antwort: kurz und gesprochen formulieren, die Liste beim Namen nennen und die Änderung bestätigen ('Milch steht jetzt auf der Einkaufsliste'). Keine Tool-Namen oder uids vorlesen. Ändere nie mehrere Listen gleichzeitig."
+    }
+  ],
+  "setupDocs": "Voraussetzung: das Paket 'home-assistant' (ha-mcp-Server). Dort ist nichts weiter zu tun - die Todo-Werkzeuge liefert derselbe Server.\n\nServer-Seite (nur falls noch nicht vorhanden): siehe Setup-Doku der Home-Assistant-Anbindung (ha-mcp als Container im HTTP-Modus oder als HA-MCP Custom Component).\n\nHome-Assistant-Seite: mindestens eine Todo-Liste anlegen, z. B. Einstellungen -> Geräte & Dienste -> Integration hinzufügen -> 'Local To-do' (entity_id todo.einkaufsliste) oder eine passende Einkaufslisten-Integration. Die entity_id erscheint danach in ha_get_todo().\n\nHinweis: Das Paket erweitert die globale Tool-Allowlist (agent_tools) um die drei Todo-Werkzeuge, damit auch die freie Agent-Frage Listen lesen und schreiben kann.",
+  "changelog": "1.0.0: Erste Fassung - Lesen, Ergänzen, Abhaken, Umbenennen und Entfernen von Home-Assistant-Todo-Listen über ha_get_todo, ha_set_todo_item und ha_remove_todo_item (Vorgang 'Aufgabenliste')."
+}

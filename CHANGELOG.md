@@ -12,6 +12,15 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Paket `aufgabenliste` (Home Assistant):** Liest und schreibt
+  HA-Todo-Listen über die bestehende `ha-mcp`-Anbindung
+  (`ha_get_todo`, `ha_set_todo_item`, `ha_remove_todo_item`). Der Vorgang
+  `aufgabenliste` deckt Lesen, Ergänzen, Abhaken, Umbenennen und Entfernen ab;
+  die Werkzeuge werden zusätzlich in die globale Allowlist aufgenommen. Das
+  Paket legt keinen eigenen Server an.
+
 ## [0.5.1] – 2026-11-07
 
 ### Geändert
