@@ -16,14 +16,18 @@ export interface McpServerInput {
   enabled: number;
 }
 
+// Secrets (auth_token UND env) standardmaessig fuer die Admin-API maskieren;
+// nur interne Nutzer (MCP-Aufbau, Backup mit explizitem Wunsch) fordern
+// Klartext an .
+export function maskMcpServerSecrets(row: McpServerRow): McpServerRow {
+  return { ...row, auth_token: null, env: null, headers: null };
+}
+
 export function listMcpServers(enabledOnly: boolean, reveal = false): McpServerRow[] {
   const rows = enabledOnly
     ? (getDb().prepare('SELECT * FROM mcp_servers WHERE enabled = 1 ORDER BY name').all() as McpServerRow[])
     : (getDb().prepare('SELECT * FROM mcp_servers ORDER BY name').all() as McpServerRow[]);
-  // Secrets (auth_token UND env) standardmaessig fuer die Admin-API maskieren;
-  // nur interne Nutzer (MCP-Aufbau, Backup mit explizitem Wunsch) fordern
-  // Klartext an .
-  return reveal ? rows : rows.map((r) => ({ ...r, auth_token: null, env: null, headers: null }));
+  return reveal ? rows : rows.map(maskMcpServerSecrets);
 }
 
 export function getMcpServer(id: number): McpServerRow | undefined {

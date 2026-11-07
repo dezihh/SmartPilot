@@ -19,6 +19,7 @@ export {
   listMcpServers,
   getMcpServer,
   createMcpServer,
+  maskMcpServerSecrets,
   updateMcpServer,
   deleteMcpServer,
   type McpServerInput,

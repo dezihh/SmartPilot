@@ -12,6 +12,25 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Sicherheit
+
+- **Trace-Leak bei `log_verbatim=0` behoben (F-001):** Der Trace enthält ohne
+  Verbatim-Logging nur noch `ts`/`step` sowie das `llm.usage`-Event; Frage,
+  Tool-Argumente, URLs und Shell-Kommandos werden nicht mehr persistiert.
+- **Backup-Token-Export ist jetzt Opt-in (F-002):** Die Checkbox
+  „Server-Auth-Tokens einschließen" ist nicht mehr vorbelegt.
+- **SSRF-Schutz erkennt IPv4-gemappte IPv6-Ziele (F-003):** `isSensitiveHost`
+  nutzt die Kanonisierung aus `isPrivateHost`, damit
+  `::ffff:169.254.169.254` und `[::ffff:127.0.0.1]` als sensibel gelten.
+- **Admin-API maskiert Server-Secrets (F-014):** POST/PUT auf
+  `/admin/api/mcp-servers` geben `auth_token`, `env` und `headers` nicht mehr
+  im Klartext zurück.
+
+### Tests
+
+- Vertragstests für F-001, F-002, F-003 und F-014 sind nicht mehr `todo`,
+  sondern scharfe Regressionsproben.
+
 ## [0.5.0] – 2026-11-06
 
 ### Hinzugefügt

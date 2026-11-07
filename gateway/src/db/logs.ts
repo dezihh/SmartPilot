@@ -60,6 +60,15 @@ export function redactTrace(value: unknown): unknown {
   return value;
 }
 
+// Datenschutz: Mit log_verbatim=0 darf der Trace keinerlei Nutzerinhalt
+// enthalten (Frage, Tool-Argumente, URLs, Shell-Kommandos). Es bleiben nur
+// `ts`/`step` - feste Bezeichner - sowie das `llm.usage`-Event fuer die
+// Nutzungsstatistik (Modell und `cached`-Flag; Token-Felder redigiert
+// `redactTrace` ohnehin).
+function privacySafeTrace(trace: TraceEvent[]): TraceEvent[] {
+  return trace.map((e) => (e.step === 'llm.usage' ? e : { ts: e.ts, step: e.step }));
+}
+
 export function addLog(entry: LogEntry): void {
   // Datenschutz: Mit log_verbatim=0 werden fuer Agent-Turns keine Frage/
   // Antwort-Texte gespeichert, nur Metadaten (Route, Dauer, Tokens).
@@ -75,7 +84,7 @@ export function addLog(entry: LogEntry): void {
     entry.score ?? null,
     verbatim ? entry.response : '',
     entry.durationMs,
-    JSON.stringify(redactTrace(entry.trace)),
+    JSON.stringify(redactTrace(verbatim ? entry.trace : privacySafeTrace(entry.trace))),
     entry.promptTokens ?? null,
     entry.completionTokens ?? null,
     entry.model ?? null
