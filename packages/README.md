@@ -102,6 +102,7 @@ einen Branch, kommen die Pakete genau dieses Branches.
 | `params` | optional | Eingabefelder (Werte ersetzen `${key}` im Manifest) |
 | `servers` / `functions` / `indexes` / `actions` | optional | die anzulegenden Artefakte |
 | `allowTools` | optional | Agent-Tool-Allowlist (wird vereinigt) |
+| `dangerousItems` | optional | explizite Gefahrenhinweise (String-Array, z. B. destruktive MCP-Tools); verlangen wie `shell()`/stdio die Installationsbestaetigung |
 
 `servers`/`functions` koennen `sideEffect: read|write` setzen (Default
 `write`): schreibende Aufrufe verwerfen den Entity-Index-Cache des Agenten,
@@ -170,6 +171,7 @@ Verstoesse im Klartext:
 - Action-Name: `a-z`, `0-9`, `_`, `-` (1–60); `mode` aus `deterministic`/`llm`/`hybrid`; `fuzzy_threshold` 0–1.
 - Index-Key: `a-z`, `0-9`, `_` (0–30); `config.tool` erforderlich.
 - `allowTools`: Tool-Namen aus `a-z`, `0-9`, `_`, `*`.
+- `dangerousItems`: Array aus nicht-leeren Hinweistexten (max. 300 Zeichen).
 - Param-Key: `a-z`, `0-9`, `_` (1–40) mit `label`.
 - `sideEffect`: nur `read` oder `write`.
 - `language`: z. B. `de`; `minGatewayVersion`: `x.y.z`.
@@ -189,11 +191,13 @@ Install:
   geprueft; zu alte Gateways lehnen das Paket mit klarer Meldung ab.
 - **Nachvollziehbarkeit**: `changelog` (Upgrade-Hinweise).
 - **Sicherheit** (in der UI sichtbar):
-  - `shell()`-Templates und **jeder `stdio`-Server** (startet einen Prozess im
-    Gateway-Container) gelten als **gefaehrlich** und verlangen beim Install
-    eine ausdrueckliche Bestaetigung (`dangerousAck`) — unabhaengig vom Befehl.
+  - `shell()`-Templates, **jeder `stdio`-Server** (startet einen Prozess im
+    Gateway-Container) und explizite `dangerousItems` (z. B. destruktive
+    MCP-Tools) gelten als **gefaehrlich** und verlangen beim Install eine
+    ausdrueckliche Bestaetigung (`dangerousAck`) — unabhaengig vom Befehl.
   - `http()`-Templates werden als Info ausgewiesen (externe Aufrufe).
-  - Pakete ohne `shell()`/`http()`/`stdio` gelten als nur lesend/unkritisch.
+  - Pakete ohne `shell()`/`http()`/`stdio`/`dangerousItems` gelten als nur
+    lesend/unkritisch.
 - **Updates**: „Neu installieren" ist ein Upsert. Lokal geaenderte Zeilen
   werden erkannt und pro Element zum Entscheiden angezeigt
   („Paket-Version uebernehmen" / „lokale Aenderung behalten" / abbrechen).

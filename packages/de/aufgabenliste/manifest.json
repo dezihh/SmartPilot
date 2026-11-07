@@ -1,6 +1,6 @@
 {
   "id": "aufgabenliste",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Aufgabenliste (Home Assistant)",
   "summary": "Aufgaben- und Einkaufslisten aus Home Assistant lesen, ergänzen, abhaken und entfernen.",
   "description": "Nutzt die Todo-Listen aus Home Assistant über den ha-mcp-Server (ha_get_todo, ha_set_todo_item, ha_remove_todo_item). Der Vorgang 'Aufgabenliste' liest offene und erledigte Punkte, legt neue an, hakt ab, benennt um und entfernt Einträge - immer auf einer ausdrücklich gewählten Liste. Das Paket legt keinen eigenen Server an; es erweitert die bestehende Home-Assistant-Anbindung um die Todo-Werkzeuge.",
@@ -47,5 +47,8 @@
     }
   ],
   "setupDocs": "Voraussetzung: das Paket 'home-assistant' (ha-mcp-Server). Dort ist nichts weiter zu tun - die Todo-Werkzeuge liefert derselbe Server.\n\nServer-Seite (nur falls noch nicht vorhanden): siehe Setup-Doku der Home-Assistant-Anbindung (ha-mcp als Container im HTTP-Modus oder als HA-MCP Custom Component).\n\nHome-Assistant-Seite: mindestens eine Todo-Liste anlegen, z. B. Einstellungen -> Geräte & Dienste -> Integration hinzufügen -> 'Local To-do' (entity_id todo.einkaufsliste) oder eine passende Einkaufslisten-Integration. Die entity_id erscheint danach in ha_get_todo().\n\nHinweis: Das Paket erweitert die globale Tool-Allowlist (agent_tools) um die drei Todo-Werkzeuge, damit auch die freie Agent-Frage Listen lesen und schreiben kann.",
-  "changelog": "1.0.0: Erste Fassung - Lesen, Ergänzen, Abhaken, Umbenennen und Entfernen von Home-Assistant-Todo-Listen über ha_get_todo, ha_set_todo_item und ha_remove_todo_item (Vorgang 'Aufgabenliste')."
+  "changelog": "1.0.1: Als gefährlich markiert - der Vorgang entfernt und ändert Todo-Einträge (ha_remove_todo_item, ha_set_todo_item); die Rückfrage hängt nur am Prompt. 1.0.0: Erste Fassung - Lesen, Ergänzen, Abhaken, Umbenennen und Entfernen von Home-Assistant-Todo-Listen über ha_get_todo, ha_set_todo_item und ha_remove_todo_item (Vorgang 'Aufgabenliste').",
+  "dangerousItems": [
+    "Vorgang \"Aufgabenliste\" entfernt und ändert Todo-Einträge über ha_remove_todo_item und ha_set_todo_item - die Rückfrage hängt nur am Prompt, eine Bestätigungsschranke gibt es nicht."
+  ]
 }
