@@ -13,6 +13,11 @@ Todo-Werkzeuge.
   **Einstellungen → Geräte & Dienste → Integration hinzufügen → „Local To-do“**.
   Deren `entity_id` (z. B. `todo.einkaufsliste`) findest du später in
   `ha_get_todo()`.
+- **`ha-mcp` bringt die drei Todo-Werkzeuge mit.** Sie sind seit mindestens
+  **v7.9.0** enthalten (bis dorthin geprüft); empfohlen ist **v9.1.0 oder
+  neuer**, weil dort die Schreibzugriffe auf die Core-Todo-Services umgestellt
+  wurden. Fehlen die Werkzeuge, bleibt der Vorgang ohne Ergebnis — eine
+  Fehlermeldung gibt es dann nicht.
 
 ## Was das Paket anlegt
 
