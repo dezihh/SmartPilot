@@ -63,7 +63,29 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   nie; die drei expliziten Login-Asset-Routen bleiben die einzige Quelle.
 - **Test-Hooks im Produktionsbetrieb inaktiv (F-006):** Die `*ForTests`-Exporte
   sind hinter `TEST_HOOKS_ENABLED` (`NODE_ENV !== 'production'`) gegated; das
-  Image setzt `NODE_ENV=production`.
+  Image setzt `NODE_ENV=production`. Der Schalter ist bewusst default-offen
+  (nur `production` sperrt) — der Kommentar im Modul sagt das jetzt korrekt
+  (G-02).
+
+### Tests und Messbasis
+
+- **Coverage-Schwellen auf das gemessene Niveau gehoben (G-01):** 97/84/94
+  statt 95/80/90. Der Ausschluss `web/**` ist in
+  [Tests und Coverage](doc/TESTING.md) begründet und mit Ist-Werten
+  festgehalten; ohne Ausschluss läge die Quote bei 92,91/81,24/90,39.
+- **Produktionszweig der Test-Hooks getestet (G-03):** `contract-test-hooks`
+  startet echte Kindprozesse mit und ohne `NODE_ENV=production`.
+- **Bekannte Grenzen dokumentiert (G-06–G-08):** Audit-Gate-Timeout-Zweig,
+  `ADMIN_RATE_MAX`-Prozessisolation und Port-Rennen im SIGTERM-Test stehen in
+  `doc/TESTING.md`.
+
+### Doku
+
+- **`ADMIN_RATE_MAX` beschreibt jetzt beide Buckets (G-05):**
+  `doc/REFERENCE.md` und `gateway/.env.example` nennen Admin-API **und**
+  `/metrics`.
+- **`.d.ts`-Kommentare korrigiert (G-04):** Die Deklarationen liegen mit
+  `web/` im Image; Browser laden sie nur nie.
 
 ## [0.5.0] – 2026-11-06
 
