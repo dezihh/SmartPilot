@@ -8,6 +8,36 @@ function enabledFlag(value: unknown): 0 | 1 {
   return value === false || value === 0 || value === '0' || value === 'false' ? 0 : 1;
 }
 
+// Issue #4 Stufe 3: Parameter-Allowlist je Tool. Akzeptiert Objekt oder
+// JSON-String; leer = keine Einschraenkung (null).
+function normalizeToolParams(input: unknown): string | null {
+  if (input === undefined || input === null || input === '') return null;
+  let raw: unknown = input;
+  if (typeof input === 'string') {
+    try {
+      raw = JSON.parse(input);
+    } catch {
+      throw new Error('tool_params: ungueltiges JSON');
+    }
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('tool_params muss ein Objekt sein');
+  }
+  const out: Record<string, string[]> = {};
+  for (const [tool, keys] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z0-9_*-]{1,60}$/.test(tool)) throw new Error(`tool_params: ungueltiger Tool-Name ${tool}`);
+    if (
+      !Array.isArray(keys) ||
+      keys.length === 0 ||
+      keys.some((k) => typeof k !== 'string' || !/^[A-Za-z0-9_.-]{1,60}$/.test(k))
+    ) {
+      throw new Error(`tool_params.${tool}: nicht-leeres Array aus Parameter-Keys erwartet`);
+    }
+    out[tool] = keys.map(String);
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : null;
+}
+
 export function normalizeActionInput(body: Record<string, unknown>): ActionInput {
   const mode = String(body.mode ?? '');
   if (mode !== 'deterministic' && mode !== 'llm' && mode !== 'hybrid') {
@@ -61,6 +91,7 @@ export function normalizeActionInput(body: Record<string, unknown>): ActionInput
     enabled: enabledFlag(body.enabled),
     side_effect: sideEffect,
     confirm: body.confirm === true || body.confirm === 1 || body.confirm === '1' ? 1 : 0,
+    tool_params: normalizeToolParams(body.tool_params ?? body.toolParams),
   };
 }
 

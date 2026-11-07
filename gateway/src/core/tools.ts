@@ -110,7 +110,7 @@ export function buildBasisTools(routes: Map<string, ToolRoute>, specs: ToolSpec[
 export function buildTools(
   mcp: McpContext,
   allowlist: string[] | null,
-  opts: { applyAgentToolLimit?: boolean } = {}
+  opts: { applyAgentToolLimit?: boolean; toolParams?: Record<string, string[]> } = {}
 ): ToolRouteMap {
   const routes = new Map<string, ToolRoute>();
   const specs: ToolSpec[] = [];
@@ -154,6 +154,28 @@ export function buildTools(
       routes.delete(name);
       const idx = specs.findIndex((s) => s.function.name === name);
       if (idx >= 0) specs.splice(idx, 1);
+    }
+  }
+  // Issue #4 Stufe 3: Parameter-Allowlist je Tool. Das Modell sieht nur die
+  // erlaubten Felder; die Engine weist zusaetzliche Argumente zusaetzlich zur
+  // Laufzeit ab. Schemas werden kopiert, damit der MCP-Cache unberuehrt bleibt.
+  if (opts.toolParams) {
+    for (const spec of specs) {
+      const allowed = opts.toolParams[spec.function.name];
+      if (!allowed) continue;
+      const params = spec.function.parameters;
+      if (!params || typeof params !== 'object') continue;
+      const schema = params as { properties?: Record<string, unknown>; required?: unknown };
+      const next: Record<string, unknown> = { ...(params as Record<string, unknown>) };
+      if (schema.properties) {
+        next.properties = Object.fromEntries(
+          Object.entries(schema.properties).filter(([key]) => allowed.includes(key))
+        );
+      }
+      if (Array.isArray(schema.required)) {
+        next.required = schema.required.filter((key) => typeof key === 'string' && allowed.includes(key));
+      }
+      spec.function.parameters = next;
     }
   }
   return { specs, routes, budgets };

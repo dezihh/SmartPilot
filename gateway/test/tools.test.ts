@@ -48,19 +48,38 @@ function client(): McpServerContext['client'] {
   };
 }
 
-function mcpWith(tools: { name: string; description?: string }[], serverName = 'srv1'): McpContext {
+function mcpWith(tools: { name: string; description?: string; inputSchema?: unknown }[], serverName = 'srv1'): McpContext {
   return {
     servers: [
       {
         id: 1,
         name: serverName,
         sideEffect: 'write',
-        tools: tools.map((t) => ({ ...t, inputSchema: { type: 'object' } })),
+        tools: tools.map((t) => ({ ...t, inputSchema: t.inputSchema ?? { type: 'object' } })),
         client: client(),
       },
     ],
   };
 }
+
+test('Issue #4 Stufe 3: toolParams filtert das Tool-Schema', () => {
+  const schema = { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'] };
+  const { specs } = buildTools(mcpWith([{ name: 'tool_a', inputSchema: schema }]), null, {
+    toolParams: { tool_a: ['a'] },
+  });
+  const spec = specs.find((s) => s.function.name === 'tool_a');
+  assert.ok(spec);
+  const params = spec!.function.parameters as { properties: Record<string, unknown>; required: string[] };
+  assert.deepEqual(Object.keys(params.properties), ['a']);
+  assert.deepEqual(params.required, ['a']);
+  assert.deepEqual(Object.keys(schema.properties), ['a', 'b'], 'Original-Schema bleibt unberuehrt');
+  const frei = buildTools(mcpWith([{ name: 'tool_b', inputSchema: schema }]), null, { toolParams: { tool_a: ['a'] } });
+  const specB = frei.specs.find((s) => s.function.name === 'tool_b')!;
+  assert.deepEqual(
+    Object.keys((specB.function.parameters as { properties: Record<string, unknown> }).properties),
+    ['a', 'b']
+  );
+});
 
 test('sanitizeToolName: Sonderzeichen werden Unterstrich', () => {
   assert.equal(sanitizeToolName('brave.web/search:x'), 'brave_web_search_x');

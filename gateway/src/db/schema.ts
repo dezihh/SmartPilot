@@ -506,6 +506,12 @@ function applyActionSecurity(db: Database.Database): void {
   db.prepare("UPDATE actions SET side_effect = 'read' WHERE name = 'hilfe'").run();
 }
 
+// Issue #4 Stufe 3: optionale Parameter-Allowlist je Tool (JSON-Objekt
+// Tool -> erlaubte Parameter-Keys). NULL = keine Einschraenkung.
+function applyActionToolParams(db: Database.Database): void {
+  addColumnIfMissing(db, 'actions', 'tool_params', 'TEXT');
+}
+
 // Header sind Teil des Server-Hashes geworden: bestehende, unveraenderte
 // Items einmalig von der alten auf die neue Feldform umschreiben, damit
 // installierte Pakete nicht als lokal geaendert gelten.
@@ -536,6 +542,7 @@ const MIGRATIONS: Migration[] = [
   { version: 6, name: 'package-manifest', up: applyPackageManifest },
   { version: 7, name: 'rebase-package-item-hashes-headers', up: applyHeadersHashRebase },
   { version: 8, name: 'action-security', up: applyActionSecurity },
+  { version: 9, name: 'action-tool-params', up: applyActionToolParams },
 ];
 
 // Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen

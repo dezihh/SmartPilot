@@ -42,12 +42,16 @@ export interface ActionRow {
   side_effect: SideEffect;
   /** Issue #4: vor dem Ausfuehren nachfragen (nur bei side_effect 'write'). */
   confirm: number;
+  /** Issue #4 Stufe 3: JSON-Objekt Tool -> erlaubte Parameter-Keys. */
+  tool_params: string | null;
 }
 
 export interface ParsedAction extends ActionRow {
   triggers: string[];
   toolList: string[];
   functionArgs: Record<string, unknown> | null;
+  /** Issue #4 Stufe 3: Parameter-Allowlist je Tool (leer = keine). */
+  toolParams: Record<string, string[]>;
 }
 
 export interface McpServerRow {

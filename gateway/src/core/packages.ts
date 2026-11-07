@@ -90,6 +90,8 @@ export interface PackageAction {
   side_effect?: 'read' | 'write';
   /** Issue #4: Bestaetigung vor dem Ausfuehren verlangen. */
   confirm?: boolean;
+  /** Issue #4 Stufe 3: Parameter-Allowlist je Tool (Tool -> erlaubte Keys). */
+  tool_params?: Record<string, string[]>;
 }
 
 export interface PackageManifest {
@@ -280,6 +282,21 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
         if (a?.function_ref !== undefined && (typeof a.function_ref !== 'string' || !/^[a-z0-9_]{1,60}$/.test(a.function_ref))) errors.push(`action "${a?.name}": function_ref ungueltig`);
         if (a?.side_effect !== undefined && a.side_effect !== 'read' && a.side_effect !== 'write') errors.push(`action "${a?.name}": side_effect muss read oder write sein`);
         if (a?.confirm !== undefined && typeof a.confirm !== 'boolean') errors.push(`action "${a?.name}": confirm muss boolean sein`);
+        if (a?.tool_params !== undefined) {
+          const tp = a.tool_params as unknown;
+          const bad =
+            !tp ||
+            typeof tp !== 'object' ||
+            Array.isArray(tp) ||
+            Object.entries(tp as Record<string, unknown>).some(
+              ([tool, keys]) =>
+                !/^[a-z0-9_*-]{1,60}$/.test(tool) ||
+                !Array.isArray(keys) ||
+                keys.length === 0 ||
+                (keys as unknown[]).some((k) => typeof k !== 'string' || !k.trim())
+            );
+          if (bad) errors.push(`action "${a?.name}": tool_params muss ein Objekt Tool->nicht-leeres String-Array sein`);
+        }
       }
     }
   }

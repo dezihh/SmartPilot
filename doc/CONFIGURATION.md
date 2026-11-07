@@ -151,6 +151,11 @@ Schleifen.
   fragt „Soll ich … ausführen? Sag ja oder nein."; erst ein „ja" in derselben
   Session (max. 60 s) startet den Vorgang. „nein" oder eine andere Äußerung
   verwirft die Anfrage.
+- **Tool-Parameter**: Optional lässt sich pro Tool festlegen, welche Parameter
+  erlaubt sind (Feld „Tool-Parameter", JSON `tool_params`, z. B.
+  `{"ha_set_todo_item": ["entity_id", "item", "status"]}`). Das Modell sieht
+  nur diese Felder; zusätzliche Argumente weist das Gateway zur Laufzeit ab.
+  Leer = keine Einschränkung.
 - Bestehende Vorgänge bleiben unverändert (Default: schreibend, ohne
   Rückfrage).
 

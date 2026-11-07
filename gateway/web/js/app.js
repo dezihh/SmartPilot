@@ -554,6 +554,9 @@ function openActionEditor(id) {
   void loadToolPicker(a?.toolList ?? []).then(syncActionToolsInput);
   $('action-side-effect').value = a?.side_effect === 'read' ? 'read' : 'write';
   $('action-confirm').checked = !!a?.confirm;
+  $('action-tool-params').value = a?.toolParams && Object.keys(a.toolParams).length
+    ? JSON.stringify(a.toolParams, null, 2)
+    : '';
   $('action-enabled').checked = a ? !!a.enabled : true;
   updateFunctionFieldVisibility();
 }
@@ -565,6 +568,15 @@ function updateFunctionFieldVisibility() {
 function actionPayload() {
   const lines = (v) => v.split('\n').map((s) => s.trim()).filter(Boolean);
   const threshold = $('action-threshold').value.trim();
+  const rawToolParams = $('action-tool-params').value.trim();
+  let toolParams = null;
+  if (rawToolParams) {
+    try {
+      toolParams = JSON.parse(rawToolParams);
+    } catch {
+      throw new Error('Tool-Parameter: ungültiges JSON');
+    }
+  }
   return {
     name: $('action-name').value.trim(),
     mode: $('action-mode').value,
@@ -576,6 +588,7 @@ function actionPayload() {
     tools: lines($('action-tools').value),
     side_effect: $('action-side-effect').value,
     confirm: $('action-confirm').checked,
+    tool_params: toolParams,
     enabled: $('action-enabled').checked,
   };
 }
@@ -587,7 +600,13 @@ async function saveAction() {
     return;
   }
   syncActionToolsInput();
-  const payload = actionPayload();
+  let payload;
+  try {
+    payload = actionPayload();
+  } catch (e) {
+    alert(e.message);
+    return;
+  }
   const id = $('action-id').value;
   if (id) await api(`/actions/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
   else await api('/actions', { method: 'POST', body: JSON.stringify(payload) });
