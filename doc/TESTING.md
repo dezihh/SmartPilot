@@ -83,7 +83,7 @@ git diff -U0 "$(git merge-base origin/main HEAD)" -- gateway/src \
 | Branches | 83 % |
 | Functions | 93 % |
 
-Gemessener Stand (Node 26.13.0, `src/**`, 617 Cases): 97,13 / 84,96 / 94,72.
+Gemessener Stand (Node 26.13.0, `src/**`, 622 Cases): 97,10 / 85,03 / 94,73.
 
 **Neubaseline 2026-11-08:** Die Lines-Schwelle sinkt von 97 auf 95 %, die
 Functions-Schwelle von 94 auf 93 %. Grund: Die 97-%-Hürde erzwang Tests für
