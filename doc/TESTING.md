@@ -8,6 +8,37 @@ npm test        # alle Tests in test/*.test.ts
 npm run coverage  # dieselben Tests mit Abdeckungsmessung
 ```
 
+## Gate-Treppe
+
+Nicht jede Prüfung läuft bei jeder Zwischenänderung. Drei Stufen:
+
+| Stufe | Wann | Befehl |
+|---|---|---|
+| Innenloop | während der Arbeit | `npm run typecheck` + betroffene Testdatei |
+| vor dem Commit | `npm run gates:fast` | Typecheck, Test-Typecheck, Lint, Tests |
+| vor Merge/Release | `npm run gates:full` | `gates` + Coverage + Build |
+
+`gates:full` enthält `typecheck`, `typecheck:tests`, `lint`, `deadcode`,
+`cycles`, `dupes`, `audit:gate`, `coverage` und `build`. Die früheren
+`gates`/`gates:all` bleiben unverändert bestehen.
+
+## Testtiefe nach Risiko
+
+Die Tiefe folgt dem Risiko, nicht der Zeilenzahl (NFR 6):
+
+| Änderung | Pflichtumfang |
+|---|---|
+| Bugfix | ein Regressionstest, der ohne den Fix rot ist |
+| Feature / Verhaltensänderung | Happy Path + zwei Grenzfälle |
+| Refactoring, Umbenennung, Formatierung | keine neuen Tests |
+| Typ-only, Doku, Kommentar | keine Tests |
+| Fehlerpfad einer Fremdbibliothek | nur, wenn eigenes Verhalten daran hängt |
+
+Kritische Pfade — `src/auth.ts`, `src/apiSignature.ts`, `src/rateLimit.ts`,
+`src/config.ts`, `src/core/ssrf.ts`, `src/core/session.ts`, `src/db.ts` und
+`src/db/` — brauchen zusätzlich die Fehler- und Grenzfälle des Pfads,
+unabhängig vom Änderungstyp.
+
 ## Messbasis
 
 `npm run coverage` misst ausschließlich den Produktivcode:
@@ -22,18 +53,47 @@ abgedeckt und heben die Zahl künstlich; die Browser-Skripte unter `web/js/`
 sind unter `node:test` nicht sinnvoll messbar. Die Web-Helfer-Tests laufen
 weiterhin mit, zählen aber nicht in die Quote.
 
-## Schwellen
+## Diff-Coverage ist maßgeblich
+
+Die globale Quote ist eine **Regressionsbremse**, kein Testziel. Bewertet wird
+die Abdeckung der geänderten Zeilen:
+
+- mindestens **90 %** der geänderten Produktivzeilen,
+- **100 %** auf den kritischen Pfaden oben.
+
+Nicht instrumentierte Zeilen (Kommentare, Typen) zählen nicht mit. Eine
+geänderte Datei ohne LCOV-Eintrag gilt als vollständig ungetestet.
+
+```bash
+# LCOV im Container erzeugen, Diff auf dem Host bilden (kein git im Container)
+docker exec smartpilot-gateway-gateway-1 npm run coverage:lcov
+# Neue Dateien vorher mit `git add -N gateway/src` vormerken, sonst fehlen sie im Diff.
+git diff -U0 "$(git merge-base origin/main HEAD)" -- gateway/src \
+  | docker exec -i smartpilot-gateway-gateway-1 npm run coverage:diff
+```
+
+`coverage:diff` akzeptiert zusätzlich `--threshold <n>`, `--critical a,b` und
+`--diff <datei>` statt stdin.
+
+## Globale Schwellen
 
 | Kennzahl | Schwelle |
 |---|---|
-| Lines | 97 % |
+| Lines | 95 % |
 | Branches | 83 % |
-| Functions | 94 % |
+| Functions | 93 % |
 
-Gemessener Stand (Node 26.13.0, `src/**`): 97,00 / 84,84 / 94,63.
+Gemessener Stand (Node 26.13.0, `src/**`, 617 Cases): 97,13 / 84,96 / 94,72.
 
-Lines liegt knapp über der Schwelle. Neue Tests sollen den Puffer vergrößern;
-die Schwelle zu senken ist der falsche Weg (Audit F-001).
+**Neubaseline 2026-11-08:** Die Lines-Schwelle sinkt von 97 auf 95 %, die
+Functions-Schwelle von 94 auf 93 %. Grund: Die 97-%-Hürde erzwang Tests für
+reine Verdrahtung und ließ die Suite auf 9.530 Zeilen anwachsen (mehr als
+`src/`), ohne zusätzliche Verhaltenssicherung. Qualitätsmaßstab ist jetzt die
+Diff-Coverage. **Wiederaufnahme-Trigger:** Sinkt der gemessene Stand unter
+95/83/93 oder bleibt eine Änderung ohne Diff-Coverage-Nachweis, wird die
+Schwelle wieder angehoben. Die Branch-Ausnahme (83 %) bleibt bis zur
+Neubewertung der Branch-Tests bestehen und ist im Ausnahmen-Register des
+Workspace dokumentiert (nicht Teil des Repos).
 
 ## Bekannte Grenzen
 
