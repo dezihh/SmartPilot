@@ -86,3 +86,15 @@ test('Funktion: Parameter-Objekt wird JSON-String', () => {
   const out = normalizeFunctionInput({ name: 'fn', template: 'x', parameters: { type: 'object' } });
   assert.equal(out.parameters, '{"type":"object"}');
 });
+
+test('Action: side_effect/confirm Defaults und Validierung (Issue #4)', () => {
+  const def = normalizeActionInput({ name: 'a', mode: 'llm' });
+  assert.equal(def.side_effect, 'write', 'Default bleibt verhaltensneutral');
+  assert.equal(def.confirm, 0);
+  const read = normalizeActionInput({ name: 'a', mode: 'llm', side_effect: 'read', confirm: true });
+  assert.equal(read.side_effect, 'read');
+  assert.equal(read.confirm, 1);
+  const num = normalizeActionInput({ name: 'a', mode: 'llm', confirm: '1' });
+  assert.equal(num.confirm, 1, 'GET-Roundtrip (1 als String) bleibt an');
+  assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', side_effect: 'kaputt' }), /side_effect/);
+});

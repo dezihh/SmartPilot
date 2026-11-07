@@ -86,6 +86,10 @@ export interface PackageAction {
   function_args?: string | Record<string, unknown>;
   tools?: string[];
   enabled?: boolean;
+  /** Issue #4: deklarierte Wirkung; fehlt = 'write'. */
+  side_effect?: 'read' | 'write';
+  /** Issue #4: Bestaetigung vor dem Ausfuehren verlangen. */
+  confirm?: boolean;
 }
 
 export interface PackageManifest {
@@ -274,6 +278,8 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
         if (a?.trigger_phrases !== undefined && (!Array.isArray(a.trigger_phrases) || a.trigger_phrases.some((t) => typeof t !== 'string'))) errors.push(`action "${a?.name}": trigger_phrases muss ein String-Array sein`);
         if (a?.fuzzy_threshold !== undefined && (typeof a.fuzzy_threshold !== 'number' || a.fuzzy_threshold < 0 || a.fuzzy_threshold > 1)) errors.push(`action "${a?.name}": fuzzy_threshold muss zwischen 0 und 1 liegen`);
         if (a?.function_ref !== undefined && (typeof a.function_ref !== 'string' || !/^[a-z0-9_]{1,60}$/.test(a.function_ref))) errors.push(`action "${a?.name}": function_ref ungueltig`);
+        if (a?.side_effect !== undefined && a.side_effect !== 'read' && a.side_effect !== 'write') errors.push(`action "${a?.name}": side_effect muss read oder write sein`);
+        if (a?.confirm !== undefined && typeof a.confirm !== 'boolean') errors.push(`action "${a?.name}": confirm muss boolean sein`);
       }
     }
   }

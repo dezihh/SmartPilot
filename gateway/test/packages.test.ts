@@ -208,7 +208,7 @@ test('Paket-Actions: Install (Upsert) + Validierung + lokaler Schutz beim Deinst
     description: 'd',
     functions: [{ name: 'af_fn', template: 'hallo' }],
     actions: [
-      { name: 'af_action', mode: 'deterministic', trigger_phrases: ['af test'], fuzzy_threshold: 0.8, function_ref: 'af_fn', tools: [], enabled: true },
+      { name: 'af_action', mode: 'deterministic', trigger_phrases: ['af test'], fuzzy_threshold: 0.8, function_ref: 'af_fn', tools: [], enabled: true, side_effect: 'read', confirm: true },
     ],
   };
   db.prepare("DELETE FROM packages WHERE id = 'action-pack'").run();
@@ -219,16 +219,22 @@ test('Paket-Actions: Install (Upsert) + Validierung + lokaler Schutz beim Deinst
   const r = installPackage(m as never, { source: 'registry' });
   assert.ok(r.created.includes('action:af_action'));
   assert.ok(manifestItems(m as never).some((i) => i.kind === 'action' && i.name === 'af_action'));
-  const row = db.prepare("SELECT mode, trigger_phrases, function_ref, enabled FROM actions WHERE name = 'af_action'").get() as {
-    mode: string; trigger_phrases: string; function_ref: string; enabled: number;
+  const row = db.prepare("SELECT mode, trigger_phrases, function_ref, enabled, side_effect, confirm FROM actions WHERE name = 'af_action'").get() as {
+    mode: string; trigger_phrases: string; function_ref: string; enabled: number; side_effect: string; confirm: number;
   };
   assert.equal(row.mode, 'deterministic');
   assert.equal(row.trigger_phrases, '["af test"]');
   assert.equal(row.function_ref, 'af_fn');
   assert.equal(row.enabled, 1);
+  assert.equal(row.side_effect, 'read', 'Issue #4: Manifest-Wirkung wird uebernommen');
+  assert.equal(row.confirm, 1);
 
   // Validierung: unbekannter Modus wird abgelehnt
   assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'nope' }] }).ok, false);
+  // Issue #4: side_effect/confirm muessen typrichtig sein
+  assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', side_effect: 'kaputt' }] }).ok, false);
+  assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', confirm: 'ja' }] }).ok, false);
+  assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', side_effect: 'read', confirm: true }] }).ok, true);
 
   // Reinstall: unveraendert -> updated
   const r2 = installPackage(m as never, { source: 'registry' });

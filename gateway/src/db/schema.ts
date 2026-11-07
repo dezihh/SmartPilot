@@ -53,8 +53,8 @@ function applyReferenceSeed(db: Database.Database): void {
   db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_system', SEED_AGENT_SYSTEM);
   db.prepare('INSERT OR IGNORE INTO prompts (key, content) VALUES (?, ?)').run('agent_inventory', SEED_AGENT_INVENTORY);
   db.prepare(
-    `INSERT OR IGNORE INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled)
-     VALUES ('hilfe', 'llm', ?, 0.85, ?, NULL, NULL, NULL, '[]', 1)`
+    `INSERT OR IGNORE INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, side_effect, confirm)
+     VALUES ('hilfe', 'llm', ?, 0.85, ?, NULL, NULL, NULL, '[]', 1, 'read', 0)`
   ).run(SEED_HELP_TRIGGERS, SEED_HELP_PROMPT);
 }
 
@@ -497,6 +497,15 @@ function applyPackageManifest(db: Database.Database): void {
   addColumnIfMissing(db, 'packages', 'manifest', 'TEXT');
 }
 
+// Issue #4: Vorgangs-Sicherheit. side_effect/confirm sind deklarative
+// Attribute; die Defaults (write/0) erhalten das bisherige Verhalten.
+// Die geseedete Hilfe liest nur den Katalog und mutiert nichts.
+function applyActionSecurity(db: Database.Database): void {
+  addColumnIfMissing(db, 'actions', 'side_effect', "TEXT NOT NULL DEFAULT 'write' CHECK (side_effect IN ('read','write'))");
+  addColumnIfMissing(db, 'actions', 'confirm', 'INTEGER NOT NULL DEFAULT 0');
+  db.prepare("UPDATE actions SET side_effect = 'read' WHERE name = 'hilfe'").run();
+}
+
 // Header sind Teil des Server-Hashes geworden: bestehende, unveraenderte
 // Items einmalig von der alten auf die neue Feldform umschreiben, damit
 // installierte Pakete nicht als lokal geaendert gelten.
@@ -526,6 +535,7 @@ const MIGRATIONS: Migration[] = [
   { version: 5, name: 'mcp-server-headers', up: applyMcpHeaders },
   { version: 6, name: 'package-manifest', up: applyPackageManifest },
   { version: 7, name: 'rebase-package-item-hashes-headers', up: applyHeadersHashRebase },
+  { version: 8, name: 'action-security', up: applyActionSecurity },
 ];
 
 // Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen

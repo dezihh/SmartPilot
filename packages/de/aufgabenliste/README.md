@@ -44,9 +44,10 @@ Details: <https://homeassistant-ai.github.io/ha-mcp/tools> (Kategorie „Todo Li
 ## Sicherheitshinweis
 
 Das Paket ist als **gefährlich** markiert: Der Vorgang ändert und entfernt
-Todo-Einträge (`ha_set_todo_item`, `ha_remove_todo_item`). Die Rückfrage hängt
-nur am Prompt; eine zusätzliche Bestätigungsschranke im Gateway gibt es nicht.
-Die Installation verlangt deshalb eine ausdrückliche Bestätigung.
+Todo-Einträge (`ha_set_todo_item`, `ha_remove_todo_item`). Er ist als
+schreibend mit Bestätigung deklariert — das Gateway fragt vor dem Ausführen
+nach und startet erst nach einem „ja". Die Installation verlangt zusätzlich
+eine ausdrückliche Bestätigung.
 
 ## Beispiele
 

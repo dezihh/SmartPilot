@@ -403,3 +403,73 @@ test('Index-Cache: nach Funktions-/MCP-Call invalidiert, nach Basis-Lesetool nic
     getDb().prepare("UPDATE tpl_functions SET side_effect = 'write' WHERE name = 'test_echo'").run();
   }
 });
+
+test('Issue #4: schreibender Vorgang mit Bestaetigung fragt nach und fuehrt nach ja aus', async () => {
+  createAction({
+    name: 'test_confirm_yes',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-um-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"bestaetigt"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  const r1 = await q('schalter-um-test', 'conf-yes');
+  assert.equal(r1.route, 'action');
+  assert.match(r1.response.speech, /Soll ich/);
+  assert.equal(r1.response.followUp, true);
+  assert.ok(findStep(r1.trace, 'action.confirm_pending'), 'Nachfrage im Trace');
+
+  const r2 = await q('ja', 'conf-yes');
+  assert.equal(r2.route, 'action');
+  assert.match(r2.response.speech, /Deterministisch: bestaetigt/);
+  assert.ok(findStep(r2.trace, 'action.confirmed'), 'Bestaetigung im Trace');
+});
+
+test('Issue #4: nein verwirft den schreibenden Vorgang', async () => {
+  createAction({
+    name: 'test_confirm_no',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-aus-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"nie"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  const r1 = await q('schalter-aus-test', 'conf-no');
+  assert.match(r1.response.speech, /Soll ich/);
+  const r2 = await q('nein', 'conf-no');
+  assert.match(r2.response.speech, /Okay, ich mache nichts/);
+  assert.ok(findStep(r2.trace, 'action.cancelled'));
+  assert.equal(findStep(r2.trace, 'action.confirmed'), undefined, 'nichts ausgefuehrt');
+});
+
+test('Issue #4: nur lesender Vorgang fragt auch mit confirm-Flag nicht nach', async () => {
+  createAction({
+    name: 'test_confirm_read',
+    mode: 'deterministic',
+    trigger_phrases: '["status-lese-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"gelesen"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'read',
+    confirm: 1,
+  });
+  const r = await q('status-lese-test', 'conf-read');
+  assert.match(r.response.speech, /Deterministisch: gelesen/);
+  assert.equal(findStep(r.trace, 'action.confirm_pending'), undefined);
+});

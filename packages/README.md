@@ -152,6 +152,8 @@ Felder:
 | `system_prompt` | nein | Prompt für `llm`/`hybrid` |
 | `template` | nein | Inline-Jinja (deterministisch ohne `function_ref`) |
 | `tools` | nein | erlaubte Tools (Array; `[]` = keine) |
+| `side_effect` | nein | `read`/`write` (Default `write`) — deklarierte Wirkung |
+| `confirm` | nein | `true` = vor dem Ausführen nachfragen (nur bei `write`) |
 | `enabled` | nein | Default `true` |
 
 **`indexes[]`** — Index-Quelle:

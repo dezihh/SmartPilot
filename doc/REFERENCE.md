@@ -216,6 +216,11 @@ Die Größe des Tool-Angebots steht im Debug-Log (`Tool-Specs`: Anzahl, Zeichen,
 Näherungstokens `chars/4`), die echte Prompt-Größe in der LLM-Antwort
 (`usage.prompt_tokens`).
 
+Schreibende Vorgänge (`side_effect: write`) können eine Bestätigung erzwingen
+(`confirm`): Das Gateway fragt dann „Soll ich … ausführen? Sag ja oder nein."
+und führt erst nach einem „ja" aus (gleiche Session, 60 s TTL). Lesende
+Vorgänge fragen nie nach.
+
 ## Antwortvertrag
 
 Der Core liefert eine neutrale Antwort mit:

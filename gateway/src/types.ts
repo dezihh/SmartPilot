@@ -38,6 +38,10 @@ export interface ActionRow {
   function_args: string | null;
   tools: string | null;
   enabled: number;
+  /** Issue #4: deklarierte Wirkung des Vorgangs (Default 'write'). */
+  side_effect: SideEffect;
+  /** Issue #4: vor dem Ausfuehren nachfragen (nur bei side_effect 'write'). */
+  confirm: number;
 }
 
 export interface ParsedAction extends ActionRow {

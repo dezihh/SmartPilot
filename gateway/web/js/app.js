@@ -371,7 +371,7 @@ function renderActions() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${esc(a.name)}</td>
-      <td><span class="badge">${esc(a.mode)}</span></td>
+      <td><span class="badge">${esc(a.mode)}</span> <span class="badge">${a.side_effect === 'read' ? 'lesend' : 'schreibend'}${a.confirm ? ' · bestätigt' : ''}</span></td>
       <td>${esc((a.triggers ?? []).join(', '))}</td>
       <td>${a.enabled ? '✔' : '✖'}</td>
       <td class="actions"><button class="btn small" data-test title="Ersten Trigger im Monitor ausführen">Testen</button><button class="btn small">Bearbeiten</button></td>`;
@@ -552,6 +552,8 @@ function openActionEditor(id) {
   fillFunctionSelect(a?.function_ref ?? '');
   $('action-tools-list').innerHTML = '';
   void loadToolPicker(a?.toolList ?? []).then(syncActionToolsInput);
+  $('action-side-effect').value = a?.side_effect === 'read' ? 'read' : 'write';
+  $('action-confirm').checked = !!a?.confirm;
   $('action-enabled').checked = a ? !!a.enabled : true;
   updateFunctionFieldVisibility();
 }
@@ -572,6 +574,8 @@ function actionPayload() {
     function_ref: $('action-function').value || null,
     template: null,
     tools: lines($('action-tools').value),
+    side_effect: $('action-side-effect').value,
+    confirm: $('action-confirm').checked,
     enabled: $('action-enabled').checked,
   };
 }

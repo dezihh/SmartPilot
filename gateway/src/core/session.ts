@@ -17,14 +17,43 @@ interface SessionState {
 
 const sessions = new Map<string, SessionState>();
 
+// Issue #4: Bestaetigungsschranke. Ein schreibender Vorgang mit confirm=1
+// merkt sich seine Anfrage hier; die naechste Aeusserung loest sie ein.
+export const CONFIRM_TTL_MS = 60_000;
+
+export interface PendingConfirm {
+  actionId: number;
+  text: string;
+  expires: number;
+}
+
+const pendingConfirms = new Map<string, PendingConfirm>();
+
+export function setPendingConfirm(sessionId: string, actionId: number, text: string, now = Date.now()): void {
+  prune(now);
+  pendingConfirms.set(sessionId, { actionId, text, expires: now + CONFIRM_TTL_MS });
+}
+
+/** Liefert die offene Bestaetigung (und entfernt sie); 'expired' nach TTL. */
+export function takePendingConfirm(sessionId: string, now = Date.now()): PendingConfirm | 'expired' | null {
+  const pending = pendingConfirms.get(sessionId);
+  if (!pending) return null;
+  pendingConfirms.delete(sessionId);
+  return pending.expires > now ? pending : 'expired';
+}
+
 export function resetSessionsForTests(): void {
   if (!TEST_HOOKS_ENABLED) return;
   sessions.clear();
+  pendingConfirms.clear();
 }
 
 function prune(now = Date.now()): void {
   for (const [id, s] of sessions) {
-    if (now - s.lastSeen > SESSION_TTL_MS) sessions.delete(id);
+    if (now - s.lastSeen > SESSION_TTL_MS) {
+      sessions.delete(id);
+      pendingConfirms.delete(id);
+    }
   }
   // Hart-Deckel: aelteste Sessions zuerst werfen.
   while (sessions.size > HISTORY_MAX_SESSIONS) {
@@ -38,6 +67,7 @@ function prune(now = Date.now()): void {
     }
     if (!oldest) break;
     sessions.delete(oldest);
+    pendingConfirms.delete(oldest);
   }
 }
 

@@ -142,6 +142,18 @@ keine Auswahl bedeutet „keine". Budgets pro Werkzeug (Spalte `budget` der
 Funktionen; die Basis-Lesetools sind fest auf 2 bzw. 3 gesetzt) verhindern
 Schleifen.
 
+### Wirkung und Bestätigung
+
+- **Wirkung**: „nur lesend" kennzeichnet Vorgänge ohne Datenänderung (z. B.
+  Statusabfragen). „schreibend" ist der Standard und deckt alle Änderungen ab.
+- **Bestätigung**: Nur schreibende Vorgänge können „Bestätigung vor dem
+  Ausführen" verlangen. Das Gateway führt dann nicht sofort aus, sondern
+  fragt „Soll ich … ausführen? Sag ja oder nein."; erst ein „ja" in derselben
+  Session (max. 60 s) startet den Vorgang. „nein" oder eine andere Äußerung
+  verwirft die Anfrage.
+- Bestehende Vorgänge bleiben unverändert (Default: schreibend, ohne
+  Rückfrage).
+
 ### Funktion und PUT-Verhalten
 
 - **Daten aus Funktion**: Pflicht bei `deterministic` und `hybrid`.

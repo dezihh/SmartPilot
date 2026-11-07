@@ -135,6 +135,15 @@
             <div id="action-tools-summary" class="field-help"></div>
             <input type="hidden" id="action-tools">
           </div>
+          <div class="field">
+            <div class="field-head"><label>Wirkung</label><button type="button" class="help" data-help="read = nur lesend; write = kann Daten ändern (Standard). Bei schreibenden Vorgängen lässt sich eine Bestätigung erzwingen." aria-label="Hilfe zu Wirkung">?</button></div>
+            <div class="field-help hidden">„Nur lesend“ kennzeichnet Vorgänge ohne Datenänderung (z. B. Statusabfragen). „Schreibend“ ist der Standard und deckt alle Änderungen ab. Nur schreibende Vorgänge können eine Bestätigung verlangen.</div>
+            <select id="action-side-effect">
+              <option value="write">schreibend (Standard)</option>
+              <option value="read">nur lesend</option>
+            </select>
+          </div>
+          <label class="check"><input id="action-confirm" type="checkbox"> Bestätigung vor dem Ausführen (nur schreibend)</label>
           <label class="check"><input id="action-enabled" type="checkbox" checked> Aktiv</label>
           <div class="toolbar">
             <button id="action-save" class="btn primary">Speichern</button>
