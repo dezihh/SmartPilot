@@ -89,7 +89,7 @@ automatisch bei Änderungen unter `alexa/lambda/**` (oder am Workflow selbst).
 | `sync-manifest.yml` | Read-modify-write des Skill-Manifests: Endpoint auf Lambda-ARN (Top-Level und `regions.*`), ergänzt APL-Interface + Viewports; Inputs `endpoint_arn`, `add_apl`, `dry_run` |
 | `sync-model.yml` | Rendert die Aufrufnamen aus `skill.config.json` und lädt die Interaction Models aller eingetragenen Locales in den development-Stage; pollt den Build-Status |
 | `deploy-alexa.yml` | Optional/Legacy: rendert Namen und Aufrufnamen aus `skill.config.json` und pusht das Skill-Package in das Alexa-hosted CodeCommit-Repo (Branch `dev`/`master`) + SMAPI-Build |
-| `ext-check.yml` | Prüft TLS, `POST /api/query` mit `GATEWAY_TOKEN` und dass `/alexa`, `/privacy`, `/admin` öffentlich nicht erreichbar sind. Sendet keine direkten Alexa-Requests |
+| `ext-check.yml` | Prüft TLS, `POST /api/query` mit `API_TOKEN` und dass `/alexa`, `/privacy`, `/admin` öffentlich nicht erreichbar sind. Sendet keine direkten Alexa-Requests |
 | `lambda-logs.yml` | CloudWatch-Logs der Lambda (`/aws/lambda/smartpilot-alexa`) |
 | `list-skills.yml` | Listet die Skills des Vendors |
 
@@ -264,7 +264,9 @@ npm run smoke        # E2E-Smoke-Test gegen laufendes Gateway (Env GATEWAY, ADMI
 ## Sicherheit
 
 - Keine Secret-Werte in Repo, Doku oder Actions-Logs.
-- `GATEWAY_TOKEN` nur im `Authorization`-Header; in Diagnose-Logs maskiert.
+- `API_TOKEN` und `ADMIN_TOKEN` nur im `Authorization`-Header; in Diagnose-Logs
+  maskiert. `API_TOKEN` gilt für die Adapter-API (`/api/query`), `ADMIN_TOKEN`
+  für Admin-UI/API.
 - Öffentlich erreichbar ist nur `/api/query` (Bearer). Admin-UI/API und die
   früheren Pfade `/alexa` und `/privacy` sind nicht öffentlich exponiert.
 - `TRUST_PROXY` hinter nginx setzen, sonst greift das Login-Rate-Limit nicht

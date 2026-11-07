@@ -11,7 +11,7 @@ Zwischenstand.
 
 - Abgeschlossene [Installation](INSTALLATION.md): Das Gateway läuft, hat eine
   öffentliche HTTPS-Adresse, und `POST /api/query` antwortet mit dem
-  Bearer-Token `ADMIN_TOKEN`.
+  Bearer-Token `API_TOKEN`.
 - Ein Amazon-Developer-Konto.
 - Für Weg B zusätzlich ein AWS-Konto.
 

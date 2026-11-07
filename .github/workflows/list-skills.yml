@@ -3,6 +3,9 @@ name: List Skills (SMAPI)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   list:
     runs-on: ubuntu-latest
