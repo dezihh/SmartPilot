@@ -554,7 +554,7 @@ function applyActionHashRebase(db: Database.Database): void {
   }
 }
 
-const MIGRATIONS: Migration[] = [
+export const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
   { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },

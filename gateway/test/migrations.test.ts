@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
-import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION, MIGRATIONS } from '../src/db/schema.js';
 import { conflictItems } from '../src/db/packages.js';
 import { hashContent, actionContentV9, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
@@ -188,13 +188,28 @@ test('Migration 8: actions traegt side_effect/confirm mit verhaltensneutralen De
 test('Migration 8: Bestands-DB von v7 bekommt die Spalten ohne Datenverlust', () => {
   const p = tmpDb('mig-action-security-v7');
   closeDb();
+  // Echte v7-Datenbank aufbauen, damit der ALTER-TABLE-Pfad der Migration 8
+  // wirklich laeuft (vorher wurde eine fertige v10-DB nur zurueckgestuft).
+  const v7 = new Database(p);
+  runMigrations(v7, MIGRATIONS.slice(0, 7));
+  const before = v7.prepare('PRAGMA table_info(actions)').all() as { name: string }[];
+  assert.equal(before.some((c) => c.name === 'side_effect'), false, 'v7 kennt side_effect noch nicht');
+  v7.prepare("INSERT INTO actions (name, mode) VALUES ('alt', 'llm')").run();
+  v7.close();
+
   initDb(p);
-  let db = getDb();
-  db.prepare("INSERT INTO actions (name, mode) VALUES ('alt', 'llm')").run();
-  db.pragma('user_version = 7');
-  closeDb();
-  initDb(p);
-  db = getDb();
+  const db = getDb();
+  const cols = db.prepare('PRAGMA table_info(actions)').all() as { name: string; dflt_value: string | null }[];
+  const side = cols.find((c) => c.name === 'side_effect');
+  const confirm = cols.find((c) => c.name === 'confirm');
+  assert.ok(side && confirm, 'Migration 8 hat die Spalten nicht angelegt');
+  assert.equal(side!.dflt_value, "'write'");
+  assert.equal(confirm!.dflt_value, '0');
+  assert.throws(
+    () => db.prepare("UPDATE actions SET side_effect = 'kaputt' WHERE name = 'alt'").run(),
+    /CHECK constraint failed/,
+    'CHECK aus dem ALTER-Pfad wirkt',
+  );
   const row = db.prepare("SELECT side_effect, confirm FROM actions WHERE name = 'alt'").get() as {
     side_effect: string; confirm: number;
   };
