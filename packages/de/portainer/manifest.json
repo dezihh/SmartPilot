@@ -1,0 +1,129 @@
+{
+  "id": "portainer",
+  "version": "1.0.0",
+  "name": "Portainer",
+  "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
+  "description": "Nutzt die Portainer-REST-API direkt (ohne MCP-Sidecar). Das Paket legt die benannte HTTP-Verbindung 'portainer' mit URL und API-Key an; alle Funktionen lesen nur. Die Verbindung darf ausdruecklich ins private Netz, weil Portainer typischerweise im LAN laeuft.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Erreichbare Portainer-Instanz (REST-API, Port 9000/9443) und ein API-Key mit Lesezugriff. Der Gateway-Container muss die Instanz erreichen.",
+  "minGatewayVersion": "0.7.0",
+  "category": "function",
+  "params": [
+    {
+      "key": "baseUrl",
+      "label": "Portainer-URL",
+      "placeholder": "http://192.168.1.10:9000",
+      "help": "Ohne /api; die Verbindung haengt die Pfade selbst an.",
+      "required": true
+    },
+    {
+      "key": "apiKey",
+      "label": "Portainer API-Key",
+      "type": "password",
+      "help": "X-API-Key aus Portainer (My account -> Access tokens). Wird maskiert gespeichert und nur an diese Verbindung gesendet.",
+      "required": true
+    },
+    {
+      "key": "endpointId",
+      "label": "Endpoint-ID",
+      "default": "1",
+      "help": "Lokale Umgebung, meist 1. Die verfuegbaren IDs zeigt portainer_endpoints."
+    }
+  ],
+  "httpConnections": [
+    {
+      "name": "portainer",
+      "baseUrl": "${baseUrl}",
+      "headers": {
+        "X-API-Key": "${apiKey}"
+      },
+      "allowPrivate": true,
+      "description": "Portainer REST-API (direkt, ohne MCP-Sidecar)"
+    }
+  ],
+  "functions": [
+    {
+      "name": "portainer_system",
+      "description": "Portainer-Systemstatus (Version, Instanz-ID) direkt vom Server.",
+      "template": "{%- set d = http('portainer:/api/system/status') -%}\n{%- if d and d.Version -%}Portainer {{ d.Version }}{% if d.InstanceID %} (Instanz {{ d.InstanceID }}){% endif %}.{%- else -%}Portainer ist nicht erreichbar.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Portainer-Systemstatus: fn_portainer_system (Version und Erreichbarkeit).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "portainer_endpoints",
+      "description": "Portainer-Umgebungen (Endpunkte) mit Name, URL und Status.",
+      "template": "{%- set d = http('portainer:/api/endpoints') -%}\n{%- if d and d.length -%}{%- for e in d -%}{{ e.Name }} ({{ e.URL }}, {{ 'online' if e.Status == 1 else 'offline' }}){% if not loop.last %}; {% endif %}{%- endfor -%}{%- else -%}Keine Endpunkte gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Portainer-Endpunkte: fn_portainer_endpoints (Name, URL, Status; liefert die Endpoint-IDs).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "portainer_containers",
+      "description": "Container auf der gewaehlten Portainer-Umgebung, auch gestoppte.",
+      "template": "{%- set d = http('portainer:/api/endpoints/${endpointId}/docker/containers/json?all=1') -%}\n{%- if d and d.length -%}{%- for c in d -%}{{ (c.Names[0] or c.Id) | replace('/', '') }} ({{ c.State }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Container gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Portainer-Container: fn_portainer_containers (Name und State, auch gestoppte).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "portainer_stacks",
+      "description": "Portainer-Stacks mit Name und Status.",
+      "template": "{%- set d = http('portainer:/api/stacks') -%}\n{%- if d and d.length -%}{%- for s in d -%}{{ s.Name }} ({{ s.Status }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Stacks gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Portainer-Stacks: fn_portainer_stacks (Name und Status).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "portainer_images",
+      "description": "Docker-Images auf der gewaehlten Portainer-Umgebung.",
+      "template": "{%- set d = http('portainer:/api/endpoints/${endpointId}/docker/images/json') -%}\n{%- if d and d.length -%}{%- for i in d -%}{{ i.RepoTags[0] if i.RepoTags else i.Id }}{% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Images gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Portainer-Images: fn_portainer_images (Repo-Tags).",
+      "sideEffect": "read"
+    },
+    {
+      "name": "portainer_container_inspect",
+      "description": "Details zu einem Container (ID oder Name) auf der gewaehlten Umgebung.",
+      "template": "{%- set d = http('portainer:/api/endpoints/${endpointId}/docker/containers/' ~ (args.id | urlencode) ~ '/json') -%}\n{%- if d and d.Id -%}Container {{ d.Name }}: Status {{ d.State.Status }}, Image {{ d.Config.Image }}.{%- else -%}Container nicht gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Container-ID oder -Name"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "budget": 1,
+      "inventory_prompt": "Container-Details: fn_portainer_container_inspect mit id (ID oder Name).",
+      "sideEffect": "read"
+    }
+  ]
+}
