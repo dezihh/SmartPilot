@@ -5,4 +5,5 @@ export function getPackageForTest(id: string): { id: string } | null;
 export function diffValue(from: unknown, to: unknown): string;
 export function cmpVersion(a: unknown, b: unknown): number;
 export function updateChip(installedVersion: unknown, registryVersion: unknown): string;
+export function packageVersionLabel(registryVersion: unknown, installedVersion: unknown): unknown;
 export function loadMaintenance(): Promise<void>;

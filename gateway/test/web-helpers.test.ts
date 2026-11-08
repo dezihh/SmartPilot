@@ -19,7 +19,7 @@ Object.defineProperty(globalThis, 'document', {
   configurable: true,
   value: { getElementById: () => stubElement, body: { dataset: {} } },
 });
-const { cmpVersion, diffValue, updateChip } = await import('../web/js/packages.js');
+const { cmpVersion, diffValue, updateChip, packageVersionLabel } = await import('../web/js/packages.js');
 
 test('esc maskiert alle HTML-Sonderzeichen', () => {
   assert.equal(esc(`<a href="x">&'`), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;');
@@ -36,6 +36,11 @@ test('updateChip nennt installierte und Registry-Version', () => {
   assert.equal(updateChip('1.0.3', '1.0.4'), 'Update verfügbar: v1.0.3 → v1.0.4');
   assert.equal(updateChip('1.0.4', '1.0.4'), '', 'gleiche Version = kein Update');
   assert.equal(updateChip('1.0.5', '1.0.4'), '', 'installiert ist neuer');
+});
+
+test('packageVersionLabel zeigt installiert vor Registry', () => {
+  assert.equal(packageVersionLabel('1.0.4', '1.0.3'), '1.0.3', 'installiert gewinnt');
+  assert.equal(packageVersionLabel('1.0.4', undefined), '1.0.4', 'nicht installiert = Registry');
 });
 
 test('cmpVersion vergleicht Ziffernteile numerisch', () => {
