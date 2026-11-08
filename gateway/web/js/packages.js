@@ -56,6 +56,13 @@ export function cmpVersion(a, b) {
   return 0;
 }
 
+// Update-Hinweis nennt immer beide Versionen: In der Verfuegbarkeitsliste steht
+// die Registry-Version, sonst liest man sie als installierten Stand (F-018).
+export function updateChip(installedVersion, registryVersion) {
+  if (!registryVersion || cmpVersion(installedVersion, registryVersion) >= 0) return '';
+  return `Update verfügbar: v${String(installedVersion)} → v${String(registryVersion)}`;
+}
+
 export async function loadMaintenance() {
   try {
     const data = await api('/packages');
@@ -86,7 +93,7 @@ function renderPackages() {
     const chip = !inst
       ? ''
       : update
-        ? `<span class="chip update">Update verfügbar: v${esc(p.version)}</span>`
+        ? `<span class="chip update">${esc(updateChip(inst.version, p.version))}</span>`
         : '<span class="chip ok">installiert</span>';
     return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(p.version)}</span> ${categoryChip(p.category)} <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
   });
@@ -94,7 +101,7 @@ function renderPackages() {
   const instList = pkgState.installed.map((p) => {
     const reg = pkgState.registry.find((r) => r.id === p.id);
     const update = reg && cmpVersion(p.version, reg.version) < 0;
-    const chip = update ? ` <span class="chip update">Update verfügbar: v${esc(reg.version)}</span>` : '';
+    const chip = update ? ` <span class="chip update">${esc(updateChip(p.version, reg.version))}</span>` : '';
     const itemRows = (p.items ?? []).map((i) => `<li><span class="kind">${esc(KIND_LABELS[i.kind] ?? i.kind)}</span> ${esc(i.name)}</li>`).join('');
     const regName = reg?.name && reg.name !== p.name ? ` <span class="pkg-version">Registry: ${esc(reg.name)}</span>` : '';
     return `<div class="pkg-installed-item">
