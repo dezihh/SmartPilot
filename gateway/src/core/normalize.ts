@@ -25,7 +25,7 @@ function normalizeToolParams(input: unknown): string | null {
   }
   const out: Record<string, string[]> = {};
   for (const [tool, keys] of Object.entries(raw as Record<string, unknown>)) {
-    if (!/^[a-z0-9_*-]{1,60}$/.test(tool)) throw new Error(`tool_params: ungueltiger Tool-Name ${tool}`);
+    if (!/^[a-z0-9_-]{1,60}$/.test(tool)) throw new Error(`tool_params: ungueltiger Tool-Name ${tool}`);
     if (
       !Array.isArray(keys) ||
       keys.length === 0 ||

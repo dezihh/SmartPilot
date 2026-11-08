@@ -57,8 +57,8 @@ function toolCalls(calls: { name: string; args: string }[]): unknown {
   };
 }
 
-async function q(text: string, sessionId: string): Promise<Awaited<ReturnType<typeof processQuery>>> {
-  return processQuery({ text, sessionId });
+async function q(text: string, sessionId: string, userId?: string): Promise<Awaited<ReturnType<typeof processQuery>>> {
+  return processQuery({ text, sessionId, userId });
 }
 
 function findStep(trace: TraceEvent[], step: string): TraceEvent | undefined {
@@ -536,6 +536,28 @@ test('Issue #4: bestaetigte Aktion folgt der session_followup-Regel', async () =
   }
 });
 
+test('Issue #4: fremde userId kann die Bestaetigung nicht einloesen', async () => {
+  const action = createAction({
+    name: 'test_confirm_user',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-user-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"fremd"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  setPendingConfirm('conf-user', action.id, 'schalter-user-test', Date.now(), 'alice');
+  const r = await q('ja', 'conf-user', 'bob');
+  assert.ok(findStep(r.trace, 'action.confirm_foreign'), 'Bindung im Trace');
+  assert.equal(findStep(r.trace, 'action.confirmed'), undefined, 'nichts ausgefuehrt');
+  assert.doesNotMatch(r.response.speech, /Deterministisch/);
+});
+
 test('Issue #4: nur lesender Vorgang fragt auch mit confirm-Flag nicht nach', async () => {
   createAction({
     name: 'test_confirm_read',
@@ -587,4 +609,14 @@ test('Issue #4 Stufe 3: Tool-Parameter-Allowlist blockt zusaetzliche Argumente',
   const r2 = await q('param-limit-test', 'param2');
   assert.equal(findStep(r2.trace, 'tool.param_blocked'), undefined);
   assert.ok(findStep(r2.trace, 'tool.call'), 'erlaubter Aufruf laeuft');
+
+  // F-017: verschachtelte Schluessel muessen ebenfalls in der Allowlist stehen.
+  llmCalls = 0;
+  llmScript = [
+    toolCalls([{ name: 'fn_test_echo', args: '{"x":{"y":"blockiert"}}' }]),
+    content('Erledigt.'),
+  ];
+  const r3 = await q('param-limit-test', 'param3');
+  assert.ok(findStep(r3.trace, 'tool.param_blocked'), 'verschachtelter Key blockiert');
+  assert.equal(findStep(r3.trace, 'tool.call'), undefined, 'kein Aufruf mit verschachteltem Extra-Key');
 });

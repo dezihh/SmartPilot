@@ -150,6 +150,29 @@ const MAX_SEARCH_RESULTS = 3;
 const LLM_TIMEOUT_RETRY_MS = 7000;
 const MIN_ROUND_TIMEOUT_MS = 5000;
 
+// F-017: Auch verschachtelte Schluessel muessen in der Allowlist stehen - ein
+// Objekt-Parameter darf keine unerlaubten Felder einschmuggeln. Arrays werden
+// rekursiv geprueft, Skalare nicht.
+function extraArgKeys(args: Record<string, unknown>, allowed: readonly string[]): string[] {
+  const extra: string[] = [];
+  const walk = (value: unknown, prefix: string): void => {
+    if (Array.isArray(value)) {
+      for (const item of value) walk(item, prefix);
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value)) {
+      if (!allowed.includes(key)) {
+        extra.push(prefix ? `${prefix}.${key}` : key);
+        continue;
+      }
+      walk(child, prefix ? `${prefix}.${key}` : key);
+    }
+  };
+  walk(args, '');
+  return extra;
+}
+
 function isTimeoutError(e: unknown): boolean {
   if (e instanceof Error) {
     if (e.name === 'TimeoutError' || e.name === 'AbortError') return true;
@@ -231,7 +254,7 @@ async function runToolLoop(
           // das Schema ist nur ein Hinweis, das Modell kann mehr schicken.
           const allowedArgs = toolParams?.[call.function.name];
           if (allowedArgs) {
-            const extra = Object.keys(args).filter((key) => !allowedArgs.includes(key));
+            const extra = extraArgKeys(args, allowedArgs);
             if (extra.length) {
               trace.push({ ts: Date.now(), step: 'tool.param_blocked', detail: { tool: call.function.name, extra } });
               return {
@@ -512,9 +535,11 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
 
   // Issue #4: offene Bestaetigung zuerst einloesen. Jede andere Aeusserung
   // verwirft sie und laeuft normal weiter.
-  const pending = takePendingConfirm(query.sessionId);
+  const pending = takePendingConfirm(query.sessionId, Date.now(), query.userId);
   if (pending === 'expired') {
     trace.push({ ts: Date.now(), step: 'action.confirm_expired' });
+  } else if (pending === 'foreign') {
+    trace.push({ ts: Date.now(), step: 'action.confirm_foreign' });
   } else if (pending) {
     const answer = qLower.trim().replace(/[.!?]+$/, '').replace(/\s+/g, ' ');
     if (CONFIRM_NO_RE.test(answer)) {
