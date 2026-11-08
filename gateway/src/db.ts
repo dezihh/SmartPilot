@@ -25,6 +25,15 @@ export {
   type McpServerInput,
 } from './db/mcpServers.js';
 export {
+  listHttpConnections,
+  getHttpConnection,
+  getHttpConnectionByName,
+  createHttpConnection,
+  updateHttpConnection,
+  deleteHttpConnection,
+  maskHttpConnectionSecrets,
+} from './db/httpConnections.js';
+export {
   getSettings,
   getSetting,
   getSettingNum,

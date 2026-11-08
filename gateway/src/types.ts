@@ -72,6 +72,20 @@ export interface McpServerRow {
   enabled: number;
 }
 
+/** Benannte HTTP-Verbindung fuer http()/http.request(). */
+export interface HttpConnectionRow {
+  id: number;
+  name: string;
+  base_url: string;
+  /** Header als JSON-Objekt; kann Secrets tragen und wird in der API maskiert. */
+  headers: string | null;
+  /** 1 = private Ziele (LAN) sind fuer diese Verbindung ausdruecklich erlaubt. */
+  allow_private: number;
+  timeout_ms: number | null;
+  description: string | null;
+  enabled: number;
+}
+
 export interface ToolDef {
   name: string;
   description?: string;

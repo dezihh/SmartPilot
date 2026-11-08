@@ -225,7 +225,7 @@ t('Sicherheitswirkung der ausgelieferten Pakete ist bekannt', () => {
   const dangerous = ALL.filter((s) => manifestDangerous(s.manifest).dangerous)
     .map((s) => s.id)
     .sort();
-  assert.deepEqual(dangerous, ['aufgabenliste', 'brave-search', 'mqtt', 'searxng', 'system-info']);
+  assert.deepEqual(dangerous, ['aufgabenliste', 'brave-search', 'mqtt', 'portainer', 'searxng', 'system-info']);
 
   const shells = ALL.filter((s) => /(?<![\w.])shell\s*\(/.test(JSON.stringify(s.manifest)))
     .map((s) => s.id)

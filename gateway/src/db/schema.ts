@@ -178,6 +178,18 @@ db.exec(`
     PRIMARY KEY (package_id, kind, name)
   );
 
+  CREATE TABLE IF NOT EXISTS http_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    base_url TEXT NOT NULL,
+    headers TEXT,
+    allow_private INTEGER NOT NULL DEFAULT 0,
+    timeout_ms INTEGER,
+    description TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts TEXT NOT NULL DEFAULT (datetime('now')),
@@ -554,6 +566,24 @@ function applyActionHashRebase(db: Database.Database): void {
   }
 }
 
+// Benannte HTTP-Verbindungen (Base-URL + Header + Allowlist) als eigene
+// Objekte. Bestands-DBs bekommen die Tabelle nachgezogen.
+function applyHttpConnections(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS http_connections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      base_url TEXT NOT NULL,
+      headers TEXT,
+      allow_private INTEGER NOT NULL DEFAULT 0,
+      timeout_ms INTEGER,
+      description TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+}
+
 export const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
@@ -565,6 +595,7 @@ export const MIGRATIONS: Migration[] = [
   { version: 8, name: 'action-security', up: applyActionSecurity },
   { version: 9, name: 'action-tool-params', up: applyActionToolParams },
   { version: 10, name: 'rebase-package-item-hashes-action-security', up: applyActionHashRebase },
+  { version: 11, name: 'http-connections', up: applyHttpConnections },
 ];
 
 // Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen

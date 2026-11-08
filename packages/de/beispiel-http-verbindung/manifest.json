@@ -1,0 +1,62 @@
+{
+  "id": "beispiel-http-verbindung",
+  "version": "1.0.0",
+  "name": "Beispiel: HTTP-Verbindung",
+  "summary": "Benannte HTTP-Verbindung mit GET und POST am Beispiel von JSONPlaceholder.",
+  "description": "Zeigt, wie ein Paket eine benannte HTTP-Verbindung mitbringt und darueber GET- und POST-Aufrufe macht. Die Verbindung 'jsonplaceholder' zeigt auf eine oeffentliche Demo-API; die Funktionen sind reine Beispiele und lesen bzw. legen Demo-Beitraege an.",
+  "author": "dezihh",
+  "license": "MIT",
+  "language": "de",
+  "homepage": "https://github.com/dezihh/SmartPilot",
+  "requires": "Internetzugang des Gateway-Containers zu jsonplaceholder.typicode.com (oeffentliche Demo-API, ohne Key).",
+  "minGatewayVersion": "0.7.0",
+  "changelog": "1.0.0 — Erstveroeffentlichung: Beispiel fuer GET und POST ueber eine vom Paket mitgebrachte HTTP-Verbindung.",
+  "category": "function",
+  "params": [],
+  "httpConnections": [
+    {
+      "name": "jsonplaceholder",
+      "baseUrl": "https://jsonplaceholder.typicode.com",
+      "description": "Oeffentliche Demo-API fuer GET/POST-Beispiele"
+    }
+  ],
+  "functions": [
+    {
+      "name": "demo_posts",
+      "description": "Drei Demo-Beitraege per GET lesen.",
+      "template": "{%- set d = http('jsonplaceholder:/posts?_limit=3') -%}\n{%- if d and d.length -%}{%- for p in d -%}{{ p.id }}: {{ p.title }}{% if not loop.last %}; {% endif %}{%- endfor -%}{%- else -%}Keine Beitraege gefunden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      },
+      "budget": 1,
+      "inventory_prompt": "Demo-Beitraege lesen: fn_demo_posts.",
+      "sideEffect": "read"
+    },
+    {
+      "name": "demo_neuer_post",
+      "description": "Demo-Beitrag per POST anlegen (Titel und Text als Argumente).",
+      "template": "{%- set d = http.request('jsonplaceholder', '/posts', { method: 'POST', body: { title: args.title, body: args.body, userId: 1 } }) -%}\n{%- if d and d.id -%}Demo-Beitrag {{ d.id }} wurde angelegt.{%- else -%}Der Demo-Beitrag konnte nicht angelegt werden.{%- endif -%}",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Titel des Beitrags"
+          },
+          "body": {
+            "type": "string",
+            "description": "Text des Beitrags"
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "budget": 1,
+      "inventory_prompt": "Demo-Beitrag anlegen: fn_demo_neuer_post mit title und body.",
+      "sideEffect": "write"
+    }
+  ]
+}

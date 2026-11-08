@@ -101,6 +101,7 @@ einen Branch, kommen die Pakete genau dieses Branches.
 | `changelog` | empfohlen | Versionshistorie und Upgrade-Hinweise |
 | `params` | optional | Eingabefelder (Werte ersetzen `${key}` im Manifest) |
 | `servers` / `functions` / `indexes` / `actions` | optional | die anzulegenden Artefakte |
+| `httpConnections` | optional | benannte HTTP-Verbindungen (Base-URL, Header, LAN-Freigabe) |
 | `allowTools` | optional | Agent-Tool-Allowlist (wird vereinigt) |
 | `dangerousItems` | optional | explizite Gefahrenhinweise (String-Array, z. B. destruktive MCP-Tools); verlangen wie `shell()`/stdio die Installationsbestaetigung |
 
@@ -112,6 +113,17 @@ rein lesende (`read`) nicht.
 
 Die Oberfelder stehen oben; die darin enthaltenen Artefakte haben diese
 Felder:
+
+**`httpConnections[]`** — benannte HTTP-Verbindung:
+
+| Feld | Pflicht | Bedeutung |
+| --- | --- | --- |
+| `name` | ja | Verbindungsname (`a-z`, `0-9`, `_`) |
+| `baseUrl` | ja | http(s)-Basis-URL; darf `${param}` enthalten |
+| `headers` | optional | Header-Objekt; Secrets über `${param}` |
+| `allowPrivate` | optional | LAN-Freigabe; erzwingt eine Installationsbestätigung |
+| `timeoutMs` | optional | 100–60000 ms |
+| `description`, `enabled` | optional | Anzeige/Deaktivierung |
 
 **`servers[]`** — Eintrag in der MCP-Tool-Registry:
 

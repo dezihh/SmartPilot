@@ -94,6 +94,16 @@ export interface PackageAction {
   tool_params?: Record<string, string[]>;
 }
 
+export interface PackageHttpConnection {
+  name: string;
+  baseUrl: string;
+  headers?: Record<string, string>;
+  allowPrivate?: boolean;
+  timeoutMs?: number;
+  description?: string;
+  enabled?: boolean;
+}
+
 export interface PackageManifest {
   id: string;
   version: string;
@@ -118,6 +128,8 @@ export interface PackageManifest {
   functions?: PackageFunction[];
   indexes?: PackageIndex[];
   actions?: PackageAction[];
+  /** Benannte HTTP-Verbindungen (Base-URL + Header + LAN-Freigabe). */
+  httpConnections?: PackageHttpConnection[];
   allowTools?: string[];
   setupDocs?: string;
   changelog?: string;
@@ -172,6 +184,11 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
   for (const s of m.servers ?? []) {
     if (s.transport === 'stdio') {
       items.push(`Server "${s.name}" laeuft als stdio-Prozess (command "${s.command ?? ''}") - fuehrt Programme im Gateway-Container aus`);
+    }
+  }
+  for (const c of m.httpConnections ?? []) {
+    if (c.allowPrivate) {
+      items.push(`HTTP-Verbindung "${c.name}" darf ins private Netz - Bestaetigung erforderlich`);
     }
   }
   for (const f of m.functions ?? []) {
@@ -249,6 +266,40 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
           else if (Object.entries(s.headers).some(([k, v]) => !/^[A-Za-z0-9-]+$/.test(k) || typeof v !== 'string')) errors.push(`server "${s.name}": headers braucht gueltige Namen und String-Werte`);
         }
         if (s?.sideEffect !== undefined && s.sideEffect !== 'read' && s.sideEffect !== 'write') errors.push(`server "${s.name}": sideEffect muss read oder write sein`);
+      }
+    }
+  }
+  if (m.httpConnections !== undefined) {
+    if (!Array.isArray(m.httpConnections)) errors.push('httpConnections muss ein Array sein');
+    else {
+      for (const c of m.httpConnections) {
+        if (!c?.name || !/^[a-z0-9_]{2,40}$/.test(c.name)) errors.push(`httpConnection-Name ungueltig: ${c?.name ?? '(leer)'}`);
+        if (!c || typeof c.baseUrl !== 'string') errors.push(`httpConnection "${c?.name}": baseUrl fehlt`);
+        else if (!c.baseUrl.includes('${')) {
+          try {
+            const u = new URL(c.baseUrl);
+            if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error();
+            if (u.username || u.password || u.search || u.hash) throw new Error();
+            if (isPrivateHost(u.hostname) && c.allowPrivate !== true) {
+              errors.push(`httpConnection "${c.name}": privates Ziel braucht allowPrivate`);
+            }
+          } catch {
+            errors.push(`httpConnection "${c.name}": baseUrl muss eine http(s)-URL ohne Zugangsdaten/Query sein`);
+          }
+        }
+        if (c?.headers !== undefined) {
+          if (!c.headers || typeof c.headers !== 'object' || Array.isArray(c.headers)) {
+            errors.push(`httpConnection "${c?.name}": headers muss ein Objekt sein`);
+          } else if (
+            Object.entries(c.headers).some(
+              ([k, v]) => !/^[A-Za-z0-9-]{1,64}$/.test(k) || typeof v !== 'string' || /[\r\n]/.test(v)
+            )
+          ) {
+            errors.push(`httpConnection "${c?.name}": headers braucht gueltige Namen und String-Werte`);
+          }
+        }
+        if (c?.allowPrivate !== undefined && typeof c.allowPrivate !== 'boolean') errors.push(`httpConnection "${c?.name}": allowPrivate muss boolean sein`);
+        if (c?.timeoutMs !== undefined && (!Number.isInteger(c.timeoutMs) || c.timeoutMs < 100 || c.timeoutMs > 60000)) errors.push(`httpConnection "${c?.name}": timeoutMs muss 100-60000 sein`);
       }
     }
   }
@@ -354,7 +405,7 @@ export function requiredParams(m: PackageManifest): string[] {
     } else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === 'object') Object.values(v).forEach(walk);
   };
-  walk({ servers: m.servers, functions: m.functions, indexes: m.indexes, actions: m.actions });
+  walk({ servers: m.servers, functions: m.functions, indexes: m.indexes, actions: m.actions, httpConnections: m.httpConnections });
   return [...keys];
 }
 
@@ -376,7 +427,13 @@ export function substituteManifest(m: PackageManifest, values: Record<string, st
     return v;
   };
   const copy = JSON.parse(JSON.stringify(m)) as PackageManifest;
-  const replaced = sub({ servers: copy.servers, functions: copy.functions, indexes: copy.indexes, actions: copy.actions });
+  const replaced = sub({
+    servers: copy.servers,
+    functions: copy.functions,
+    indexes: copy.indexes,
+    actions: copy.actions,
+    httpConnections: copy.httpConnections,
+  });
   return { ...m, ...(replaced as Record<string, unknown>), params: undefined } as PackageManifest;
 }
 
@@ -388,6 +445,7 @@ export function manifestHash(m: PackageManifest): string {
 export function manifestItems(m: PackageManifest): { kind: string; name: string }[] {
   const items: { kind: string; name: string }[] = [];
   for (const s of m.servers ?? []) items.push({ kind: 'server', name: s.name });
+  for (const c of m.httpConnections ?? []) items.push({ kind: 'httpConnection', name: c.name });
   for (const f of m.functions ?? []) items.push({ kind: 'function', name: f.name });
   for (const a of m.actions ?? []) items.push({ kind: 'action', name: a.name });
   for (const ix of m.indexes ?? []) items.push({ kind: 'index', name: ix.key || '(Standard)' });

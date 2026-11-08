@@ -22,6 +22,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `tokens=1` exportiert. `http_private_allow` öffnet dynamische `http()`-URLs
   gezielt für benannte private Hosts (z. B. Portainer im LAN).
 
+- **Benannte HTTP-Verbindungen:** `http_connections` bündeln Base-URL, Header
+  und eine explizite LAN-Freigabe; `http('name:/pfad')` und
+  `http.request(name, path, opts)` unterstützen GET/POST/PUT/PATCH/DELETE mit
+  JSON-Body. Der Host ist fixiert, Redirects werden pro Etappe geprüft, Secrets
+  bleiben maskiert. Pakete bringen Verbindungen über `httpConnections` mit; die
+  bestehende `http_headers`-Auth bleibt unverändert. Gateway-Version 0.7.0.
+
 ### Geändert
 
 - **Gateway-Version 0.6.0, Sicherheitsfelder setzen sie voraus (F-003):**

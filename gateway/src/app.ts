@@ -15,6 +15,7 @@ import { getSchemaVersion, getDb } from './db.js';
 import { queryRoutes, handleQuery, handleLambdaTrace } from './routes/query.js';
 import { adminRoutes } from './routes/admin.js';
 import { mcpServersRoutes } from './routes/mcpServers.js';
+import { httpConnectionsRoutes } from './routes/httpConnections.js';
 import { promptsRoutes } from './routes/prompts.js';
 import { logsRoutes } from './routes/logs.js';
 import { packagesRoutes } from './routes/packages.js';
@@ -206,6 +207,7 @@ export function createApp(): Express {
   // Admin-API-Routen (Pfade sind relativ zum Mount, z. B. '/admin/api/...')
   admin.use(adminRoutes);
   admin.use(mcpServersRoutes);
+admin.use(httpConnectionsRoutes);
   admin.use(promptsRoutes);
   admin.use(logsRoutes);
   admin.use(packagesRoutes);
