@@ -8,6 +8,7 @@ import type {
 } from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash, validateManifest, dangerSignature } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
+import { isPrivateHost } from '../core/ssrf.js';
 import { hashContent, actionContentNew, serverContentNew, normalizeHeaders, type ActionHashRow, type ServerHashRow } from './itemHash.js';
 
 export interface InstalledPackageRow {

@@ -71,6 +71,7 @@ export function buildConnectionUrl(baseUrl: string, path: string): URL {
     throw new Error('path muss mit genau einem / beginnen');
   }
   if (/[\r\n\0]/.test(path)) throw new Error('path enthaelt Steuerzeichen');
+  if (path.split('/').includes('..')) throw new Error('path darf keine ..-Segmente enthalten');
   const base = new URL(baseUrl);
   const prefix = base.pathname.replace(/\/+$/, '');
   const url = new URL(prefix + path, base);

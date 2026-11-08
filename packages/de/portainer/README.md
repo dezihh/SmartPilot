@@ -8,9 +8,9 @@ alle Funktionen sind lesend.
 
 | Parameter | Bedeutung |
 |---|---|
-| `baseUrl` | Portainer-URL ohne `/api`, z. B. `http://192.168.10.3:9000` |
-| `apiKey` | API-Key aus Portainer (My account → Access tokens) |
-| `endpointId` | Umgebungs-ID, meist `1` (siehe `portainer_endpoints`) |
+| `base_url` | Portainer-URL ohne `/api`, z. B. `http://192.168.10.3:9000` |
+| `api_key` | API-Key aus Portainer (My account → Access tokens) |
+| `endpoint_id` | Umgebungs-ID, meist `1` (siehe `portainer_endpoints`) |
 
 ## Sicherheit
 
@@ -34,6 +34,6 @@ alle Funktionen sind lesend.
 
 ## Nach der Installation
 
-1. `portainer_endpoints` ausführen und die passende `endpointId` prüfen.
+1. `portainer_endpoints` ausführen und die passende `endpoint_id` prüfen.
 2. `portainer_containers` oder `portainer_stacks` abfragen.
 3. Bei Bedarf die Parameter im Paket-Editor anpassen und neu installieren.

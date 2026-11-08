@@ -127,7 +127,7 @@
       "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
       "version": "1.0.0",
       "category": "function",
-      "sha256": "69154b9db9dc23499e1e3f81e514b398f1c6b629de1cd168a89638692373b2ca"
+      "sha256": "9896db34290cd2f34581c6e98e3a8700ab006e104b7b1cca909447e662fc05cb"
     }
   ]
 }
