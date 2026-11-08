@@ -4,6 +4,7 @@ import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import type { McpContext } from '../src/mcp/registry.js';
 import type { TraceEvent } from '../src/types.js';
+import type { PackageManifest } from '../src/core/packages.js';
 
 process.env.ADMIN_TOKEN = 'http-connections-admin';
 process.env.API_TOKEN = 'http-connections-api';
@@ -204,7 +205,7 @@ test('http.request: POST-Argumente aus args werden vorab aufgeloest', async () =
 });
 
 test('Paket installiert und entfernt eine httpConnection', () => {
-  const manifest = {
+  const manifest: PackageManifest = {
     id: 'test-conn-pkg',
     version: '1.0.0',
     name: 'Test',

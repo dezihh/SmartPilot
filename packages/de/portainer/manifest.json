@@ -10,6 +10,7 @@
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Erreichbare Portainer-Instanz (REST-API, Port 9000/9443) und ein API-Key mit Lesezugriff. Der Gateway-Container muss die Instanz erreichen.",
   "minGatewayVersion": "0.7.0",
+  "changelog": "1.0.0 — Erstveroeffentlichung: direkte Portainer-REST-Anbindung ueber eine benannte HTTP-Verbindung (ohne MCP-Sidecar).",
   "category": "function",
   "params": [
     {
@@ -36,7 +37,7 @@
   "httpConnections": [
     {
       "name": "portainer",
-      "base_url": "${base_url}",
+      "baseUrl": "${base_url}",
       "headers": {
         "X-API-Key": "${api_key}"
       },

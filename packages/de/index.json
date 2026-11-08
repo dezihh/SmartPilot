@@ -119,7 +119,7 @@
       "summary": "Benannte HTTP-Verbindung mit GET und POST am Beispiel von JSONPlaceholder.",
       "version": "1.0.0",
       "category": "function",
-      "sha256": "b1532bf812d94894d75debad579d9f3ebceca925aba0c8815de158f1feb3e14a"
+      "sha256": "a13e9867a9eb68916a6a7d16d5599d26353f69ada3b5a5e49b6961c2d321ea1f"
     },
     {
       "id": "portainer",
@@ -127,7 +127,7 @@
       "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
       "version": "1.0.0",
       "category": "function",
-      "sha256": "9896db34290cd2f34581c6e98e3a8700ab006e104b7b1cca909447e662fc05cb"
+      "sha256": "5617ed92f109efde9313c91fa87519acbd9636d8c32ca2a771e69d9bc5292b75"
     }
   ]
 }
