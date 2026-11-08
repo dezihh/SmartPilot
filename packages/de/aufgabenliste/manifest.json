@@ -9,7 +9,7 @@
   "language": "de",
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Installierte Home-Assistant-Anbindung (ha-mcp). Deren Server liefert ha_get_todo, ha_set_todo_item und ha_remove_todo_item. Mindestens eine Todo-Liste (z. B. die Integration 'Local To-do' oder eine Einkaufslisten-Integration) muss in Home Assistant existieren. Geprüft mit ha-mcp 9.0.0: Die drei Todo-Werkzeuge sind vorhanden.",
-  "minGatewayVersion": "0.5.1",
+  "minGatewayVersion": "0.6.0",
   "params": [],
   "allowTools": [
     "ha_get_todo",

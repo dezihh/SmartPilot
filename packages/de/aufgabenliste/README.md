@@ -41,10 +41,11 @@ weil die Werkzeuge in `agent_tools` stehen.
 
 Geprüft am 2026-11-08 gegen **ha-mcp 9.0.0** (77 Tools): alle drei Werkzeuge
 vorhanden; `remove_completed` und `move_after` gibt es in diesem Schema nicht.
-Die Bestätigung vor dem Löschen erzwingt das Gateway (schreibender Vorgang mit
-Bestätigung), nicht der Prompt. Zusätzlich ist pro Werkzeug eine
-Parameter-Allowlist im Manifest hinterlegt (nur die genannten Felder); das
-Gateway weist zusätzliche Argumente zur Laufzeit ab.
+Die Bestätigung vor dem Löschen erzwingt das Gateway nur im Vorgang
+„Aufgabenliste“ (schreibender Vorgang mit Bestätigung) — nicht bei freien
+Agent-Fragen, die dieselben Werkzeuge über `agent_tools` erreichen. Zusätzlich
+ist pro Werkzeug eine Parameter-Allowlist im Manifest hinterlegt (nur die
+genannten Felder); das Gateway weist zusätzliche Argumente zur Laufzeit ab.
 
 Details: <https://homeassistant-ai.github.io/ha-mcp/tools> (Kategorie „Todo Lists“).
 

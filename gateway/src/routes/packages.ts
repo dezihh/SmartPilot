@@ -450,8 +450,8 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
               ? JSON.stringify(a.function_args)
               : String(a.function_args);
         db.prepare(
-          'INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(a.name as string, (a.mode as string) ?? 'llm', (a.trigger_phrases as string | null) ?? null, (a.fuzzy_threshold as number | null) ?? null, (a.system_prompt as string | null) ?? null, (a.template as string | null) ?? null, (a.function_ref as string | null) ?? null, fnArgs, (a.tools as string | null) ?? null, (a.enabled as number) ?? 1);
+          'INSERT INTO actions (name, mode, trigger_phrases, fuzzy_threshold, system_prompt, template, function_ref, function_args, tools, enabled, side_effect, confirm, tool_params) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(a.name as string, (a.mode as string) ?? 'llm', (a.trigger_phrases as string | null) ?? null, (a.fuzzy_threshold as number | null) ?? null, (a.system_prompt as string | null) ?? null, (a.template as string | null) ?? null, (a.function_ref as string | null) ?? null, fnArgs, (a.tools as string | null) ?? null, (a.enabled as number) ?? 1, (a.side_effect as string) ?? 'write', (a.confirm as number) ?? 0, (a.tool_params as string | null) ?? null);
       }
     }
     // Paket-Provenienz: mit der Konfiguration ersetzen. Alte Sicherungen ohne

@@ -239,6 +239,8 @@ test('Paket-Actions: Install (Upsert) + Validierung + lokaler Schutz beim Deinst
   // Issue #4 Stufe 3: tool_params nur als Objekt Tool->nicht-leeres String-Array
   assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', tool_params: { a: [] } }] }).ok, false);
   assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', tool_params: { a: ['x'] } }] }).ok, true);
+  // F-012: Wildcard im Tool-Namen wird abgelehnt (kein Musterabgleich zur Laufzeit).
+  assert.equal(validateManifest({ id: 'x', version: '1.0.0', name: 'x', summary: 's', description: 'd', actions: [{ name: 'a', mode: 'llm', tool_params: { 'ha_*': ['x'] } }] }).ok, false);
 
   // Reinstall: unveraendert -> updated
   const r2 = installPackage(m as never, { source: 'registry' });

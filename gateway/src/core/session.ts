@@ -24,22 +24,39 @@ export const CONFIRM_TTL_MS = 60_000;
 export interface PendingConfirm {
   actionId: number;
   text: string;
+  userId?: string;
   expires: number;
 }
 
 const pendingConfirms = new Map<string, PendingConfirm>();
 
-export function setPendingConfirm(sessionId: string, actionId: number, text: string, now = Date.now()): void {
+export function setPendingConfirm(
+  sessionId: string,
+  actionId: number,
+  text: string,
+  now = Date.now(),
+  userId?: string
+): void {
   prune(now);
-  pendingConfirms.set(sessionId, { actionId, text, expires: now + CONFIRM_TTL_MS });
+  pendingConfirms.set(sessionId, { actionId, text, userId, expires: now + CONFIRM_TTL_MS });
 }
 
-/** Liefert die offene Bestaetigung (und entfernt sie); 'expired' nach TTL. */
-export function takePendingConfirm(sessionId: string, now = Date.now()): PendingConfirm | 'expired' | null {
+/**
+ * Liefert die offene Bestaetigung (und entfernt sie); 'expired' nach TTL und
+ * 'foreign', wenn sie an eine andere userId gebunden ist. Eine Session-ID
+ * allein darf keine fremde Schreibaktion bestaetigen (F-015).
+ */
+export function takePendingConfirm(
+  sessionId: string,
+  now = Date.now(),
+  userId?: string
+): PendingConfirm | 'expired' | 'foreign' | null {
   const pending = pendingConfirms.get(sessionId);
   if (!pending) return null;
   pendingConfirms.delete(sessionId);
-  return pending.expires > now ? pending : 'expired';
+  if (pending.expires <= now) return 'expired';
+  if (pending.userId !== undefined && pending.userId !== userId) return 'foreign';
+  return pending;
 }
 
 export function resetSessionsForTests(): void {

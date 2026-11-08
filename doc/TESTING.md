@@ -35,9 +35,10 @@ Die Tiefe folgt dem Risiko, nicht der Zeilenzahl (NFR 6):
 | Fehlerpfad einer Fremdbibliothek | nur, wenn eigenes Verhalten daran hängt |
 
 Kritische Pfade — `src/auth.ts`, `src/apiSignature.ts`, `src/rateLimit.ts`,
-`src/config.ts`, `src/core/ssrf.ts`, `src/core/session.ts`, `src/db.ts` und
-`src/db/` — brauchen zusätzlich die Fehler- und Grenzfälle des Pfads,
-unabhängig vom Änderungstyp.
+`src/config.ts`, `src/core/engine.ts`, `src/core/tools.ts`,
+`src/core/normalize.ts`, `src/core/ssrf.ts`, `src/core/session.ts`,
+`src/db.ts` und `src/db/` — brauchen zusätzlich die Fehler- und Grenzfälle des
+Pfads, unabhängig vom Änderungstyp.
 
 ## Messbasis
 
@@ -107,6 +108,12 @@ Workspace dokumentiert (nicht Teil des Repos).
   einen freien Port; zwischen Portwahl und `listen` bleibt ein kleines
   Rennen. Der Test wiederholt den Lauf deshalb bis zu dreimal, wenn der Port
   belegt war.
+- **LCOV-Zeilendaten (`--experimental-test-coverage`):** Einzelne `DA`-Zeilen
+  sind unzuverlässig — `engine.ts` meldet einen nicht erreichten Zweig als
+  getroffen, neue Felder in `db/packages.ts` dagegen als 0. `coverage:diff`
+  wertet nur `DA>0` aus; die 100-%-Aussage auf kritischen Pfaden ist damit eine
+  Obergrenze, kein Beweis. Belastbar sind die Datei-Summen. Für kritische
+  Änderungen deshalb zusätzlich den konkreten Testfall benennen.
 - **Reproduzierbarkeit:** CI und Image nutzen dieselbe Node-Version
   (`26.13.0`, gepinnt in `gateway-ci.yml`/`registry-ci.yml` und per Digest im
   Dockerfile). Abdeckungszahlen sind nur zwischen gleichen Node-Versionen

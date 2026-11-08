@@ -5,7 +5,7 @@ import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY, SEED_HELP_TRIGGERS, SEED_HELP_
 import { runMigrations, type Migration } from './migrations/runner.js';
 import { backupDatabase } from './migrations/backup.js';
 import { logError } from '../core/logger.js';
-import { hashContent, serverContentOld, serverContentNew, serverContentV6, type ServerHashRow } from './itemHash.js';
+import { hashContent, actionContentNew, actionContentV9, serverContentOld, serverContentNew, serverContentV6, type ActionHashRow, type ServerHashRow } from './itemHash.js';
 
 // DB-Handle + Migrationen: getDb() lazily nach initDb(path) - so ist die DB
 // in Tests injizierbar (Temp-File) und im Runtime-Setup einmalig initialisiert.
@@ -533,7 +533,28 @@ function applyHeadersHashRebase(db: Database.Database): void {
   }
 }
 
-const MIGRATIONS: Migration[] = [
+// Migration 10: Action-Items um die Felder side_effect/confirm/tool_params
+// erweitert. Bestehende, unveraenderte Items einmalig auf die neue Feldform
+// umschreiben, damit installierte Pakete nicht als lokal geaendert gelten.
+function applyActionHashRebase(db: Database.Database): void {
+  const items = db
+    .prepare("SELECT package_id, name, content_hash FROM package_items WHERE kind = 'action'")
+    .all() as { package_id: string; name: string; content_hash: string }[];
+  for (const it of items) {
+    const row = db.prepare('SELECT * FROM actions WHERE name = ?').get(it.name) as ActionHashRow | undefined;
+    if (!row) continue;
+    if (hashContent('action', it.name, actionContentV9(row)) !== it.content_hash) continue; // echte lokale Aenderung
+    const newHash = hashContent('action', it.name, actionContentNew(row));
+    if (newHash === it.content_hash) continue;
+    db.prepare("UPDATE package_items SET content_hash = ? WHERE package_id = ? AND kind = 'action' AND name = ?").run(
+      newHash,
+      it.package_id,
+      it.name
+    );
+  }
+}
+
+export const MIGRATIONS: Migration[] = [
   { version: 1, name: 'base-schema', up: applySchema },
   { version: 2, name: 'data-repairs', up: applyRepairs },
   { version: 3, name: 'rebase-package-item-hashes', up: applyHashRebase },
@@ -543,6 +564,7 @@ const MIGRATIONS: Migration[] = [
   { version: 7, name: 'rebase-package-item-hashes-headers', up: applyHeadersHashRebase },
   { version: 8, name: 'action-security', up: applyActionSecurity },
   { version: 9, name: 'action-tool-params', up: applyActionToolParams },
+  { version: 10, name: 'rebase-package-item-hashes-action-security', up: applyActionHashRebase },
 ];
 
 // Aktuelle Zielversion (letzter Migrationsschritt). Tests und Aufrufer sollen

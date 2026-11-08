@@ -48,7 +48,7 @@ test('Hart-Deckel: aelteste Session fliegt zuerst', () => {
 test('Bestaetigung: setzen, genau einmal einloesen', () => {
   setPendingConfirm('s1', 7, 'lampe aus', 1000);
   const pending = takePendingConfirm('s1', 1001);
-  assert.ok(pending && pending !== 'expired');
+  assert.ok(pending && pending !== 'expired' && pending !== 'foreign');
   assert.equal(pending.actionId, 7);
   assert.equal(pending.text, 'lampe aus');
   assert.equal(takePendingConfirm('s1', 1002), null, 'nach dem Einloesen gibt es nichts mehr');
@@ -64,4 +64,20 @@ test('Bestaetigung: resetSessionsForTests raeumt auf', () => {
   setPendingConfirm('s3', 9, 'y');
   resetSessionsForTests();
   assert.equal(takePendingConfirm('s3'), null);
+});
+
+test('Bestaetigung: fremde userId loest nicht ein (F-015)', () => {
+  setPendingConfirm('s4', 10, 'lampe an', 1000, 'alice');
+  assert.equal(takePendingConfirm('s4', 1001, 'bob'), 'foreign');
+  assert.equal(takePendingConfirm('s4', 1002, 'alice'), null, 'fremder Versuch ist verbraucht');
+
+  setPendingConfirm('s5', 11, 'x', 1000, 'alice');
+  const ok = takePendingConfirm('s5', 1001, 'alice');
+  assert.ok(ok && ok !== 'expired' && ok !== 'foreign');
+  assert.equal(ok.actionId, 11);
+
+  // Ohne Bindung (API ohne userId) bleibt es beim bisherigen Verhalten.
+  setPendingConfirm('s6', 12, 'y', 1000);
+  const any = takePendingConfirm('s6', 1001, 'bob');
+  assert.ok(any && any !== 'expired' && any !== 'foreign');
 });

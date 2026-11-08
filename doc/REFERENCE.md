@@ -218,8 +218,9 @@ Näherungstokens `chars/4`), die echte Prompt-Größe in der LLM-Antwort
 
 Schreibende Vorgänge (`side_effect: write`) können eine Bestätigung erzwingen
 (`confirm`): Das Gateway fragt dann „Soll ich … ausführen? Sag ja oder nein."
-und führt erst nach einem „ja" aus (gleiche Session, 60 s TTL). Lesende
-Vorgänge fragen nie nach.
+und führt erst nach einem „ja" aus (gleiche Session, 60 s TTL, an die
+Anfrage-`userId` gebunden). Lesende Vorgänge fragen nie nach. Die Schranke gilt
+nur für den Vorgangspfad, nicht für die freie Agent-Route.
 
 Zusätzlich kann ein Vorgang pro Tool die erlaubten Parameter festlegen
 (`tool_params`). Das Tool-Schema im Prompt wird auf diese Felder gekürzt;

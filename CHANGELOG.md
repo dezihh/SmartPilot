@@ -14,6 +14,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Geändert
 
+- **Gateway-Version 0.6.0, Sicherheitsfelder setzen sie voraus (F-003):**
+  `gateway/package.json` steht auf 0.6.0. Das Manifest von `aufgabenliste`
+  verlangt jetzt `minGatewayVersion: 0.6.0`, weil `side_effect`, `confirm` und
+  `tool_params` erst dort wirken; 0.5.1 ignoriert die Felder und würde die
+  Bestätigung still auslassen. Ein Vertragstest verlangt für jedes Manifest
+  mit diesen Feldern mindestens 0.6.0.
 - **Gate-Treppe und Testtiefe nach Risiko:** `npm run gates:fast`
   (Typecheck, Test-Typecheck, Lint, Tests) läuft vor dem Commit,
   `npm run gates:full` (zusätzlich Coverage, Build, Dead-Code, Zyklen,
@@ -37,6 +43,21 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Bestätigung nur für den Vorgang (F-004):** Paket-README, `doc/CONFIGURATION.md`
+  und `doc/REFERENCE.md` sagen jetzt ausdrücklich, dass die Rückfrage nicht für
+  die freie Agent-Route gilt; dort ruft das Modell schreibende MCP-Werkzeuge
+  ohne Bestätigung auf.
+- **Parameter-Allowlist ohne Wildcards und mit Tiefenprüfung (F-012, F-017):**
+  Tool-Namen mit `*` werden bei der Eingabe abgelehnt (die Laufzeit kennt keinen
+  Musterabgleich); verschachtelte Objekt-Schlüssel müssen ebenfalls in der
+  Allowlist stehen und werden sonst blockiert.
+- **Bestätigung an die `userId` gebunden (F-015):** Eine offene Rückfrage kann
+  nur dieselbe `userId` einlösen; eine fremde Session-ID führt zu
+  `action.confirm_foreign`, statt die Schreibaktion zu starten.
+- **Router nutzt die deklarierte Wirkung (F-014):** Die Verneinungs-Regel liest
+  `side_effect` statt aus Template/Tools zu raten — eine Wahrheitsquelle.
+- **`CONTRIBUTING.md` ohne toten Agenten-Verweis (F-016):** Der Hinweis auf den
+  entfernten `test-hygiene`-Agenten ist raus; Messbasis steht in `doc/TESTING.md`.
 - **Aufrufname nur an den Rändern entfernen (F-010):** Die Lambda beschneidet
   den Aufrufnamen nur noch am Anfang oder Ende des `query`-Slots; mitten im
   Satz genannte Namen („schalte smart pilot lampe an") bleiben Teil der Frage.

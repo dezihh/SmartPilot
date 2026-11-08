@@ -7,9 +7,9 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
-import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
+import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION, MIGRATIONS } from '../src/db/schema.js';
 import { conflictItems } from '../src/db/packages.js';
-import { hashContent, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
+import { hashContent, actionContentV9, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
 const TARGET = LATEST_SCHEMA_VERSION;
@@ -188,13 +188,28 @@ test('Migration 8: actions traegt side_effect/confirm mit verhaltensneutralen De
 test('Migration 8: Bestands-DB von v7 bekommt die Spalten ohne Datenverlust', () => {
   const p = tmpDb('mig-action-security-v7');
   closeDb();
+  // Echte v7-Datenbank aufbauen, damit der ALTER-TABLE-Pfad der Migration 8
+  // wirklich laeuft (vorher wurde eine fertige v10-DB nur zurueckgestuft).
+  const v7 = new Database(p);
+  runMigrations(v7, MIGRATIONS.slice(0, 7));
+  const before = v7.prepare('PRAGMA table_info(actions)').all() as { name: string }[];
+  assert.equal(before.some((c) => c.name === 'side_effect'), false, 'v7 kennt side_effect noch nicht');
+  v7.prepare("INSERT INTO actions (name, mode) VALUES ('alt', 'llm')").run();
+  v7.close();
+
   initDb(p);
-  let db = getDb();
-  db.prepare("INSERT INTO actions (name, mode) VALUES ('alt', 'llm')").run();
-  db.pragma('user_version = 7');
-  closeDb();
-  initDb(p);
-  db = getDb();
+  const db = getDb();
+  const cols = db.prepare('PRAGMA table_info(actions)').all() as { name: string; dflt_value: string | null }[];
+  const side = cols.find((c) => c.name === 'side_effect');
+  const confirm = cols.find((c) => c.name === 'confirm');
+  assert.ok(side && confirm, 'Migration 8 hat die Spalten nicht angelegt');
+  assert.equal(side!.dflt_value, "'write'");
+  assert.equal(confirm!.dflt_value, '0');
+  assert.throws(
+    () => db.prepare("UPDATE actions SET side_effect = 'kaputt' WHERE name = 'alt'").run(),
+    /CHECK constraint failed/,
+    'CHECK aus dem ALTER-Pfad wirkt',
+  );
   const row = db.prepare("SELECT side_effect, confirm FROM actions WHERE name = 'alt'").get() as {
     side_effect: string; confirm: number;
   };
@@ -217,5 +232,31 @@ test('Migration 9: actions.tool_params ist optional (Issue #4 Stufe 3)', () => {
     tool_params: string | null;
   };
   assert.equal(row.tool_params, null);
+  closeDb();
+});
+
+test('Migration 10: Action-Hash-Rebase ohne Scheinkonflikt, echte Aenderung bleibt', () => {
+  const p = tmpDb('mig-action-hash');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  db.prepare("INSERT INTO actions (name, mode, trigger_phrases, tools) VALUES ('sauber', 'llm', '[\"los\"]', '[\"tool_x\"]')").run();
+  db.prepare("INSERT INTO actions (name, mode, trigger_phrases, tools) VALUES ('lokal', 'llm', '[\"los\"]', '[\"tool_x\"]')").run();
+  const clean = db.prepare("SELECT * FROM actions WHERE name = 'sauber'").get() as Parameters<typeof actionContentV9>[0];
+  const changed = db.prepare("SELECT * FROM actions WHERE name = 'lokal'").get() as Parameters<typeof actionContentV9>[0];
+  db.prepare("INSERT INTO packages (id, version, source) VALUES ('act', '1.0.3', 'registry')").run();
+  // Alt-Hash ohne die drei Sicherheitsfelder (Stand vor Migration 10).
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('act','action','sauber',NULL,?)").run(
+    hashContent('action', 'sauber', actionContentV9(clean))
+  );
+  // Lokal geaendertes Template: Alt-Hash passt nicht zur aktuellen Zeile.
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('act','action','lokal',NULL,?)").run(
+    hashContent('action', 'lokal', { ...actionContentV9(changed), template: 'lokal geaendert' })
+  );
+  db.pragma('user_version = 9');
+  closeDb();
+  initDb(p);
+  assert.equal(getSchemaVersion(), TARGET);
+  assert.deepEqual(conflictItems('act'), ['action:lokal'], 'nur echte Aenderung bleibt Konflikt');
   closeDb();
 });

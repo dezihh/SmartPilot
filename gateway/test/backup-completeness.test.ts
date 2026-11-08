@@ -35,8 +35,8 @@ test('Backup/Restore: alle Spalten ueberleben den Rundlauf', async () => {
      VALUES ('roundtrip_fn','Beschreibung','{{ 1 }}','{"a":"b"}',7,'Inventar','read',1)`
   ).run();
   db.prepare(
-    `INSERT INTO actions (name,mode,trigger_phrases,fuzzy_threshold,system_prompt,template,function_ref,function_args,tools,enabled)
-     VALUES ('roundtrip_action','hybrid','["los"]',0.8,'System','Vorlage','roundtrip_fn','{"k":1}','["tool_x"]',1)`
+    `INSERT INTO actions (name,mode,trigger_phrases,fuzzy_threshold,system_prompt,template,function_ref,function_args,tools,enabled,side_effect,confirm,tool_params)
+     VALUES ('roundtrip_action','hybrid','["los"]',0.8,'System','Vorlage','roundtrip_fn','{"k":1}','["tool_x"]',1,'read',1,'{"tool_x":["a"]}')`
   ).run();
   db.prepare("INSERT INTO settings (key, value) VALUES ('roundtrip_setting', 'Wert')").run();
   db.prepare("INSERT INTO prompts (key, content) VALUES ('roundtrip_prompt', 'Inhalt')").run();

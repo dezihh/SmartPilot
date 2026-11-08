@@ -108,4 +108,6 @@ test('Action: tool_params (Issue #4 Stufe 3) - Objekt/JSON und Validierung', () 
   assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: '{kaputt' }), /tool_params/);
   assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { tool_a: [] } }), /tool_params/);
   assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { 'BAD TOOL': ['x'] } }), /tool_params/);
+  // F-012: kein Wildcard - die Laufzeit kennt keinen Musterabgleich.
+  assert.throws(() => normalizeActionInput({ name: 'a', mode: 'llm', tool_params: { 'ha_*': ['x'] } }), /tool_params/);
 });

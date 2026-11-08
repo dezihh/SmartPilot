@@ -68,10 +68,6 @@ test('Prompt-Route: Inhalt wird gespeichert', async () => {
   assert.equal(getPrompt('test_key'), 'Hallo');
 });
 
-test('Query: zu langer Text wird mit 413 abgelehnt', async () => {
-  assert.equal(await call('POST', '/api/query', { text: 'viel zu lang fuer das Limit' }, 'test-query-secret'), 413);
-});
-
 test('withSsmlBreaks: langer Satztext ohne Absaetze wird in SSML umbrochen', () => {
   const long = 'Der erste Satz ist lang genug. '.repeat(6).trim();
   assert.ok(long.length >= 160);

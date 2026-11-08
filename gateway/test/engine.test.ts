@@ -5,7 +5,7 @@ import { initDb, closeDb, getDb } from '../src/db/schema.js';
 import { createFunction } from '../src/db/functions.js';
 import { createAction } from '../src/db/actions.js';
 import { setSetting, deleteSetting } from '../src/db/settings.js';
-import { resetSessionsForTests } from '../src/core/session.js';
+import { resetSessionsForTests, setPendingConfirm, CONFIRM_TTL_MS } from '../src/core/session.js';
 import { indexInvalidationsForTests } from '../src/core/entityIndex.js';
 import type { TraceEvent } from '../src/types.js';
 import { tmpDb } from './_tmpdb.js';
@@ -57,8 +57,8 @@ function toolCalls(calls: { name: string; args: string }[]): unknown {
   };
 }
 
-async function q(text: string, sessionId: string): Promise<Awaited<ReturnType<typeof processQuery>>> {
-  return processQuery({ text, sessionId });
+async function q(text: string, sessionId: string, userId?: string): Promise<Awaited<ReturnType<typeof processQuery>>> {
+  return processQuery({ text, sessionId, userId });
 }
 
 function findStep(trace: TraceEvent[], step: string): TraceEvent | undefined {
@@ -454,6 +454,110 @@ test('Issue #4: nein verwirft den schreibenden Vorgang', async () => {
   assert.equal(findStep(r2.trace, 'action.confirmed'), undefined, 'nichts ausgefuehrt');
 });
 
+test('Issue #4: abgelaufene Bestaetigung wird nicht eingeloest', async () => {
+  const action = createAction({
+    name: 'test_confirm_expired',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-expire-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"abgelaufen"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  setPendingConfirm('conf-expired', action.id, 'schalter-expire-test', Date.now() - CONFIRM_TTL_MS - 1);
+  const r = await q('ja', 'conf-expired');
+  assert.ok(findStep(r.trace, 'action.confirm_expired'), 'Ablauf im Trace');
+  assert.equal(findStep(r.trace, 'action.confirmed'), undefined, 'nichts eingeloest');
+  assert.doesNotMatch(r.response.speech, /Deterministisch/);
+});
+
+test('Issue #4: geloeschter Vorgang beim ja wird sauber gemeldet', async () => {
+  setPendingConfirm('conf-missing', 999_999, 'geloeschter vorgang');
+  const r = await q('ja', 'conf-missing');
+  assert.ok(findStep(r.trace, 'action.confirm_missing'));
+  assert.match(r.response.speech, /existiert nicht mehr/);
+});
+
+test('Issue #4: andere Aeusserung verwirft die offene Bestaetigung', async () => {
+  const action = createAction({
+    name: 'test_confirm_discard',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-discard-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"verworfen"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  setPendingConfirm('conf-discard', action.id, 'schalter-discard-test');
+  llmScript = [content('Morgen wird es sonnig.')];
+  const r = await q('wie wird das wetter morgen', 'conf-discard');
+  assert.ok(findStep(r.trace, 'action.confirm_discarded'));
+  assert.equal(findStep(r.trace, 'action.confirmed'), undefined, 'nichts ausgefuehrt');
+  assert.match(r.response.speech, /sonnig/);
+});
+
+test('Issue #4: bestaetigte Aktion folgt der session_followup-Regel', async () => {
+  createAction({
+    name: 'test_confirm_followup',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-followup-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"folgt"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  setSetting('session_followup', 'keyword');
+  setSetting('session_keywords', 'ja');
+  try {
+    const r1 = await q('schalter-followup-test', 'conf-follow');
+    assert.match(r1.response.speech, /Soll ich/);
+    const r2 = await q('ja', 'conf-follow');
+    assert.match(r2.response.speech, /Deterministisch: folgt/);
+    assert.equal(r2.response.followUp, true, 'session_followup greift auch nach Bestaetigung');
+    assert.ok(r2.response.followupPrompt);
+  } finally {
+    deleteSetting('session_followup');
+    deleteSetting('session_keywords');
+  }
+});
+
+test('Issue #4: fremde userId kann die Bestaetigung nicht einloesen', async () => {
+  const action = createAction({
+    name: 'test_confirm_user',
+    mode: 'deterministic',
+    trigger_phrases: '["schalter-user-test"]',
+    fuzzy_threshold: 0.85,
+    system_prompt: null,
+    template: null,
+    function_ref: 'test_fn_det',
+    function_args: '{"wert":"fremd"}',
+    tools: '[]',
+    enabled: 1,
+    side_effect: 'write',
+    confirm: 1,
+  });
+  setPendingConfirm('conf-user', action.id, 'schalter-user-test', Date.now(), 'alice');
+  const r = await q('ja', 'conf-user', 'bob');
+  assert.ok(findStep(r.trace, 'action.confirm_foreign'), 'Bindung im Trace');
+  assert.equal(findStep(r.trace, 'action.confirmed'), undefined, 'nichts ausgefuehrt');
+  assert.doesNotMatch(r.response.speech, /Deterministisch/);
+});
+
 test('Issue #4: nur lesender Vorgang fragt auch mit confirm-Flag nicht nach', async () => {
   createAction({
     name: 'test_confirm_read',
@@ -505,4 +609,14 @@ test('Issue #4 Stufe 3: Tool-Parameter-Allowlist blockt zusaetzliche Argumente',
   const r2 = await q('param-limit-test', 'param2');
   assert.equal(findStep(r2.trace, 'tool.param_blocked'), undefined);
   assert.ok(findStep(r2.trace, 'tool.call'), 'erlaubter Aufruf laeuft');
+
+  // F-017: verschachtelte Schluessel muessen ebenfalls in der Allowlist stehen.
+  llmCalls = 0;
+  llmScript = [
+    toolCalls([{ name: 'fn_test_echo', args: '{"x":{"y":"blockiert"}}' }]),
+    content('Erledigt.'),
+  ];
+  const r3 = await q('param-limit-test', 'param3');
+  assert.ok(findStep(r3.trace, 'tool.param_blocked'), 'verschachtelter Key blockiert');
+  assert.equal(findStep(r3.trace, 'tool.call'), undefined, 'kein Aufruf mit verschachteltem Extra-Key');
 });

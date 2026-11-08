@@ -95,7 +95,7 @@ test('routeAction: Verneinung ueberspringt Vorgang mit Seiteneffekt', () => {
 });
 
 test('routeAction: Verneinung blockiert lesenden Vorgang nicht', () => {
-  const read = action({ name: 'hausstatus', mode: 'deterministic', triggers: ['hausstatus'] });
+  const read = action({ name: 'hausstatus', mode: 'deterministic', side_effect: 'read', triggers: ['hausstatus'] });
   const m = routeAction('hausstatus ist nicht gut', [read], false);
   assert.ok(m);
   assert.equal(m.action.name, 'hausstatus');

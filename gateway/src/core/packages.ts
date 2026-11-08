@@ -290,7 +290,7 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
             Array.isArray(tp) ||
             Object.entries(tp as Record<string, unknown>).some(
               ([tool, keys]) =>
-                !/^[a-z0-9_*-]{1,60}$/.test(tool) ||
+                !/^[a-z0-9_-]{1,60}$/.test(tool) ||
                 !Array.isArray(keys) ||
                 keys.length === 0 ||
                 (keys as unknown[]).some((k) => typeof k !== 'string' || !k.trim())
