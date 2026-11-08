@@ -81,6 +81,42 @@ export function serverContentV6(row: ServerHashRow): Record<string, unknown> {
   };
 }
 
+// Feldform von Action-Items vor Migration 10 (ohne side_effect/confirm/
+// tool_params) - fuer den einmaligen Hash-Rebase.
+export interface ActionHashRow {
+  name: unknown;
+  mode: unknown;
+  trigger_phrases: unknown;
+  fuzzy_threshold: unknown;
+  system_prompt: unknown;
+  template: unknown;
+  function_ref: unknown;
+  function_args: unknown;
+  tools: unknown;
+  enabled: unknown;
+  side_effect: unknown;
+  confirm: unknown;
+  tool_params: unknown;
+}
+
+// Aktuelle Feldform inkl. der Sicherheitsattribute (ab Migration 10).
+export function actionContentNew(row: ActionHashRow): Record<string, unknown> {
+  return {
+    ...actionContentV9(row),
+    side_effect: row.side_effect,
+    confirm: row.confirm,
+    tool_params: row.tool_params,
+  };
+}
+
+export function actionContentV9(row: ActionHashRow): Record<string, unknown> {
+  return {
+    name: row.name, mode: row.mode, trigger_phrases: row.trigger_phrases, fuzzy_threshold: row.fuzzy_threshold,
+    system_prompt: row.system_prompt, template: row.template, function_ref: row.function_ref,
+    function_args: row.function_args, tools: row.tools, enabled: row.enabled,
+  };
+}
+
 // Alte Feldform (v0.2.1, ohne npm_spec) - fuer den einmaligen Hash-Rebase.
 export function serverContentOld(row: ServerHashRow): Record<string, unknown> {
   return {

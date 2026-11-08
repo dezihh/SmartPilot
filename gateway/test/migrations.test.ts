@@ -9,7 +9,7 @@ import Database from 'better-sqlite3';
 import { runMigrations, currentVersion, type Migration } from '../src/db/migrations/runner.js';
 import { initDb, closeDb, getDb, getSchemaVersion, LATEST_SCHEMA_VERSION } from '../src/db/schema.js';
 import { conflictItems } from '../src/db/packages.js';
-import { hashContent, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
+import { hashContent, actionContentV9, serverContentOld, serverContentV6 } from '../src/db/itemHash.js';
 import { tmpDb } from './_tmpdb.js';
 
 const TARGET = LATEST_SCHEMA_VERSION;
@@ -217,5 +217,31 @@ test('Migration 9: actions.tool_params ist optional (Issue #4 Stufe 3)', () => {
     tool_params: string | null;
   };
   assert.equal(row.tool_params, null);
+  closeDb();
+});
+
+test('Migration 10: Action-Hash-Rebase ohne Scheinkonflikt, echte Aenderung bleibt', () => {
+  const p = tmpDb('mig-action-hash');
+  closeDb();
+  initDb(p);
+  const db = getDb();
+  db.prepare("INSERT INTO actions (name, mode, trigger_phrases, tools) VALUES ('sauber', 'llm', '[\"los\"]', '[\"tool_x\"]')").run();
+  db.prepare("INSERT INTO actions (name, mode, trigger_phrases, tools) VALUES ('lokal', 'llm', '[\"los\"]', '[\"tool_x\"]')").run();
+  const clean = db.prepare("SELECT * FROM actions WHERE name = 'sauber'").get() as Parameters<typeof actionContentV9>[0];
+  const changed = db.prepare("SELECT * FROM actions WHERE name = 'lokal'").get() as Parameters<typeof actionContentV9>[0];
+  db.prepare("INSERT INTO packages (id, version, source) VALUES ('act', '1.0.3', 'registry')").run();
+  // Alt-Hash ohne die drei Sicherheitsfelder (Stand vor Migration 10).
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('act','action','sauber',NULL,?)").run(
+    hashContent('action', 'sauber', actionContentV9(clean))
+  );
+  // Lokal geaendertes Template: Alt-Hash passt nicht zur aktuellen Zeile.
+  db.prepare("INSERT INTO package_items (package_id,kind,name,row_id,content_hash) VALUES ('act','action','lokal',NULL,?)").run(
+    hashContent('action', 'lokal', { ...actionContentV9(changed), template: 'lokal geaendert' })
+  );
+  db.pragma('user_version = 9');
+  closeDb();
+  initDb(p);
+  assert.equal(getSchemaVersion(), TARGET);
+  assert.deepEqual(conflictItems('act'), ['action:lokal'], 'nur echte Aenderung bleibt Konflikt');
   closeDb();
 });

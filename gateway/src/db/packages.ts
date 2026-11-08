@@ -2,7 +2,7 @@ import { getDb } from './schema.js';
 import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash, validateManifest, dangerSignature } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
-import { hashContent, serverContentNew, normalizeHeaders, type ServerHashRow } from './itemHash.js';
+import { hashContent, actionContentNew, serverContentNew, normalizeHeaders, type ActionHashRow, type ServerHashRow } from './itemHash.js';
 
 export interface InstalledPackageRow {
   id: string;
@@ -484,13 +484,9 @@ function functionRowContent(name: string): Record<string, unknown> | null {
 }
 
 function actionRowContent(name: string): Record<string, unknown> | null {
-  const row = getDb().prepare('SELECT * FROM actions WHERE name = ?').get(name) as Record<string, unknown> | undefined;
+  const row = getDb().prepare('SELECT * FROM actions WHERE name = ?').get(name) as ActionHashRow | undefined;
   if (!row) return null;
-  return {
-    name: row.name, mode: row.mode, trigger_phrases: row.trigger_phrases, fuzzy_threshold: row.fuzzy_threshold,
-    system_prompt: row.system_prompt, template: row.template, function_ref: row.function_ref, function_args: row.function_args,
-    tools: row.tools, enabled: row.enabled, side_effect: row.side_effect, confirm: row.confirm, tool_params: row.tool_params,
-  };
+  return actionContentNew(row);
 }
 
 interface UninstallReport {
