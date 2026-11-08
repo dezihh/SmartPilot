@@ -159,6 +159,24 @@ t('minGatewayVersion ist nicht neuer als das Gateway', () => {
   }
 });
 
+t('Sicherheitsfelder verlangen Gateway 0.6.0', () => {
+  // side_effect/confirm/tool_params kennt erst das Gateway 0.6.0. Ein Manifest,
+  // das sie deklariert und eine aeltere Version zulaesst, wirkt dort still
+  // abgeschwaecht: die Felder werden ignoriert, die Bestaetigung faellt aus.
+  const SECURITY_MIN = '0.6.0';
+  for (const s of ALL) {
+    const secured = (s.manifest.actions ?? []).some(
+      (a) => a.side_effect !== undefined || a.confirm !== undefined || a.tool_params !== undefined,
+    );
+    if (!secured) continue;
+    assert.equal(
+      meetsMinVersion(s.manifest.minGatewayVersion ?? '0.0.0', SECURITY_MIN),
+      true,
+      `${s.id}: deklariert Sicherheitsfelder, verlangt aber nur Gateway ${s.manifest.minGatewayVersion ?? '-'}`,
+    );
+  }
+});
+
 t('Platzhalter und params passen zusammen', () => {
   for (const s of ALL) {
     const used = new Set<string>();

@@ -14,6 +14,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Geändert
 
+- **Gateway-Version 0.6.0, Sicherheitsfelder setzen sie voraus (F-003):**
+  `gateway/package.json` steht auf 0.6.0. Das Manifest von `aufgabenliste`
+  verlangt jetzt `minGatewayVersion: 0.6.0`, weil `side_effect`, `confirm` und
+  `tool_params` erst dort wirken; 0.5.1 ignoriert die Felder und würde die
+  Bestätigung still auslassen. Ein Vertragstest verlangt für jedes Manifest
+  mit diesen Feldern mindestens 0.6.0.
 - **Gate-Treppe und Testtiefe nach Risiko:** `npm run gates:fast`
   (Typecheck, Test-Typecheck, Lint, Tests) läuft vor dem Commit,
   `npm run gates:full` (zusätzlich Coverage, Build, Dead-Code, Zyklen,
