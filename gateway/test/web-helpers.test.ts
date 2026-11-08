@@ -19,7 +19,7 @@ Object.defineProperty(globalThis, 'document', {
   configurable: true,
   value: { getElementById: () => stubElement, body: { dataset: {} } },
 });
-const { cmpVersion, diffValue } = await import('../web/js/packages.js');
+const { cmpVersion, diffValue, updateChip } = await import('../web/js/packages.js');
 
 test('esc maskiert alle HTML-Sonderzeichen', () => {
   assert.equal(esc(`<a href="x">&'`), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;');
@@ -30,6 +30,12 @@ test('esc behandelt null/undefined/numerische Werte', () => {
   assert.equal(esc(undefined), '');
   assert.equal(esc(42), '42');
   assert.equal(esc(0), '0');
+});
+
+test('updateChip nennt installierte und Registry-Version', () => {
+  assert.equal(updateChip('1.0.3', '1.0.4'), 'Update verfügbar: v1.0.3 → v1.0.4');
+  assert.equal(updateChip('1.0.4', '1.0.4'), '', 'gleiche Version = kein Update');
+  assert.equal(updateChip('1.0.5', '1.0.4'), '', 'installiert ist neuer');
 });
 
 test('cmpVersion vergleicht Ziffernteile numerisch', () => {
