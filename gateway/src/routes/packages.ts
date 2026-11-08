@@ -22,6 +22,7 @@ import {
   requiredParams,
   getSetting,
   getSettings,
+  stripSecretSettings,
   listActions,
   listFunctions,
   listMcpServers,
@@ -374,7 +375,9 @@ packagesRoutes.get('/admin/api/backup', requireAdminAuth, (req, res) => {
     formatVersion: 1,
     created: new Date().toISOString(),
     includeTokens,
-    settings: getSettings(),
+    // Header-/API-Keys in Settings folgen derselben Regel wie Server-Tokens:
+    // nur mit tokens=1 im Klartext, sonst als null.
+    settings: includeTokens ? getSettings() : stripSecretSettings(getSettings()),
     prompts: listPrompts(),
     servers: listMcpServers(false, true).map((s) => ({
       ...s,
@@ -410,9 +413,12 @@ packagesRoutes.post('/admin/api/backup/restore', requireAdminAuth, (req, res) =>
       db.prepare('DELETE FROM settings').run();
       // Export liefert ein Objekt {key: value}; aeltere/externe Sicherungen ggf. ein Array.
       const entries = Array.isArray(backup.settings)
-        ? (backup.settings as { key: string; value: string }[])
-        : Object.entries(backup.settings as Record<string, string>).map(([key, value]) => ({ key, value }));
+        ? (backup.settings as { key: string; value: string | null }[])
+        : Object.entries(backup.settings as Record<string, string | null>).map(([key, value]) => ({ key, value }));
       for (const s of entries) {
+        // tokens=0-Sicherungen enthalten Geheim-Settings als null: nicht als
+        // Literal "null" speichern, sondern auslassen.
+        if (s.value == null) continue;
         db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(s.key, String(s.value));
       }
     }

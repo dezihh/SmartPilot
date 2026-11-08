@@ -17,6 +17,9 @@ import {
   listPrompts,
   restoreDefaultSettings,
   setSetting,
+  maskSettings,
+  secretSettingFlags,
+  SECRET_SETTING_KEYS,
   updateAction,
   updateFunction,
 } from '../db.js';
@@ -24,6 +27,8 @@ import { SEED_SETTINGS } from '../db/schema.js';
 import { SEED_AGENT_SYSTEM, SEED_AGENT_INVENTORY } from '../db/seeds.js';
 import { normalizeActionInput, normalizeFunctionInput } from '../core/normalize.js';
 import { HTTP_BODY_CAP, HTTP_TIMEOUT_MS } from '../core/http.js';
+import { parseHttpHeaders, parsePrivateAllow } from '../core/httpHeaders.js';
+import { MASKED_SETTING } from '../db/settings.js';
 import { renderActionTemplate } from '../core/template.js';
 import { assistIndex, applyDraft, type IndexDraft } from '../core/indexAssistant.js';
 import { invalidateIndex } from '../core/entityIndex.js';
@@ -34,8 +39,10 @@ const INDEX_KEY_RE = /^[a-z0-9_-]{1,30}$/;
 const INDEX_KEY_ERROR = 'Ungültiger Key (a-z 0-9 _ -, max. 30)';
 
 adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (_req, res) => {
+  const rawSettings = getSettings();
   res.json({
-    settings: getSettings(),
+    settings: maskSettings(rawSettings),
+    settingSet: secretSettingFlags(rawSettings),
     // Effektive Defaults (aus .env bzw. Code) fuer die Web-UI-Platzhalter:
     // leeres Setting = dieser Wert gilt.
     settingDefaults: {
@@ -63,13 +70,33 @@ adminRoutes.put('/admin/api/settings', requireAdminAuth, (req, res) => {
     res.status(400).json({ error: 'settings-Objekt erforderlich' });
     return;
   }
-  for (const [key, value] of Object.entries(body.settings)) setSetting(key, String(value));
-  res.json({ settings: getSettings() });
+  try {
+    for (const [key, value] of Object.entries(body.settings)) {
+      // Geheim-Settings: leer bzw. maskiert = bestehenden Wert behalten.
+      if (SECRET_SETTING_KEYS.has(key)) {
+        if (value === '' || value === MASKED_SETTING) continue;
+        // {} ist die ausdrueckliche Loeschung, nicht "leer = behalten".
+        if (key === 'http_headers' && parseHttpHeaders(String(value)).size === 0) {
+          deleteSetting(key);
+          continue;
+        }
+      } else if (key === 'http_private_allow') {
+        parsePrivateAllow(String(value));
+      }
+      setSetting(key, String(value));
+    }
+  } catch (e) {
+    res.status(400).json({ error: errMsg(e) });
+    return;
+  }
+  const rawSettings = getSettings();
+  res.json({ settings: maskSettings(rawSettings), settingSet: secretSettingFlags(rawSettings) });
 });
 
 adminRoutes.post('/admin/api/settings/restore-defaults', requireAdminAuth, (_req, res) => {
   restoreDefaultSettings();
-  res.json({ settings: getSettings() });
+  const rawSettings = getSettings();
+  res.json({ settings: maskSettings(rawSettings), settingSet: secretSettingFlags(rawSettings) });
 });
 
 adminRoutes.get('/admin/api/actions', requireAdminAuth, (_req, res) => {

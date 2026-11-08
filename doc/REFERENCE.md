@@ -39,7 +39,7 @@ Argumentierte Funktionen sollten erforderliche Felder in `required` nennen.
 | `index.state(id, key?)` | Zustand als Text | nur Daten des Index |
 | `index.get(id, key?)` | Eintrag samt Zusatzdaten | nur Daten des Index |
 | `mcp.call(tool, args, opts?)` | MCP-Werkzeug aufrufen (optional mit Ersatz-Tool) | exakter Toolname und gültiges Schema |
-| `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen | 5 s, 100 KB Body-Limit |
+| `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen; Header aus `http_headers` | 5 s, 100 KB Body-Limit |
 | `shell(command)` | Befehl in Gateway-Laufzeit | 5 s, 4000 Zeichen |
 | `fn(name)` | Funktion einbetten | Tiefe 3, Zyklusschutz |
 | `args` | Funktionsargumente | Schema für Agentennutzung nötig |
@@ -51,6 +51,15 @@ in der Tool-Registry angebunden ist. Rezepte nutzen es für das Lesen
 konkreter Treffer-URLs und Feeds (`maxLength` begrenzt den Text). Der
 SSRF-Schutz des Gateways gilt für den `http()`-Baustein, nicht für dieses
 MCP-Werkzeug.
+
+Setzt das Setting `http_headers` (Admin-UI, JSON
+`{"host[:port]":{"Header":"Wert"}}`), sendet `http()` die Header nur an genau
+dieses Ziel; `host:port` gewinnt vor `host`. Sobald ein Header im Spiel ist,
+werden Redirects selbst verfolgt und pro Etappe neu geprüft — ein Header geht
+nie an ein fremdes Redirect-Ziel. Die Werte sind in Admin-Antworten maskiert
+und erscheinen nicht in Logs; `{}` löscht die Konfiguration. Dynamische URLs
+(aus `args`) bleiben auf öffentliche Ziele beschränkt; `http_private_allow`
+nennt exakte private Hosts als Ausnahme (z. B. `192.168.10.3:9000`).
 
 Identische vorbereitete Aufrufe werden dedupliziert. Dynamische
 Argumentobjekte von `mcp.call` kennen `args` und `now`, aber keine lokalen

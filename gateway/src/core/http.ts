@@ -1,8 +1,9 @@
 import { promises as dns } from 'node:dns';
 import { Agent } from 'undici';
-import { getSettingNum } from '../db.js';
+import { getSetting, getSettingNum } from '../db.js';
 import type { TraceEvent } from '../types.js';
 import { isPrivateHost } from './ssrf.js';
+import { headersForUrl, isAllowedPrivateTarget, parseHttpHeaders, parsePrivateAllow, type HeaderMap } from './httpHeaders.js';
 import { TEST_HOOKS_ENABLED } from './testEnv.js';
 
 // HTTP-Baustein: generischer GET-Fetch fuer beliebige REST-Endpunkte.
@@ -71,13 +72,32 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
   const bodyCap = getSettingNum('http_body_cap', HTTP_BODY_CAP);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // Header-Auth aus den Einstellungen. Fehlerhafte Konfiguration wird geloggt
+  // (ohne Werte) und fail-closed ignoriert: ohne Header kein Zugriff.
+  let headerMap: HeaderMap = new Map();
+  let privateAllow = new Set<string>();
+  try {
+    headerMap = parseHttpHeaders(getSetting('http_headers'));
+  } catch (e) {
+    trace.push({ ts: Date.now(), step: 'template.http.headers.invalid', detail: { error: String(e) } });
+  }
+  try {
+    privateAllow = parsePrivateAllow(getSetting('http_private_allow'));
+  } catch (e) {
+    trace.push({ ts: Date.now(), step: 'template.http.allow.invalid', detail: { error: String(e) } });
+  }
   try {
     let target = url;
+    // Bei gesetzten Headern (und bei dynamischen URLs) werden Redirects selbst
+    // verfolgt: nur so laesst sich pro Etappe neu entscheiden, ob ein Header
+    // mit Geheimnis an dieses Ziel darf.
+    const manual = dynamic || Object.keys(headersForUrl(new URL(url), headerMap)).length > 0;
     // Dynamische URLs: jede Redirect-Etappe erneut pruefen statt blindem follow,
     // sonst umgeht ein Redirect die Host-Pruefung.
     for (let hop = 0; hop <= 3; hop++) {
       const u = new URL(target);
-      if (dynamic && isPrivateHost(u.hostname)) {
+      const allowedPrivate = dynamic && isAllowedPrivateTarget(u, privateAllow);
+      if (dynamic && isPrivateHost(u.hostname) && !allowedPrivate) {
         trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
         return null;
       }
@@ -93,21 +113,23 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
           trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS nicht aufloesbar' } });
           return null;
         }
-        if (addrs.some((a) => isPrivateHost(a.address))) {
+        if (!allowedPrivate && addrs.some((a) => isPrivateHost(a.address))) {
           trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
           return null;
         }
         const pin = addrs[0];
         if (pin) dispatcher = pinDispatcherFactory(pin);
       }
+      const headers = headersForUrl(u, headerMap);
       const init: RequestInit = {
         signal: controller.signal,
-        redirect: dynamic ? 'manual' : 'follow',
+        redirect: manual ? 'manual' : 'follow',
+        ...(Object.keys(headers).length ? { headers } : {}),
       };
       if (dispatcher) (init as { dispatcher?: unknown }).dispatcher = dispatcher;
       try {
         const res = await fetch(target, init);
-        if (dynamic && res.status >= 300 && res.status < 400) {
+        if (manual && res.status >= 300 && res.status < 400) {
           const loc = res.headers.get('location');
           if (!loc) {
             trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, error: 'Redirect ohne Location' } });

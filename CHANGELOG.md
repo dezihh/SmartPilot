@@ -12,6 +12,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **`http()` mit Header-Auth pro Host:** Das Setting `http_headers`
+  (JSON `{"host[:port]":{"Header":"Wert"}}`) sendet Zugangsdaten nur an exakt
+  passende Ziele; bei gesetzten Headern prüft das Gateway Redirects pro Etappe
+  neu, damit kein Header an einen fremden Host geht. Die Werte sind in der
+  Admin-API maskiert, erscheinen nicht in Logs und werden im Backup nur mit
+  `tokens=1` exportiert. `http_private_allow` öffnet dynamische `http()`-URLs
+  gezielt für benannte private Hosts (z. B. Portainer im LAN).
+
 ### Geändert
 
 - **Gateway-Version 0.6.0, Sicherheitsfelder setzen sie voraus (F-003):**
