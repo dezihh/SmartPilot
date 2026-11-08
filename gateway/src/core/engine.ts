@@ -445,6 +445,62 @@ export function isChatSession(sessionId: string): boolean {
   return sessionIsChat(sessionId);
 }
 
+// Gemeinsame Nachbereitung aller Antwortpfade: SSML, Display und Session-
+// Fortsetzung. Der Bestaetigungspfad lief vorher an der session_followup-Logik
+// vorbei und verhielt sich damit anders als eine direkte Ausfuehrung (F-013).
+function finalizeResponse(query: VoiceQuery, response: AssistantResponse): AssistantResponse {
+  let out = withDisplay(withSsmlBreaks(response));
+  if (sessionIsChat(query.sessionId)) {
+    out = { ...out, followUp: true, followupPrompt: 'Was möchtest du noch wissen?' };
+  } else if (!out.followUp) {
+    const mode = getSetting('session_followup') ?? '0';
+    const wantLlm = mode === 'llm' || mode === 'beides';
+    const wantKw = mode === 'keyword' || mode === 'beides';
+    const kwList = (getSetting('session_keywords') ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const kwHit = wantKw && kwList.some((k) => query.text.toLowerCase().includes(k));
+    const llmHit = wantLlm && response.keepOpen === true;
+    if (kwHit || llmHit) {
+      out = { ...out, followUp: true, followupPrompt: 'Was kann ich noch für Sie tun?' };
+    }
+  }
+  return out;
+}
+
+// Einheitlicher Abschluss: Log schreiben und Ergebnis zurueckgeben. Die vier
+// fast identischen Bloecke im Bestaetigungspfad sind damit zusammengefuehrt
+// (F-011).
+function finishResult(
+  query: VoiceQuery,
+  trace: TraceEvent[],
+  start: number,
+  response: AssistantResponse,
+  meta: { route: string; actionId?: number; score?: number; usage?: boolean }
+): EngineResult {
+  const durationMs = Date.now() - start;
+  addLog({
+    sessionId: query.sessionId,
+    query: query.text,
+    route: meta.route,
+    actionId: meta.actionId,
+    score: meta.score,
+    response: response.speech,
+    durationMs,
+    trace,
+    ...(meta.usage ? sumUsageFromTrace(trace) : {}),
+  });
+  return {
+    response,
+    route: meta.route,
+    actionId: meta.actionId,
+    score: meta.score,
+    durationMs,
+    trace,
+  };
+}
+
 export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
   const start = Date.now();
   const trace: TraceEvent[] = [
@@ -465,17 +521,7 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
       trace.push({ ts: Date.now(), step: 'action.cancelled', detail: { actionId: pending.actionId } });
       const response: AssistantResponse = { speech: 'Okay, ich mache nichts.' };
       rememberTurn(query.sessionId, query.text, response.speech);
-      const durationMs = Date.now() - start;
-      addLog({
-        sessionId: query.sessionId,
-        query: query.text,
-        route: 'action',
-        actionId: pending.actionId,
-        response: response.speech,
-        durationMs,
-        trace,
-      });
-      return { response, route: 'action', actionId: pending.actionId, durationMs, trace };
+      return finishResult(query, trace, start, response, { route: 'action', actionId: pending.actionId });
     }
     if (CONFIRM_YES_RE.test(answer)) {
       const action = getAction(pending.actionId);
@@ -483,17 +529,7 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
         trace.push({ ts: Date.now(), step: 'action.confirm_missing', detail: { actionId: pending.actionId } });
         const response: AssistantResponse = { speech: 'Der Vorgang existiert nicht mehr.' };
         rememberTurn(query.sessionId, query.text, response.speech);
-        const durationMs = Date.now() - start;
-        addLog({
-          sessionId: query.sessionId,
-          query: query.text,
-          route: 'action',
-          actionId: pending.actionId,
-          response: response.speech,
-          durationMs,
-          trace,
-        });
-        return { response, route: 'action', actionId: pending.actionId, durationMs, trace };
+        return finishResult(query, trace, start, response, { route: 'action', actionId: pending.actionId });
       }
       trace.push({ ts: Date.now(), step: 'action.confirmed', detail: { action: action.name } });
       const helpAllow = isSeededHelp(action) ? agentFnAllowlist() : undefined;
@@ -506,38 +542,17 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
       try {
         let response = await executeAction(action, { ...query, text: pending.text }, mcp, trace, helpAllow, true);
         rememberTurn(query.sessionId, query.text, response.speech);
-        response = withSsmlBreaks(response);
-        response = withDisplay(response);
-        if (sessionIsChat(query.sessionId)) {
-          response = { ...response, followUp: true, followupPrompt: 'Was möchtest du noch wissen?' };
-        }
-        const durationMs = Date.now() - start;
-        addLog({
-          sessionId: query.sessionId,
-          query: query.text,
+        response = finalizeResponse(query, response);
+        return finishResult(query, trace, start, response, {
           route: 'action',
           actionId: action.id,
           score: 1,
-          response: response.speech,
-          durationMs,
-          trace,
-          ...sumUsageFromTrace(trace),
+          usage: true,
         });
-        return { response, route: 'action', actionId: action.id, score: 1, durationMs, trace };
       } catch (e) {
         trace.push({ ts: Date.now(), step: 'action.error', detail: String(e) });
         const response: AssistantResponse = { speech: FallbackError };
-        const durationMs = Date.now() - start;
-        addLog({
-          sessionId: query.sessionId,
-          query: query.text,
-          route: 'action',
-          actionId: action.id,
-          response: response.speech,
-          durationMs,
-          trace,
-        });
-        return { response, route: 'action', actionId: action.id, durationMs, trace };
+        return finishResult(query, trace, start, response, { route: 'action', actionId: action.id });
       }
     }
     trace.push({ ts: Date.now(), step: 'action.confirm_discarded', detail: { actionId: pending.actionId } });
@@ -608,44 +623,11 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
     }
   }
 
-  response = withSsmlBreaks(response);
-  response = withDisplay(response);
-
-  if (sessionIsChat(query.sessionId)) {
-    response = { ...response, followUp: true, followupPrompt: 'Was möchtest du noch wissen?' };
-  } else if (!response.followUp) {
-    const mode = getSetting('session_followup') ?? '0';
-    const wantLlm = mode === 'llm' || mode === 'beides';
-    const wantKw = mode === 'keyword' || mode === 'beides';
-    const kwList = (getSetting('session_keywords') ?? '')
-      .split(',')
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const kwHit = wantKw && kwList.some((k) => query.text.toLowerCase().includes(k));
-    const llmHit = wantLlm && response.keepOpen === true;
-    if (kwHit || llmHit) {
-      response = { ...response, followUp: true, followupPrompt: 'Was kann ich noch für Sie tun?' };
-    }
-  }
-
-  const durationMs = Date.now() - start;
-  addLog({
-    sessionId: query.sessionId,
-    query: query.text,
+  response = finalizeResponse(query, response);
+  return finishResult(query, trace, start, response, {
     route,
     actionId: match?.action.id,
     score: match?.score,
-    response: response.speech,
-    durationMs,
-    trace,
-    ...sumUsageFromTrace(trace),
+    usage: true,
   });
-  return {
-    response,
-    route,
-    actionId: match?.action.id,
-    score: match?.score,
-    durationMs,
-    trace,
-  };
 }
