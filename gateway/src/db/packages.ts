@@ -145,6 +145,27 @@ export function conflictItems(packageId: string): string[] {
   return conflicts;
 }
 
+// Lokale Zeilen mit demselben Namen, die NICHT von diesem Paket stammen
+// (Issue #25): Ein Install wuerde sie sonst ohne Rueckfrage ueberschreiben.
+// Getrennt von conflictItems, weil dort nur paket-eigene Zeilen geprueft werden.
+export function localCollisions(m: PackageManifest): string[] {
+  const owned = new Set(listPackageItems(m.id).map((i) => `${i.kind}:${i.name}`));
+  const out: string[] = [];
+  const check = (kind: 'server' | 'function' | 'action', name: string, current: unknown): void => {
+    const key = `${kind}:${name}`;
+    if (!owned.has(key) && current != null) out.push(key);
+  };
+  for (const s of m.servers ?? []) check('server', s.name, serverRowContent(s.name));
+  for (const f of m.functions ?? []) check('function', f.name, functionRowContent(f.name));
+  for (const a of m.actions ?? []) check('action', a.name, actionRowContent(a.name));
+  for (const ix of m.indexes ?? []) {
+    const settingKey = ix.key ? `entity_index_${ix.key}` : 'entity_index';
+    const key = `index:${settingKey}`;
+    if (!owned.has(key) && getSetting(settingKey) !== undefined) out.push(key);
+  }
+  return out;
+}
+
 const MASKED_DIFF_FIELDS = new Set(['auth_token', 'env']);
 // Header-Werte sind potenziell geheim: im Diff nur die Namen zeigen.
 function headerNames(v: unknown): string | null {
@@ -319,8 +340,12 @@ export function installPackage(
   // Zeilen werden weiterhin auf die Paket-Version aktualisiert.
   const conflicts = conflictItems(m.id);
   const conflictSet = new Set(conflicts);
+  // Issue #25: lokale Zeilen ohne Paket-Herkunft bleiben ohne Entscheidung
+  // erhalten, statt still ueberschrieben zu werden.
+  const collisionSet = new Set(localCollisions(applied));
   const keep = (key: string): boolean =>
-    decisions[key] === 'keep' || (decisions[key] !== 'take' && conflictSet.has(key));
+    decisions[key] === 'keep' ||
+    (decisions[key] !== 'take' && (conflictSet.has(key) || collisionSet.has(key)));
   const npmServers = (applied.servers ?? [])
     .filter((s) => s.transport === 'stdio' && s.npmSpec)
     .map((s) => s.name);

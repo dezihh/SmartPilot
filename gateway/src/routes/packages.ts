@@ -8,6 +8,7 @@ import {
   listAllPackageItems,
   uninstallPackage,
   conflictItems,
+  localCollisions,
   packageDiff,
   existingParams,
   getInstalledPackage,
@@ -148,6 +149,7 @@ packagesRoutes.get('/admin/api/packages/manifest/:id', requireAdminAuth, async (
       dangerous: danger.dangerous,
       dangerousItems: danger.items,
       infoItems: danger.info,
+      collisions: localCollisions(m),
     });
   } catch (e) {
     res.status(502).json({ error: `Manifest nicht ladbar (${errMsg(e)})` });
@@ -169,6 +171,7 @@ packagesRoutes.post('/admin/api/packages/preview', requireAdminAuth, (req, res) 
       dangerousItems: danger.items,
       infoItems: danger.info,
       requiredParams: requiredParams(m),
+      collisions: localCollisions(m),
     });
   } catch (e) {
     res.status(400).json({ error: errMsg(e) });

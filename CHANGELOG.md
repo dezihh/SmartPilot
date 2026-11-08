@@ -43,6 +43,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Install überschreibt keine gleichnamigen lokalen Artefakte mehr (#25):**
+  Existiert bereits eine Funktion, ein Vorgang, ein Server oder Index mit dem
+  Namen aus dem Manifest, ohne dass das Paket ihn angelegt hat, bleibt die
+  lokale Fassung ohne Entscheidung erhalten. Die Installationsvorschau zeigt
+  „Lokal bereits vorhanden“ mit der Wahl „Lokale Version behalten“ (Default)
+  oder „Paket-Version übernehmen“.
 - **Update-Hinweis nennt installierte und Registry-Version:** Die Paketliste
   zeigt jetzt am Namen den lokalen Stand (installiert) und im Chip
   „Update verfügbar: v1.0.3 → v1.0.4“; vorher stand dort zweimal die

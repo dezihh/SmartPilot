@@ -130,6 +130,8 @@ test('Preview: gueltiges Manifest wird geliefert', async () => {
   const res = await call('POST', '/admin/api/packages/preview', { manifest: MIN_MANIFEST });
   assert.equal(res.status, 200);
   assert.equal((res.json as { manifest: { id: string } }).manifest.id, 'tmp-pkg');
+  // Issue #25: die Vorschau meldet lokale Namenskollisionen (hier keine).
+  assert.deepEqual((res.json as { collisions?: string[] }).collisions, []);
 });
 
 test('Install: ungueltiges Offline-Manifest wird als 400 gemeldet', async () => {
