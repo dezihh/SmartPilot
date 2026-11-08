@@ -44,9 +44,9 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 ### Behoben
 
 - **Update-Hinweis nennt installierte und Registry-Version:** Die Paketliste
-  zeigt jetzt „Update verfügbar: v1.0.3 → v1.0.4“ statt zweimal die
-  Registry-Version; vorher wirkte die Verfügbarkeitskarte, als sei die
-  Registry-Version bereits installiert.
+  zeigt jetzt am Namen den lokalen Stand (installiert) und im Chip
+  „Update verfügbar: v1.0.3 → v1.0.4“; vorher stand dort zweimal die
+  Registry-Version, was wie der installierte Stand aussah.
 - **Bestätigung nur für den Vorgang (F-004):** Paket-README, `doc/CONFIGURATION.md`
   und `doc/REFERENCE.md` sagen jetzt ausdrücklich, dass die Rückfrage nicht für
   die freie Agent-Route gilt; dort ruft das Modell schreibende MCP-Werkzeuge

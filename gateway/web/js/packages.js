@@ -56,6 +56,12 @@ export function cmpVersion(a, b) {
   return 0;
 }
 
+// Versionslabel der Verfuegbarkeitskarte: Ist das Paket installiert, zeigt die
+// Karte den lokalen Stand; die Registry-Version erscheint nur im Update-Chip.
+export function packageVersionLabel(registryVersion, installedVersion) {
+  return installedVersion ?? registryVersion;
+}
+
 // Update-Hinweis nennt immer beide Versionen: In der Verfuegbarkeitsliste steht
 // die Registry-Version, sonst liest man sie als installierten Stand (F-018).
 export function updateChip(installedVersion, registryVersion) {
@@ -90,12 +96,13 @@ function renderPackages() {
   const avail = visible.map((p) => {
     const inst = installedById.get(p.id);
     const update = inst && cmpVersion(inst.version, p.version) < 0;
+    const shownVersion = packageVersionLabel(p.version, inst?.version);
     const chip = !inst
       ? ''
       : update
         ? `<span class="chip update">${esc(updateChip(inst.version, p.version))}</span>`
         : '<span class="chip ok">installiert</span>';
-    return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(p.version)}</span> ${categoryChip(p.category)} <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
+    return `<div class="pkg-item"><div><strong>${esc(p.name)}</strong> <span class="pkg-version">v${esc(shownVersion)}</span> ${categoryChip(p.category)} <span class="pkg-id">${esc(p.id)}</span> ${chip}<div class="field-help">${esc(p.summary)} <a href="https://github.com/dezihh/SmartPilot/blob/main/packages/${esc(pkgState.language ?? 'de')}/${esc(p.id)}/README.md" target="_blank" rel="noopener">Installations-Doku</a></div></div><button class="btn" data-install="${esc(p.id)}">${inst ? 'Neu installieren' : 'Installieren'}</button></div>`;
   });
   $('pkg-available').innerHTML = avail.length ? avail.join('') : `<div class="field-help">${pkgState.registry.length ? 'Keine Pakete in dieser Kategorie.' : 'Registry leer oder nicht erreichbar — „Aktualisieren“ versucht es erneut.'}</div>`;
   const instList = pkgState.installed.map((p) => {
