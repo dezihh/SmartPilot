@@ -1,5 +1,10 @@
 import { getDb, SEED_SETTINGS } from './schema.js';
 
+// Settings, die ein Geheimnis tragen. Sie werden in Admin-Antworten maskiert
+// und im Backup nur mit tokens=1 exportiert.
+export const SECRET_SETTING_KEYS = new Set(['http_headers']);
+export const MASKED_SETTING = '(gesetzt)';
+
 export function getSettings(): Record<string, string> {
   const rows = getDb().prepare('SELECT key, value FROM settings').all() as { key: string; value: string }[];
   return Object.fromEntries(rows.map((r) => [r.key, r.value]));
@@ -7,6 +12,27 @@ export function getSettings(): Record<string, string> {
 
 export function deleteSetting(key: string): void {
   getDb().prepare('DELETE FROM settings WHERE key = ?').run(key);
+}
+
+/** Admin-Ansicht: Geheim-Settings nur als gesetzt/nicht gesetzt. */
+export function maskSettings(settings: Record<string, string>): Record<string, string> {
+  const out = { ...settings };
+  for (const key of SECRET_SETTING_KEYS) if (out[key]) out[key] = MASKED_SETTING;
+  return out;
+}
+
+/** Zusatzinfo fuer die UI: gesetzt, auch wenn der Wert maskiert ist. */
+export function secretSettingFlags(settings: Record<string, string>): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const key of SECRET_SETTING_KEYS) out[key] = !!settings[key];
+  return out;
+}
+
+/** Backup ohne tokens=1: Geheim-Settings weglassen statt maskiert speichern. */
+export function stripSecretSettings(settings: Record<string, string>): Record<string, string | null> {
+  const out: Record<string, string | null> = { ...settings };
+  for (const key of SECRET_SETTING_KEYS) if (key in out) out[key] = null;
+  return out;
 }
 
 export function getSetting(key: string): string | undefined {

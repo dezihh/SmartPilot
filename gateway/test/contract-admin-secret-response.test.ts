@@ -115,3 +115,51 @@ test(
   const { server } = res.json as ServerPayload;
   assert.equal(server.auth_token, null, 'auth_token im Klartext in der PUT-Antwort');
 });
+
+interface SettingsPayload {
+  settings: Record<string, string | null>;
+  settingSet: Record<string, boolean>;
+}
+
+const HTTP_HEADERS_SECRET = '{"example.org":{"X-Api-Key":"streng-geheim"}}';
+
+test('PUT /admin/api/settings maskiert http_headers in Antwort und Bootstrap', async () => {
+  const put = await call('PUT', '/admin/api/settings', { settings: { http_headers: HTTP_HEADERS_SECRET } });
+  assert.equal(put.status, 200);
+  const putBody = put.json as SettingsPayload;
+  assert.equal(putBody.settings.http_headers, '(gesetzt)');
+  assert.equal(putBody.settingSet.http_headers, true);
+
+  const bootstrap = await call('GET', '/admin/api/bootstrap', {});
+  const bootBody = bootstrap.json as SettingsPayload;
+  assert.equal(bootBody.settings.http_headers, '(gesetzt)');
+  assert.equal(bootBody.settingSet.http_headers, true);
+});
+
+test('PUT /admin/api/settings: leeres Geheimfeld behaelt den Wert, ungueltiges JSON wird abgelehnt', async () => {
+  const empty = await call('PUT', '/admin/api/settings', { settings: { http_headers: '' } });
+  assert.equal(empty.status, 200);
+  assert.equal((empty.json as SettingsPayload).settingSet.http_headers, true);
+
+  const invalid = await call('PUT', '/admin/api/settings', { settings: { http_headers: '{' } });
+  assert.equal(invalid.status, 400);
+  const bootstrap = await call('GET', '/admin/api/bootstrap', {});
+  assert.equal((bootstrap.json as SettingsPayload).settingSet.http_headers, true);
+});
+
+test('Backup exportiert http_headers nur mit tokens=1', async () => {
+  const without = await call('GET', '/admin/api/backup', {});
+  assert.equal(without.status, 200);
+  assert.equal((without.json as SettingsPayload).settings.http_headers, null);
+
+  const withTokens = await call('GET', '/admin/api/backup?tokens=1', {});
+  assert.equal(withTokens.status, 200);
+  assert.equal((withTokens.json as SettingsPayload).settings.http_headers, HTTP_HEADERS_SECRET);
+});
+
+test('PUT /admin/api/settings: {} entfernt die Header-Konfiguration', async () => {
+  const cleared = await call('PUT', '/admin/api/settings', { settings: { http_headers: '{}' } });
+  assert.equal(cleared.status, 200);
+  assert.equal((cleared.json as SettingsPayload).settingSet.http_headers, false);
+  assert.equal((cleared.json as SettingsPayload).settings.http_headers, undefined);
+});

@@ -136,6 +136,20 @@ const SETTINGS_FIELDS = [
     help: 'Wie weit beim Wiedereinstieg (neue Session, z. B. nach Pause oder Gateway-Neustart) aus dem Log zurückgelesen wird. Innerhalb der Zeit gilt die Frage-Antwort-Historie als „frühere Unterhaltung", danach nicht mehr. Leer = Default 30.',
   },
   {
+    key: 'http_headers',
+    label: 'http()-Header pro Host',
+    type: 'secret',
+    span: true,
+    rows: 3,
+    help: 'JSON-Objekt: Ziel (host oder host:port) → Header. Beispiel: {"192.168.10.3:9000":{"X-API-Key":"ptr_…"}}. Der Header wird nur an exakt passende Ziele gesendet, nie an ein Redirect-Ziel. Leer lassen = bestehenden Wert behalten; {} = alle Einträge entfernen.',
+  },
+  {
+    key: 'http_private_allow',
+    label: 'http()-LAN-Allowlist',
+    type: 'text',
+    help: 'Komma-getrennte exakte Hosts, die dynamische http()-URLs (z. B. mit Container-ID) ins private Netz lassen dürfen. Literale URLs ins LAN sind ohnehin erlaubt. Leer = keine Ausnahme.',
+  },
+  {
     key: 'http_timeout_ms',
     label: 'http()-Timeout (ms)',
     type: 'number',
@@ -312,6 +326,14 @@ function buildSettingField(field) {
       if (value === current) opt.selected = true;
       control.append(opt);
     }
+  } else if (field.type === 'secret') {
+    control = document.createElement('textarea');
+    control.rows = field.rows ?? 3;
+    // Der Wert kommt maskiert aus der API und wird nie ins Formular geschrieben.
+    control.value = '';
+    control.placeholder = state.bootstrap.settingSet?.[field.key]
+      ? '(gesetzt — leer lassen = unverändert; {} = entfernen)'
+      : '(JSON, z. B. {"host:port":{"Header":"Wert"}})';
   } else if (field.type === 'textarea') {
     control = document.createElement('textarea');
     control.rows = field.rows ?? 8;
@@ -639,6 +661,8 @@ function init() {
         settings[f.key] = picked.length ? picked.join(', ') : 'keine';
         continue;
       }
+      // Geheim-Feld leer = bestehenden Wert behalten (nie versehentlich löschen).
+      if (f.type === 'secret' && String(ctrl.value).trim() === '') continue;
       settings[f.key] = ctrl.value;
     }
     $('settings-form').querySelectorAll('input[data-key], select[data-key]').forEach((i) => {
@@ -658,6 +682,7 @@ function init() {
     if (!confirm('Alle Grundeinstellungen auf die Defaults der Installation zuruecksetzen? (Index-Konfiguration bleibt unangetastet)')) return;
     const res = await api('/settings/restore-defaults', { method: 'POST' });
     state.bootstrap.settings = res.settings;
+    state.bootstrap.settingSet = res.settingSet;
     renderSettings();
     alert('Grundeinstellungen auf Defaults zurueckgesetzt.');
   };

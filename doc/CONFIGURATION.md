@@ -210,13 +210,21 @@ im jeweiligen Editor (MCP-Server, Funktion, Index) angepasst.
 | Ebene | Inhalt | Beispiele |
 |---|---|---|
 | `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `TRUST_PROXY` |
-| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `agent_tool_limit`, `http_timeout_ms`, `http_body_cap` |
+| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `agent_tool_limit`, `http_timeout_ms`, `http_body_cap`, `http_headers`, `http_private_allow` |
 | Paket-Parameter | Werte eines installierten Pakets | `host`, `token`, `port` (aus `manifest.params`) |
 | DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
 
 Ein Setting mit leerem Wert fällt auf den `.env`- bzw. Code-Default zurück.
 `TRUST_PROXY` gehört hinter einen Reverse-Proxy gesetzt (Hops, z. B. `1`),
 sonst sieht das Gateway nur die Proxy-IP.
+
+`http_headers` trägt Zugangsdaten für `http()`-Ziele (JSON
+`{"host[:port]":{"Header":"Wert"}}`). In der Admin-API ist der Wert maskiert;
+ein leeres Feld lässt ihn unverändert, `{}` entfernt alle Einträge. Die
+Header gehen nur an exakt passende Ziele, auch nach Redirects.
+`http_private_allow` ist die ausdrückliche Ausnahme für dynamische
+`http()`-URLs ins private Netz (kommagetrennte exakte Hosts, z. B.
+`192.168.10.3:9000`).
 
 ## Abnahme
 
