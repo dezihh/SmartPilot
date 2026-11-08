@@ -419,6 +419,15 @@ export function installPackage(
     }
     for (const c of applied.httpConnections ?? []) {
       const content = httpConnectionContent(c);
+      // Nach der Parameter-Substitution fail-closed pruefen: die Manifest-
+      // Validierung sieht nur Platzhalter, nicht die echte Ziel-URL.
+      const target = new URL(String(content.base_url));
+      if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+        throw new Error(`httpConnection "${c.name}": baseUrl muss http(s) sein`);
+      }
+      if (isPrivateHost(target.hostname) && !content.allow_private) {
+        throw new Error(`httpConnection "${c.name}": privates Ziel braucht allowPrivate`);
+      }
       const key = `httpConnection:${c.name}`;
       const existing = db.prepare('SELECT id FROM http_connections WHERE name = ?').get(c.name) as { id: number } | undefined;
       if (existing && keep(key)) {

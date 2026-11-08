@@ -275,7 +275,7 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
       for (const c of m.httpConnections) {
         if (!c?.name || !/^[a-z0-9_]{2,40}$/.test(c.name)) errors.push(`httpConnection-Name ungueltig: ${c?.name ?? '(leer)'}`);
         if (!c || typeof c.baseUrl !== 'string') errors.push(`httpConnection "${c?.name}": baseUrl fehlt`);
-        else {
+        else if (!c.baseUrl.includes('${')) {
           try {
             const u = new URL(c.baseUrl);
             if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error();
