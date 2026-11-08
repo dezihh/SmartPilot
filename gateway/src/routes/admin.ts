@@ -14,6 +14,7 @@ import {
   listFunctions,
   createFunction,
   listMcpServers,
+  listHttpConnections,
   listPrompts,
   restoreDefaultSettings,
   setSetting,
@@ -58,6 +59,7 @@ adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (_req, res) => {
     actions: listActions(false),
     functions: listFunctions(false),
     servers: listMcpServers(false),
+    httpConnections: listHttpConnections(false),
     prompts: listPrompts(),
     // Referenz-Texte der frischen Installation (fuer 'Original' im Prompt-Editor).
     seedPrompts: { agent_system: SEED_AGENT_SYSTEM, agent_inventory: SEED_AGENT_INVENTORY },
