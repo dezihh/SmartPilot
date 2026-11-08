@@ -1,5 +1,11 @@
 import { getDb } from './schema.js';
-import type { PackageManifest, PackageServer, PackageFunction, PackageAction } from '../core/packages.js';
+import type {
+  PackageManifest,
+  PackageServer,
+  PackageFunction,
+  PackageAction,
+  PackageHttpConnection,
+} from '../core/packages.js';
 import { substituteManifest, manifestDangerous, manifestHash, validateManifest, dangerSignature } from '../core/packages.js';
 import { getSetting, setSetting } from './settings.js';
 import { hashContent, actionContentNew, serverContentNew, normalizeHeaders, type ActionHashRow, type ServerHashRow } from './itemHash.js';
@@ -90,6 +96,34 @@ function actionContent(a: PackageAction): Record<string, unknown> {
   };
 }
 
+function httpConnectionContent(c: PackageHttpConnection): Record<string, unknown> {
+  return {
+    name: c.name,
+    base_url: c.baseUrl,
+    headers: c.headers && Object.keys(c.headers).length ? normalizeHeaders(c.headers) : null,
+    allow_private: c.allowPrivate ? 1 : 0,
+    timeout_ms: c.timeoutMs ?? null,
+    description: c.description ?? null,
+    enabled: c.enabled === false ? 0 : 1,
+  };
+}
+
+function httpConnectionRowContent(name: string): Record<string, unknown> | null {
+  const row = getDb().prepare('SELECT * FROM http_connections WHERE name = ?').get(name) as
+    | Record<string, unknown>
+    | undefined;
+  if (!row) return null;
+  return {
+    name: row.name,
+    base_url: row.base_url,
+    headers: row.headers,
+    allow_private: row.allow_private,
+    timeout_ms: row.timeout_ms,
+    description: row.description,
+    enabled: row.enabled,
+  };
+}
+
 export interface PackageReport {
   created: string[];
   updated: string[];
@@ -133,6 +167,7 @@ export function conflictItems(packageId: string): string[] {
     if (item.kind === 'server') content = serverRowContent(item.name);
     else if (item.kind === 'function') content = functionRowContent(item.name);
     else if (item.kind === 'action') content = actionRowContent(item.name);
+    else if (item.kind === 'httpConnection') content = httpConnectionRowContent(item.name);
     else if (item.kind === 'index') {
       const raw = getSetting(item.name);
       if (raw !== undefined) {
@@ -151,11 +186,12 @@ export function conflictItems(packageId: string): string[] {
 export function localCollisions(m: PackageManifest): string[] {
   const owned = new Set(listPackageItems(m.id).map((i) => `${i.kind}:${i.name}`));
   const out: string[] = [];
-  const check = (kind: 'server' | 'function' | 'action', name: string, current: unknown): void => {
+  const check = (kind: 'server' | 'function' | 'action' | 'httpConnection', name: string, current: unknown): void => {
     const key = `${kind}:${name}`;
     if (!owned.has(key) && current != null) out.push(key);
   };
   for (const s of m.servers ?? []) check('server', s.name, serverRowContent(s.name));
+  for (const c of m.httpConnections ?? []) check('httpConnection', c.name, httpConnectionRowContent(c.name));
   for (const f of m.functions ?? []) check('function', f.name, functionRowContent(f.name));
   for (const a of m.actions ?? []) check('action', a.name, actionRowContent(a.name));
   for (const ix of m.indexes ?? []) {
@@ -205,7 +241,7 @@ function diffFields(target: Record<string, unknown>, current: Record<string, unk
 export function packageDiff(m: PackageManifest): DiffItem[] {
   const conflicts = new Set(conflictItems(m.id));
   const out: DiffItem[] = [];
-  const add = (kind: 'server' | 'function' | 'action', name: string, target: Record<string, unknown>, current: Record<string, unknown> | null): void => {
+  const add = (kind: 'server' | 'function' | 'action' | 'httpConnection', name: string, target: Record<string, unknown>, current: Record<string, unknown> | null): void => {
     const key = `${kind}:${name}`;
     if (current == null) {
       out.push({ key, kind, name, status: 'new', fields: diffFields(target, {}) });
@@ -216,6 +252,7 @@ export function packageDiff(m: PackageManifest): DiffItem[] {
     out.push({ key, kind, name, status, fields });
   };
   for (const s of m.servers ?? []) add('server', s.name, serverContent(s), serverRowContent(s.name));
+  for (const c of m.httpConnections ?? []) add('httpConnection', c.name, httpConnectionContent(c), httpConnectionRowContent(c.name));
   for (const f of m.functions ?? []) add('function', f.name, functionContent(f), functionRowContent(f.name));
   for (const a of m.actions ?? []) add('action', a.name, actionContent(a), actionRowContent(a.name));
   for (const ix of m.indexes ?? []) {
@@ -379,6 +416,29 @@ export function installPackage(
       }
       const row = db.prepare('SELECT id FROM mcp_servers WHERE name = ?').get(s.name) as { id: number } | undefined;
       recordItem(m.id, 'server', s.name, row?.id ?? null, hashContent('server', s.name, content));
+    }
+    for (const c of applied.httpConnections ?? []) {
+      const content = httpConnectionContent(c);
+      const key = `httpConnection:${c.name}`;
+      const existing = db.prepare('SELECT id FROM http_connections WHERE name = ?').get(c.name) as { id: number } | undefined;
+      if (existing && keep(key)) {
+        report.kept.push(key);
+      } else if (existing) {
+        db.prepare(
+          `UPDATE http_connections SET name = @name, base_url = @base_url, headers = @headers,
+           allow_private = @allow_private, timeout_ms = @timeout_ms, description = @description, enabled = @enabled
+           WHERE id = @id`
+        ).run({ ...content, id: existing.id });
+        report.updated.push(key);
+      } else {
+        db.prepare(
+          `INSERT INTO http_connections (name, base_url, headers, allow_private, timeout_ms, description, enabled)
+           VALUES (@name, @base_url, @headers, @allow_private, @timeout_ms, @description, @enabled)`
+        ).run(content);
+        report.created.push(key);
+      }
+      const row = db.prepare('SELECT id FROM http_connections WHERE name = ?').get(c.name) as { id: number } | undefined;
+      recordItem(m.id, 'httpConnection', c.name, row?.id ?? null, hashContent('httpConnection', c.name, content));
     }
     for (const f of applied.functions ?? []) {
       const content = functionContent(f);
@@ -567,8 +627,15 @@ export function uninstallPackage(id: string): UninstallReport {
         }
         continue;
       }
-      const kind = item.kind as 'server' | 'function' | 'action';
-      const content = kind === 'server' ? serverRowContent(item.name) : kind === 'function' ? functionRowContent(item.name) : actionRowContent(item.name);
+      const kind = item.kind as 'server' | 'function' | 'action' | 'httpConnection';
+      const content =
+        kind === 'server'
+          ? serverRowContent(item.name)
+          : kind === 'function'
+            ? functionRowContent(item.name)
+            : kind === 'httpConnection'
+              ? httpConnectionRowContent(item.name)
+              : actionRowContent(item.name);
       if (content == null) {
         report.removed.push(`${item.kind}:${item.name}`);
         continue;
@@ -576,6 +643,7 @@ export function uninstallPackage(id: string): UninstallReport {
       if (hashContent(item.kind, item.name, content) === item.content_hash) {
         if (kind === 'server') db.prepare('DELETE FROM mcp_servers WHERE name = ?').run(item.name);
         else if (kind === 'function') db.prepare('DELETE FROM tpl_functions WHERE name = ?').run(item.name);
+        else if (kind === 'httpConnection') db.prepare('DELETE FROM http_connections WHERE name = ?').run(item.name);
         else db.prepare('DELETE FROM actions WHERE name = ?').run(item.name);
         report.removed.push(`${item.kind}:${item.name}`);
       } else {
