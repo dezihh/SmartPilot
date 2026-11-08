@@ -10,6 +10,7 @@ import {
   listPackageItems,
   listAllPackageItems,
   conflictItems,
+  localCollisions,
   packageDiff,
   existingParams,
 } from '../src/db/packages.js';
@@ -773,4 +774,39 @@ test('conflictItems: lokal geaenderte Funktion wird als Konflikt gemeldet', () =
   getDb().prepare("UPDATE tpl_functions SET template = 'b' WHERE name = 'conf_fn'").run();
   getDb().prepare("UPDATE settings SET value = ? WHERE key = 'entity_index_conf'").run(JSON.stringify({ tool: 'y', args: {} }));
   assert.deepEqual(conflictItems('audit4-conflict-pkg').sort(), ['function:conf_fn', 'index:entity_index_conf']);
+});
+
+test('Issue #25: lokale Namenskollision bleibt ohne Entscheidung erhalten', () => {
+  const db = getDb();
+  db.prepare("DELETE FROM packages WHERE id = 'collision-pack'").run();
+  db.prepare("DELETE FROM package_items WHERE package_id = 'collision-pack'").run();
+  db.prepare("DELETE FROM tpl_functions WHERE name = 'strompreis'").run();
+  db.prepare("INSERT INTO tpl_functions (name, template) VALUES ('strompreis', 'LOKAL')").run();
+  const m = {
+    id: 'collision-pack',
+    version: '1.0.0',
+    name: 'Kollision',
+    summary: 'S',
+    description: 'D',
+    functions: [{ name: 'strompreis', template: 'PAKET' }],
+  };
+  // Vorschau meldet die lokale Kollision, nicht als Paket-Konflikt.
+  assert.deepEqual(localCollisions(m as never), ['function:strompreis']);
+  assert.deepEqual(conflictItems('collision-pack'), []);
+  // Ohne Entscheidung bleibt die lokale Zeile stehen.
+  const r1 = installPackage(m as never, { source: 'import' });
+  assert.deepEqual(r1.kept, ['function:strompreis']);
+  assert.equal(
+    (db.prepare("SELECT template FROM tpl_functions WHERE name = 'strompreis'").get() as { template: string }).template,
+    'LOKAL',
+  );
+  // Ausdrueckliche Entscheidung "take" ueberschreibt.
+  const r2 = installPackage(m as never, { source: 'import', decisions: { 'function:strompreis': 'take' } });
+  assert.deepEqual(r2.updated, ['function:strompreis']);
+  assert.equal(
+    (db.prepare("SELECT template FROM tpl_functions WHERE name = 'strompreis'").get() as { template: string }).template,
+    'PAKET',
+  );
+  uninstallPackage('collision-pack');
+  db.prepare("DELETE FROM tpl_functions WHERE name = 'strompreis'").run();
 });

@@ -210,6 +210,21 @@ async function showInstallForm(id, manifestFromImport) {
             <option value="take">Paket-Version übernehmen</option>
           </select></li>`).join('')}</ul>
       </div>` : '';
+    // Issue #25: lokale Zeilen mit gleichem Namen, die nicht vom Paket stammen.
+    const collisions = (preview.collisions ?? []).map((k) => {
+      const [kind, ...rest] = String(k).split(':');
+      return { key: String(k), kind, name: rest.join(':') };
+    });
+    const collisionsHtml = collisions.length ? `
+      <div class="diff-block pkg-conflicts">
+        <h4>Lokal bereits vorhanden <span class="chip update">${collisions.length}</span></h4>
+        <p class="field-help">Diese Namen existieren schon lokal und gehören nicht zu diesem Paket. Standard: die lokale Version behalten; „Paket-Version übernehmen“ überschreibt sie.</p>
+        <ul class="diff-list">${collisions.map((d) => `<li class="diff-item"><div class="diff-item-head"><span class="kind">${esc(KIND_LABELS[d.kind] ?? d.kind)}</span> <strong>${esc(d.name)}</strong></div>
+          <select data-decision="${esc(d.key)}">
+            <option value="keep">Lokale Version behalten</option>
+            <option value="take">Paket-Version übernehmen</option>
+          </select></li>`).join('')}</ul>
+      </div>` : '';
     const formEl = $('pkg-install-form');
     formEl.classList.remove('hidden');
     formEl.innerHTML = `
@@ -220,6 +235,7 @@ async function showInstallForm(id, manifestFromImport) {
       ${m.requires ? `<p class="field-help"><strong>Benötigt:</strong> ${esc(m.requires)}</p>` : ''}
       ${danger}${info}
       ${conflictsHtml}
+      ${collisionsHtml}
       ${restartHtml}${diffHtml}
       <div class="pkg-items"><strong>Enthält:</strong><ul>${items}</ul></div>
       ${preview.setupDocs ? `<details><summary>Einrichtung Gegenseite</summary><pre class="pkg-docs">${esc(preview.setupDocs)}</pre></details>` : ''}

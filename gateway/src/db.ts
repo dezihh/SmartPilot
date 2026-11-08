@@ -43,6 +43,7 @@ export {
   installPackage,
   uninstallPackage,
   conflictItems,
+  localCollisions,
   packageDiff,
   existingParams,
   parseStoredManifest,
