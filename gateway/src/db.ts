@@ -32,7 +32,6 @@ export {
   updateHttpConnection,
   deleteHttpConnection,
   maskHttpConnectionSecrets,
-  type HttpConnectionInput,
 } from './db/httpConnections.js';
 export {
   getSettings,
