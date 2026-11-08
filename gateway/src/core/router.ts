@@ -60,13 +60,10 @@ function hasNegation(query: string): boolean {
   return NEGATIONS.some((n) => padded.includes(` ${n} `));
 }
 
-// Grobe Seiteneffekt-Heuristik (der Router ist rein/DB-frei): Vorlagen mit
-// mcp.call()/shell(), Funktionen (Default side_effect 'write') und LLM-/Hybrid-
-// Actions mit Tools koennen den Zustand veraendern.
+// Wirkung kommt aus der deklarierten Spalte (Issue #4): eine Wahrheitsquelle
+// statt Ableitung aus Template/Tools (F-014).
 function actionHasSideEffect(action: ParsedAction): boolean {
-  if (/\bmcp\.call\s*\(|\bshell\s*\(/.test(action.template ?? '')) return true;
-  if (action.function_ref) return true;
-  return action.mode !== 'deterministic' && action.toolList.length > 0;
+  return action.side_effect !== 'read';
 }
 
 export function routeAction(
