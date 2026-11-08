@@ -27,7 +27,7 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `http.request(name, path, opts)` unterstützen GET/POST/PUT/PATCH/DELETE mit
   JSON-Body. Der Host ist fixiert, Redirects werden pro Etappe geprüft, Secrets
   bleiben maskiert. Pakete bringen Verbindungen über `httpConnections` mit; die
-  bestehende `http_headers`-Auth bleibt unverändert. Gateway-Version 0.7.0.
+  bestehende `http_headers`-Auth bleibt unverändert. Gateway-Version 0.6.0.
 
 ### Geändert
 

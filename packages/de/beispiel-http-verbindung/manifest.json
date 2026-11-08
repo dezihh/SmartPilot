@@ -9,7 +9,7 @@
   "language": "de",
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Internetzugang des Gateway-Containers zu jsonplaceholder.typicode.com (oeffentliche Demo-API, ohne Key).",
-  "minGatewayVersion": "0.7.0",
+  "minGatewayVersion": "0.6.0",
   "changelog": "1.0.0 — Erstveroeffentlichung: Beispiel fuer GET und POST ueber eine vom Paket mitgebrachte HTTP-Verbindung.",
   "category": "function",
   "params": [],

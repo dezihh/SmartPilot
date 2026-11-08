@@ -211,7 +211,7 @@ test('Paket installiert und entfernt eine httpConnection', () => {
     name: 'Test',
     summary: 'Test',
     description: 'Test',
-    minGatewayVersion: '0.7.0',
+    minGatewayVersion: '0.6.0',
     params: [
       { key: 'base_url', label: 'URL', required: true },
       { key: 'api_key', label: 'Key', secret: true, required: true },
