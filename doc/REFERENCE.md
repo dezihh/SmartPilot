@@ -40,6 +40,7 @@ Argumentierte Funktionen sollten erforderliche Felder in `required` nennen.
 | `index.get(id, key?)` | Eintrag samt Zusatzdaten | nur Daten des Index |
 | `mcp.call(tool, args, opts?)` | MCP-Werkzeug aufrufen (optional mit Ersatz-Tool) | exakter Toolname und gültiges Schema |
 | `http(url, ttlMs?)` | HTTP GET, JSON automatisch parsen; Header aus `http_headers` | 5 s, 100 KB Body-Limit |
+| `http.request(name, path, opts?)` | HTTP über benannte Verbindung (GET/POST/PUT/PATCH/DELETE, JSON-Body) | 5 s, 100 KB Body-Limit |
 | `shell(command)` | Befehl in Gateway-Laufzeit | 5 s, 4000 Zeichen |
 | `fn(name)` | Funktion einbetten | Tiefe 3, Zyklusschutz |
 | `args` | Funktionsargumente | Schema für Agentennutzung nötig |
@@ -60,6 +61,15 @@ nie an ein fremdes Redirect-Ziel. Die Werte sind in Admin-Antworten maskiert
 und erscheinen nicht in Logs; `{}` löscht die Konfiguration. Dynamische URLs
 (aus `args`) bleiben auf öffentliche Ziele beschränkt; `http_private_allow`
 nennt exakte private Hosts als Ausnahme (z. B. `192.168.10.3:9000`).
+
+**Benannte Verbindungen** (`http_connections`) bündeln Base-URL, Header und
+eine explizite LAN-Freigabe. Im Template: `http('portainer:/api/endpoints')`
+oder `http.request('portainer', '/api/endpoints', { method: 'POST', body: … })`.
+Der Host ist durch die Base-URL fixiert; Pfade können ihn nicht verlassen.
+Header gehen nur an diese Origin, Redirects werden pro Etappe geprüft.
+`allow_private` gilt pro Verbindung. Verbindungen kommen aus der Admin-API
+`/admin/api/http-connections` oder aus einem Paket-Manifest
+(`httpConnections`).
 
 Identische vorbereitete Aufrufe werden dedupliziert. Dynamische
 Argumentobjekte von `mcp.call` kennen `args` und `now`, aber keine lokalen

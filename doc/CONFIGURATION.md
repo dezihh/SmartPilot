@@ -226,6 +226,15 @@ Header gehen nur an exakt passende Ziele, auch nach Redirects.
 `http()`-URLs ins private Netz (kommagetrennte exakte Hosts, z. B.
 `192.168.10.3:9000`).
 
+## HTTP-Verbindungen
+
+Benannte Verbindungen kombinieren Base-URL, Header und eine explizite
+LAN-Freigabe. Sie ergänzen `http_headers`/`http_private_allow` für rohe URLs;
+beide Wege bleiben parallel nutzbar. Pflege über die Admin-API
+`/admin/api/http-connections` oder das Paket-Manifest `httpConnections`.
+Header sind in Admin-Antworten maskiert; `{}` löscht sie. Nach einer
+Schlüsselrotation den Eintrag ersetzen.
+
 ## Abnahme
 
 - Tool-Registry zeigt die erwarteten Werkzeuge.
