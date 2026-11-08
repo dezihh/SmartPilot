@@ -67,11 +67,40 @@ export function setPinDispatcherFactoryForTests(factory?: PinDispatcherFactory):
   pinDispatcherFactory = factory ?? defaultPinDispatcher;
 }
 
+export interface HttpRequestOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  /** Erzwingt manuelle Redirects und blockiert fremde Origins (Verbindungen). */
+  sameOrigin?: string;
+  timeoutMs?: number;
+  /** Globale http_headers anwenden (Default true; Verbindungen: false). */
+  useGlobalHeaders?: boolean;
+}
+
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+
 export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolean): Promise<unknown | null> {
-  const timeoutMs = getSettingNum('http_timeout_ms', HTTP_TIMEOUT_MS);
+  return fetchHttp(url, {}, trace, dynamic);
+}
+
+export async function fetchHttp(
+  url: string,
+  opts: HttpRequestOptions,
+  trace: TraceEvent[],
+  dynamic: boolean
+): Promise<unknown | null> {
+  const timeoutMs = opts.timeoutMs ?? getSettingNum('http_timeout_ms', HTTP_TIMEOUT_MS);
   const bodyCap = getSettingNum('http_body_cap', HTTP_BODY_CAP);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const method = String(opts.method ?? 'GET').toUpperCase();
+  if (!HTTP_METHODS.has(method)) {
+    trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url, error: `Methode ${method} nicht erlaubt` } });
+    clearTimeout(timer);
+    return null;
+  }
+  const requestHeaders = opts.headers ?? {};
   // Header-Auth aus den Einstellungen. Fehlerhafte Konfiguration wird geloggt
   // (ohne Werte) und fail-closed ignoriert: ohne Header kein Zugriff.
   let headerMap: HeaderMap = new Map();
@@ -88,14 +117,24 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
   }
   try {
     let target = url;
-    // Bei gesetzten Headern (und bei dynamischen URLs) werden Redirects selbst
-    // verfolgt: nur so laesst sich pro Etappe neu entscheiden, ob ein Header
-    // mit Geheimnis an dieses Ziel darf.
-    const manual = dynamic || Object.keys(headersForUrl(new URL(url), headerMap)).length > 0;
-    // Dynamische URLs: jede Redirect-Etappe erneut pruefen statt blindem follow,
-    // sonst umgeht ein Redirect die Host-Pruefung.
+    let currentMethod = method;
+    let currentBody = opts.body;
+    const initialGlobal = opts.useGlobalHeaders === false ? {} : headersForUrl(new URL(url), headerMap);
+    // Bei Headern, dynamischen URLs und Schreibmethoden werden Redirects
+    // selbst verfolgt: nur so lassen sich Ziel, Header und Methode pro Etappe
+    // neu entscheiden (kein Header-Leck, kein Body an ein fremdes Ziel).
+    const manual =
+      dynamic ||
+      Object.keys(initialGlobal).length > 0 ||
+      Object.keys(requestHeaders).length > 0 ||
+      currentMethod !== 'GET' ||
+      opts.sameOrigin != null;
     for (let hop = 0; hop <= 3; hop++) {
       const u = new URL(target);
+      if (opts.sameOrigin && u.origin !== opts.sameOrigin) {
+        trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'Origin verlassen' } });
+        return null;
+      }
       const allowedPrivate = dynamic && isAllowedPrivateTarget(u, privateAllow);
       if (dynamic && isPrivateHost(u.hostname) && !allowedPrivate) {
         trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'privates Netz' } });
@@ -120,11 +159,16 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
         const pin = addrs[0];
         if (pin) dispatcher = pinDispatcherFactory(pin);
       }
-      const headers = headersForUrl(u, headerMap);
+      const headers = {
+        ...(opts.useGlobalHeaders === false ? {} : headersForUrl(u, headerMap)),
+        ...requestHeaders,
+      };
       const init: RequestInit = {
+        method: currentMethod,
         signal: controller.signal,
         redirect: manual ? 'manual' : 'follow',
         ...(Object.keys(headers).length ? { headers } : {}),
+        ...(currentBody !== undefined ? { body: currentBody } : {}),
       };
       if (dispatcher) (init as { dispatcher?: unknown }).dispatcher = dispatcher;
       try {
@@ -135,7 +179,18 @@ export async function fetchUrl(url: string, trace: TraceEvent[], dynamic: boolea
             trace.push({ ts: Date.now(), step: 'template.http.error', detail: { url: target, status: res.status, error: 'Redirect ohne Location' } });
             return null;
           }
-          target = new URL(loc, target).toString();
+          const next = new URL(loc, target);
+          if (opts.sameOrigin && next.origin !== opts.sameOrigin) {
+            trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'Redirect auf fremden Host' } });
+            return null;
+          }
+          // 303 und die klassischen 301/302 wechseln bei Nicht-GET auf GET;
+          // 307/308 behalten Methode und Body.
+          if (res.status === 303 || ((res.status === 301 || res.status === 302) && currentMethod !== 'GET')) {
+            currentMethod = 'GET';
+            currentBody = undefined;
+          }
+          target = next.toString();
           continue;
         }
         const raw = await readCapped(res, bodyCap);

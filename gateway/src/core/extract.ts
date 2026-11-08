@@ -19,9 +19,75 @@ export interface LiteralCalls {
   httpCalls: { url: string; ttl: number }[];
   // http(<nunjucks-Expression>) - URL wird aus args/now berechnet 
   httpDyn: { expr: string; ttl: number }[];
+  // http.request(name, path, opts) - Argumente werden im preheat mit args/now
+  // ausgewertet; der Aufruf selbst liest nur noch das Ergebnis.
+  httpRequests: { expr: string }[];
   shells: string[];
   fns: string[];
   httpUrls: string[];
+}
+
+// Argumente eines Aufrufs auf Top-Level-Kommas splitten; Quotes und
+// Klammern/Objektliterale bleiben zusammen.
+export function splitTopLevelArgs(expr: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let depth = 0;
+  let quote = '';
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i]!;
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === '(' || ch === '[' || ch === '{') depth++;
+    else if (ch === ')' || ch === ']' || ch === '}') depth--;
+    else if (ch === ',' && depth === 0) {
+      parts.push(expr.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  const last = expr.slice(start).trim();
+  if (last) parts.push(last);
+  return parts;
+}
+
+// Findet alle Aufrufe "name(...)" mit balancierten Klammern (Strings werden
+// respektiert). Liefert den Inhalt zwischen den Klammern.
+function extractCallArgs(template: string, name: string): string[] {
+  const out: string[] = [];
+  const needle = `${name}(`;
+  let idx = 0;
+  while ((idx = template.indexOf(needle, idx)) !== -1) {
+    const prev = idx === 0 ? '' : template[idx - 1]!;
+    if (prev && /[\w.]/.test(prev)) {
+      idx += needle.length;
+      continue;
+    }
+    let depth = 1;
+    let quote = '';
+    let i = idx + needle.length;
+    for (; i < template.length; i++) {
+      const ch = template[i]!;
+      if (quote) {
+        if (ch === '\\') i++;
+        else if (ch === quote) quote = '';
+        continue;
+      }
+      if (ch === '"' || ch === "'") quote = ch;
+      else if (ch === '(') depth++;
+      else if (ch === ')') {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    if (depth !== 0) break;
+    out.push(template.slice(idx + needle.length, i));
+    idx = i + 1;
+  }
+  return out;
 }
 
 // Entfernt nur echte Kontroll-/Definitionsbloecke samt Inhalt: if/for-Zweige
@@ -129,6 +195,21 @@ export function extractLiterals(rawTemplate: string): LiteralCalls {
     }
     httpDyn.push({ expr: body, ttl });
   }
+  const httpRequests: { expr: string }[] = [];
+  for (const expr of extractCallArgs(sideEffectSrc, 'http.request')) httpRequests.push({ expr });
   const httpUrls = httpCalls.map((c) => c.url);
-  return { usesIndex, states, indexKeys: [...indexKeys], indexAll, calls, mcpCallDyn, httpCalls, httpDyn, shells, fns, httpUrls };
+  return {
+    usesIndex,
+    states,
+    indexKeys: [...indexKeys],
+    indexAll,
+    calls,
+    mcpCallDyn,
+    httpCalls,
+    httpDyn,
+    httpRequests,
+    shells,
+    fns,
+    httpUrls,
+  };
 }

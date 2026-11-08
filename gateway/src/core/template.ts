@@ -5,9 +5,10 @@ import { findInSnapshot, getFromSnapshot } from './indexTools.js';
 import { getFunctionByName } from '../db.js';
 import { config } from '../config.js';
 import type { AssistantResponse, TraceEvent } from '../types.js';
-import { extractLiterals } from './extract.js';
+import { extractLiterals, splitTopLevelArgs } from './extract.js';
 import { httpCacheGet, httpCacheSet } from './httpCache.js';
 import { fetchUrl } from './http.js';
+import { runConnectionRequest } from './httpConnections.js';
 import { runShell } from './shell.js';
 
 
@@ -147,16 +148,35 @@ async function preheat(
   active: Set<string>,
   args: Record<string, unknown> = {}
 ): Promise<Record<string, unknown>> {
-  const { usesIndex, states, indexKeys, indexAll, calls, mcpCallDyn, httpCalls, httpDyn, shells, fns } = extractLiterals(template);
+  const { usesIndex, states, indexKeys, indexAll, calls, mcpCallDyn, httpCalls, httpDyn, httpRequests, shells, fns } =
+    extractLiterals(template);
   const stateMap = new Map<string, string | null>();
   const callMap = new Map<string, string | null>();
   const shellMap = new Map<string, string | null>();
   const fnMap = new Map<string, string | null>();
   const httpMap = new Map<string, unknown | null>();
+  const requestMap = new Map<string, unknown | null>();
+  const requestKey = (name: string, path: string, opts: Record<string, unknown>): string =>
+    `${name}\u0000${path}\u0000${JSON.stringify(opts)}`;
 
   // HTTP-Cache : nur aktiv, wenn der Call eine TTL > 0 mitgibt
   // (http('url', 300000)). Cache lebt pro URL im Prozess, laeuft mit eigener TTL ab.
   const fetchCached = async (url: string, ttl: number, dynamic: boolean): Promise<unknown | null> => {
+    // "name:/pfad" = benannte HTTP-Verbindung (Base-URL + Header + Allowlist).
+    const conn = /^([a-z0-9_]{2,40}):(\/.*)$/.exec(url);
+    if (conn && conn[1] !== 'http' && conn[1] !== 'https') {
+      const cacheKey = `conn:${conn[1]}:${conn[2]}`;
+      if (ttl > 0) {
+        const hit = httpCacheGet(cacheKey);
+        if (hit !== null) {
+          trace.push({ ts: Date.now(), step: 'template.http.cache', detail: { url } });
+          return hit;
+        }
+      }
+      const data = await runConnectionRequest(conn[1]!, conn[2]!, {}, trace);
+      if (ttl > 0 && data !== null) httpCacheSet(cacheKey, data, ttl);
+      return data;
+    }
     if (ttl > 0) {
       const hit = httpCacheGet(url);
       if (hit !== null) {
@@ -178,7 +198,7 @@ async function preheat(
     httpDyn.map(async (d) => {
       try {
         const url = env.renderString(`{{ ${d.expr} }}`, { args, now: nowCtx }).trim();
-        return /^https?:\/\//.test(url) ? { url, ttl: d.ttl } : null;
+        return /^(https?:\/\/|[a-z0-9_]{2,40}:\/)/.test(url) ? { url, ttl: d.ttl } : null;
       } catch (e) {
         trace.push({ ts: Date.now(), step: 'template.http.expr.error', detail: { expr: d.expr, error: String(e).slice(0, 200) } });
         return null;
@@ -194,6 +214,47 @@ async function preheat(
       if (httpMap.has(job.url)) return;
       httpMap.set(job.url, await fetchCached(job.url, job.ttl, job.dynamic));
       trace.push({ ts: Date.now(), step: 'template.http', detail: { url: job.url } });
+    })
+  );
+
+  // http.request(name, path, opts): Argumente mit args/now auswerten und
+  // vorab holen. Der Aufruf im Template liest nur noch das Ergebnis.
+  const evalArg = (expr: string): unknown => {
+    const raw = env.renderString(`{{ (${expr}) | dump }}`, { args, now: nowCtx }).trim();
+    return raw === 'undefined' ? undefined : (JSON.parse(raw) as unknown);
+  };
+  await Promise.all(
+    httpRequests.map(async ({ expr }) => {
+      try {
+        const parts = splitTopLevelArgs(expr);
+        if (parts.length < 2) return;
+        const name = evalArg(parts[0]!);
+        const path = evalArg(parts[1]!);
+        const rawOpts = parts[2] ? evalArg(parts[2]) : {};
+        if (typeof name !== 'string' || typeof path !== 'string') return;
+        const opts =
+          rawOpts && typeof rawOpts === 'object' && !Array.isArray(rawOpts)
+            ? (rawOpts as Record<string, unknown>)
+            : {};
+        const key = requestKey(name, path, opts);
+        if (requestMap.has(key)) return;
+        const method = String(opts.method ?? 'GET').toUpperCase();
+        const ttl = Number(opts.ttlMs ?? 0);
+        const cacheKey = `request:${name}:${path}:${method}:${JSON.stringify(opts.query ?? {})}`;
+        if (method === 'GET' && ttl > 0) {
+          const hit = httpCacheGet(cacheKey);
+          if (hit !== null) {
+            requestMap.set(key, hit);
+            trace.push({ ts: Date.now(), step: 'template.http.cache', detail: { connection: name, path } });
+            return;
+          }
+        }
+        const data = await runConnectionRequest(name, path, opts, trace);
+        if (method === 'GET' && ttl > 0 && data !== null) httpCacheSet(cacheKey, data, ttl);
+        requestMap.set(key, data);
+      } catch (e) {
+        trace.push({ ts: Date.now(), step: 'template.http.expr.error', detail: { expr, error: String(e).slice(0, 200) } });
+      }
     })
   );
 
@@ -313,7 +374,13 @@ async function preheat(
     },
     shell: (cmd: string): string | null => shellMap.get(cmd) ?? null,
     fn: (name: string): string | null => fnMap.get(name) ?? null,
-    http: (url: string): unknown | null => httpMap.get(url) ?? null,
+    http: Object.assign(
+      (url: string): unknown | null => httpMap.get(url) ?? null,
+      {
+        request: (name: string, path: string, opts?: Record<string, unknown>): unknown | null =>
+          requestMap.get(requestKey(String(name), String(path), opts ?? {})) ?? null,
+      }
+    ),
     now: nowCtx,
   };
 }
