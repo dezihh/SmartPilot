@@ -149,8 +149,10 @@ Schleifen.
 - **Bestätigung**: Nur schreibende Vorgänge können „Bestätigung vor dem
   Ausführen" verlangen. Das Gateway führt dann nicht sofort aus, sondern
   fragt „Soll ich … ausführen? Sag ja oder nein."; erst ein „ja" in derselben
-  Session (max. 60 s) startet den Vorgang. „nein" oder eine andere Äußerung
-  verwirft die Anfrage.
+  Session (max. 60 s, an die Anfrage-`userId` gebunden) startet den Vorgang.
+  „nein" oder eine andere Äußerung verwirft die Anfrage. Die Bestätigung gilt
+  nur für den Vorgang: Die freie Agent-Route ruft dieselben schreibenden
+  MCP-Werkzeuge ohne Rückfrage auf.
 - **Tool-Parameter**: Optional lässt sich pro Tool festlegen, welche Parameter
   erlaubt sind (Feld „Tool-Parameter", JSON `tool_params`, z. B.
   `{"ha_set_todo_item": ["entity_id", "item", "status"]}`). Das Modell sieht

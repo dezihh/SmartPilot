@@ -62,10 +62,7 @@ npm run gates:full   # vor Merge/Release: fast + Coverage, Build, Audit, Dead-Co
 Schwelle 3 %) müssen grün sein; eine Schwelle wird nicht gelockert, um ein Gate
 zu bestehen. Maßgeblich für neue Änderungen ist die Diff-Coverage (≥ 90 %,
 kritische Pfade 100 %); die globale Quote ist nur eine Regressionsbremse.
-Messbasis und Schwellen stehen in [Tests und Coverage](doc/TESTING.md). Für ein
-vollständiges Hygiene-Audit gibt es den Agenten
-[`.opencode/agents/test-hygiene.md`](.opencode/agents/test-hygiene.md):
-Phasen 0–4 ausführen, Bericht reviewen.
+Messbasis und Schwellen stehen in [Tests und Coverage](doc/TESTING.md).
 
 Dabei gelten drei Grundsätze:
 
