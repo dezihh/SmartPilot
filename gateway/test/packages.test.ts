@@ -13,6 +13,7 @@ import {
   localCollisions,
   packageDiff,
   existingParams,
+  healthToolForServer,
 } from '../src/db/packages.js';
 import { packagesRoutes } from '../src/routes/packages.js';
 import { config } from '../src/config.js';
@@ -491,6 +492,33 @@ test('existingParams: leerer optionaler Parameter bleibt als "" erhalten', () =>
   const cur = existingParams('opt-test', OPT_MANIFEST);
   assert.equal(cur.opt, '', 'leerer Wert darf nicht verschwinden');
   db_cleanup('opt-test');
+});
+
+// Regression: die Paket-Pruefung meldete "ok", obwohl initialize/tools/list
+// auch ohne erreichbare Gegenseite antworten. Das Health-Tool prueft die
+// Funktion (MQTT: mqtt_snapshot).
+const HEALTH_MANIFEST = {
+  ...OK_MANIFEST,
+  id: 'health-test',
+  params: [],
+  servers: [{ name: 'Health Srv', transport: 'stdio' as const, command: 'node', healthTool: 'probe' }],
+  functions: [],
+  indexes: [],
+  allowTools: [],
+};
+
+test('healthToolForServer: liest healthTool aus dem installierten Manifest', () => {
+  installPackage(HEALTH_MANIFEST, { source: 'import', dangerousAck: true });
+  assert.equal(healthToolForServer('Health Srv'), 'probe');
+  assert.equal(healthToolForServer('Unbekannter Server'), undefined, 'fremde Server haben kein Health-Tool');
+  db_cleanup('health-test');
+});
+
+test('Manifest-Validierung: healthTool muss ein Tool-Name sein', () => {
+  const base = { id: 'p', version: '1.0.0', name: 'p', summary: 's', description: 'd' };
+  assert.equal(validateManifest({ ...base, servers: [{ name: 'S', transport: 'stdio', command: 'node', healthTool: 'probe' }] }).ok, true);
+  assert.equal(validateManifest({ ...base, servers: [{ name: 'S', transport: 'stdio', command: 'node', healthTool: 'Probe Tool' }] }).ok, false);
+  assert.equal(validateManifest({ ...base, servers: [{ name: 'S', transport: 'stdio', command: 'node', healthTool: 5 as never }] }).ok, false);
 });
 
 test('Konfiguration speichern mit leerem optionalem Parameter', async () => {

@@ -59,6 +59,7 @@ export {
   localCollisions,
   packageDiff,
   existingParams,
+  healthToolForServer,
   parseStoredManifest,
 } from './db/packages.js';
 export {

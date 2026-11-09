@@ -1,10 +1,12 @@
 import { Router } from 'express';
+import { setTimeout as sleep } from 'node:timers/promises';
 import { requireAdminAuth } from '../auth.js';
 import { errMsg, parseId } from './helpers.js';
 import {
   deleteMcpServer,
   createMcpServer,
   getMcpServer,
+  healthToolForServer,
   listFunctions,
   listMcpServers,
   maskMcpServerSecrets,
@@ -14,6 +16,11 @@ import {
 import { createClient, getMcpContext, invalidateMcpCache } from '../mcp/registry.js';
 import { normalizeHeaders } from '../core/normalize.js';
 export const mcpServersRoutes = Router();
+
+// Ein Health-Tool braucht einen Moment, bis die Gegenseite erreichbar ist
+// (MQTT: Verbindung + retain-Nachrichten). Ohne Warten wuerde die Probe
+// "keine Werte (verbinde noch)" sehen und den Fehler uebersehen.
+const HEALTH_TOOL_DELAY_MS = 800;
 
 function normalizeServerInput(body: Record<string, unknown>): McpServerInput {
   const name = String(body.name ?? '').trim();
@@ -149,6 +156,11 @@ mcpServersRoutes.post('/admin/api/mcp-servers/:id/health', requireAdminAuth, asy
   const client = createClient(server);
   try {
     await client.init();
+    const healthTool = healthToolForServer(server.name);
+    if (healthTool) {
+      await sleep(HEALTH_TOOL_DELAY_MS);
+      await client.callTool(healthTool, {});
+    }
     const tools = await client.listTools();
     res.json({ ok: true, tools: tools.map((t) => t.name) });
   } catch (e) {

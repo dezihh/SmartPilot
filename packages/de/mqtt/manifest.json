@@ -64,6 +64,7 @@
       },
       "inventory_prompt": "MQTT: mqtt_snapshot (alle bekannten Topics mit letztem Wert) und mqtt_get (ein Topic, ohne Praefix) sind Lesen. Schalten nur ueber mqtt_set und nur fuer im Paket freigegebene Topics; nicht freigegebene Topics melden '[MQTT] nicht erlaubt'. Werte sind reine Strings (ON/OFF, Zahlen) - keine Topics raten, bei Unbekanntem erst mqtt_snapshot nutzen.",
       "sideEffect": "write",
+      "healthTool": "mqtt_snapshot",
       "enabled": true
     }
   ],
@@ -73,5 +74,5 @@
     "mqtt_set"
   ],
   "setupDocs": "Broker (Beispiel Mosquitto ohne Auth, nur im eigenen Netz):\n\n  mosquitto:\n    image: eclipse-mosquitto:2\n    restart: unless-stopped\n    volumes:\n      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro\n\nWICHTIG: Der Gateway-Container muss den Broker erreichen koennen - beide im selben Docker-Netz betreiben oder den Broker-Host per IP angeben. Die Freigabeliste (mqtt_allow_write) absichtlich klein halten: jedes freigegebene Topic kann SmartPilot auf Zuruf setzen.",
-  "changelog": "1.0.1: Praefix als Namensanfang erklaert (keine Wildcards); Passwort als Secret markiert.\n1.0.0: Erstes Release - Last-Value-Cache (1000 Topics, 4 KB pro Wert), mqtt_get/mqtt_snapshot/mqtt_set, Schreiben nur auf freigegebene Topics."
+  "changelog": "1.0.1: Praefix als Namensanfang erklaert (keine Wildcards); Passwort als Secret markiert; healthTool fuer die Paket-Pruefung.\n1.0.0: Erstes Release - Last-Value-Cache (1000 Topics, 4 KB pro Wert), mqtt_get/mqtt_snapshot/mqtt_set, Schreiben nur auf freigegebene Topics."
 }

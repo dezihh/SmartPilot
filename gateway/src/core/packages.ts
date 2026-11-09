@@ -58,6 +58,12 @@ export interface PackageServer {
   inventory_prompt?: string;
   sideEffect?: SideEffect;
   enabled?: boolean;
+  /**
+   * Optionales MCP-Tool, das die Paket-Pruefung als Funktionsprobe aufruft
+   * (z. B. mqtt_snapshot). Ohne Angabe prueft der Health-Check nur Prozess
+   * und Werkzeugliste.
+   */
+  healthTool?: string;
 }
 
 export interface PackageFunction {
@@ -266,6 +272,9 @@ export function validateManifest(raw: unknown): { ok: true; manifest: PackageMan
           else if (Object.entries(s.headers).some(([k, v]) => !/^[A-Za-z0-9-]+$/.test(k) || typeof v !== 'string')) errors.push(`server "${s.name}": headers braucht gueltige Namen und String-Werte`);
         }
         if (s?.sideEffect !== undefined && s.sideEffect !== 'read' && s.sideEffect !== 'write') errors.push(`server "${s.name}": sideEffect muss read oder write sein`);
+        if (s?.healthTool !== undefined && (typeof s.healthTool !== 'string' || !/^[a-z0-9_]{1,60}$/.test(s.healthTool))) {
+          errors.push(`server "${s.name}": healthTool muss ein Tool-Name sein`);
+        }
       }
     }
   }

@@ -324,6 +324,74 @@ test('mcp-servers: CRUD, Maskierung und env-COALESCE', async () => {
   assert.equal(del.status, 200);
 });
 
+// Regression: der Health-Check bestand nur aus initialize/tools/list und
+// meldete deshalb "ok", obwohl die Gegenseite (MQTT-Broker) unerreichbar war.
+// Ein im Manifest genanntes healthTool wird jetzt nach dem Handshake aufgerufen.
+const HEALTH_PROBE_STUB = `
+const rl = require('node:readline').createInterface({ input: process.stdin });
+rl.on('line', (line) => {
+  let msg; try { msg = JSON.parse(line); } catch { return; }
+  if (msg.id === undefined) return;
+  const send = (result) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: msg.id, result }) + '\\n');
+  if (msg.method === 'initialize') send({ protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'probe', version: '1' } });
+  else if (msg.method === 'tools/list') send({ tools: [{ name: 'probe', inputSchema: { type: 'object' } }] });
+  else if (msg.method === 'tools/call') send(process.env.PROBE_OK
+    ? { content: [{ type: 'text', text: 'bereit' }] }
+    : { isError: true, content: [{ type: 'text', text: 'Gegenseite nicht erreichbar' }] });
+});
+`;
+
+test('Health-Check ruft das healthTool des Pakets auf', async () => {
+  const args = JSON.stringify(['-e', HEALTH_PROBE_STUB]);
+  const makeStub = (name: string, ok: boolean) =>
+    createMcpServer({
+      name,
+      url: '',
+      auth_token: null,
+      transport: 'stdio',
+      command: 'node',
+      args,
+      env: ok ? JSON.stringify({ PROBE_OK: '1' }) : null,
+      inventory_prompt: null,
+      enabled: 1,
+    });
+  const bad = makeStub('Health-Stub-Fehler', false);
+  const good = makeStub('Health-Stub-Ok', true);
+  const names = ['Health-Stub-Fehler', 'Health-Stub-Ok'];
+  getDb()
+    .prepare('INSERT INTO packages (id, version, source, manifest) VALUES (?, ?, ?, ?)')
+    .run(
+      'health-probe',
+      '1.0.0',
+      'import',
+      JSON.stringify({
+        id: 'health-probe',
+        version: '1.0.0',
+        name: 'Health-Probe',
+        summary: 's',
+        description: 'd',
+        servers: names.map((name) => ({ name, transport: 'stdio', command: 'node', healthTool: 'probe' })),
+      })
+    );
+  for (const name of names) {
+    getDb().prepare("INSERT INTO package_items (package_id, kind, name, content_hash) VALUES ('health-probe', 'server', ?, 'x')").run(name);
+  }
+  invalidateMcpCache();
+  try {
+    const badRes = await call('POST', `/admin/api/mcp-servers/${bad.id}/health`, { cookie, body: {} });
+    assert.equal((badRes.json as { ok: boolean }).ok, false, 'Health-Tool-Fehler = ok:false');
+    assert.match(String((badRes.json as { error?: string }).error), /Gegenseite nicht erreichbar/);
+
+    const goodRes = await call('POST', `/admin/api/mcp-servers/${good.id}/health`, { cookie, body: {} });
+    assert.equal((goodRes.json as { ok: boolean }).ok, true, 'erfolgreiches Health-Tool = ok:true');
+  } finally {
+    getDb().prepare("DELETE FROM package_items WHERE package_id = 'health-probe'").run();
+    getDb().prepare("DELETE FROM packages WHERE id = 'health-probe'").run();
+    getDb().prepare("DELETE FROM mcp_servers WHERE name LIKE 'Health-Stub-%'").run();
+    invalidateMcpCache();
+  }
+});
+
 test('tools: GET liefert MCP- und Funktions-Fassade', async () => {
   const r = await call('GET', '/admin/api/tools', { cookie });
   assert.equal(r.status, 200);

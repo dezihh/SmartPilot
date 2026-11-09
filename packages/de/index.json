@@ -103,7 +103,7 @@
       "summary": "MQTT-Topics lesen und erlaubte Topics schalten (interner stdio-Server, kein Container).",
       "version": "1.0.1",
       "category": "driver",
-      "sha256": "ea7f6891231f90943181482c0d06dd9cd9bf4d162b01b08627d3e97799ca521f"
+      "sha256": "706ff48f37ae3414880c406e4370afc1971832ba8c8bcc2a1a9850b02e0a7fc2"
     },
     {
       "id": "aufgabenliste",

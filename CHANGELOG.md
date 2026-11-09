@@ -14,6 +14,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Hinzugefügt
 
+- **Paket-Prüfung testet die Funktion, nicht nur den Prozess:** Ein
+  Manifest-Server darf `healthTool` nennen; der Health-Check ruft es nach dem
+  MCP-Handshake auf. Das MQTT-Paket nutzt `mqtt_snapshot`, damit ein falscher
+  Broker (z. B. Tippfehler in der Domain) als Fehler statt „ok" erscheint —
+  `initialize`/`tools/list` antworten unabhängig von der Verbindung.
+
 - **`http()` mit Header-Auth pro Host:** Das Setting `http_headers`
   (JSON `{"host[:port]":{"Header":"Wert"}}`) sendet Zugangsdaten nur an exakt
   passende Ziele; bei gesetzten Headern prüft das Gateway Redirects pro Etappe
