@@ -101,9 +101,9 @@
       "id": "mqtt",
       "name": "MQTT-Broker",
       "summary": "MQTT-Topics lesen und erlaubte Topics schalten (interner stdio-Server, kein Container).",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "driver",
-      "sha256": "e80a335b1efa18ca3d7726330a280d56b1165b79ae1a5e944f792b0b1366a171"
+      "sha256": "ea7f6891231f90943181482c0d06dd9cd9bf4d162b01b08627d3e97799ca521f"
     },
     {
       "id": "aufgabenliste",

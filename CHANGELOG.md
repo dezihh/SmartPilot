@@ -57,9 +57,27 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `chars/4`). Das neue Setting `agent_tool_limit` begrenzt die MCP-Tool-Specs
   pro Anfrage deterministisch; Basis-Lesewerkzeuge und `fn_*`-Funktionen
   bleiben immer erhalten (0/leer = unbegrenzt).
+- **MQTT-Paket 1.0.1:** Die Hilfe zum Topic-Präfix sagt jetzt, dass dort ein
+  Namensanfang ohne Wildcards hingehört; das Passwort ist als Secret markiert
+  und wird damit maskiert gespeichert und aus Backups ohne `tokens=1`
+  ausgelassen.
 
 ### Behoben
 
+- **MQTT-Präfix mit Wildcard blockierte das Abonnement:** Der Abo-Filter wird
+  als `${prefix}#` gebaut; ein Feldwert wie `dwd/#` ergab den ungültigen Filter
+  `dwd/#/` und der Cache blieb leer. `normalizePrefix` schneidet jetzt am ersten
+  Wildcard (`#`, `*`, `+`) ab und vereinheitlicht den Schluss-Slash.
+- **MQTT-Verbindungsfehler waren unsichtbar:** Abgelehnte Abos und
+  Verbindungsabbrüche gingen nur auf stderr, das der stdio-Client verwirft.
+  `mqtt_snapshot` nennt den letzten Fehler jetzt in der Antwort (und markiert
+  ihn als Fehler, solange keine Werte vorliegen).
+- **Speichern einer Paket-Konfiguration scheiterte an leeren optionalen
+  Parametern:** `existingParams` ließ leere Werte weg; der Gefahren-Vergleich
+  beim Konfigurieren ersetzte dadurch einen Platzhalter ohne Wert und antwortete
+  mit `400 Platzhalter … hat keinen Wert` (z. B. `mqtt_allow_write`). Leere
+  Parameter bleiben jetzt als `""` erhalten, jeder Manifest-Parameter bekommt
+  notfalls einen leeren Wert.
 - **Install überschreibt keine gleichnamigen lokalen Artefakte mehr (#25):**
   Existiert bereits eine Funktion, ein Vorgang, ein Server oder Index mit dem
   Namen aus dem Manifest, ohne dass das Paket ihn angelegt hat, bleibt die

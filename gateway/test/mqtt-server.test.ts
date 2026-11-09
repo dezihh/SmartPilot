@@ -78,6 +78,16 @@ test('normalizePrefix: fuehrende und fehlende Slashes', () => {
   assert.equal(normalizePrefix('//haus//keller/'), 'haus//keller/');
 });
 
+// Regression: "dwd/#" wurde zu "dwd/#/" und der Broker lehnte das Abo ab.
+test('normalizePrefix: Wildcards und Trailing-Slash fallen weg', () => {
+  assert.equal(normalizePrefix('dwd/#'), 'dwd/');
+  assert.equal(normalizePrefix('dwd/*'), 'dwd/');
+  assert.equal(normalizePrefix('/haus/#/'), 'haus/');
+  assert.equal(normalizePrefix('haus/+/keller'), 'haus/');
+  assert.equal(normalizePrefix('#'), '');
+  assert.equal(normalizePrefix('*'), '');
+});
+
 // ---- Topics ----
 
 test('normalizeTopic: Praefix ergaenzen, fuehrenden Slash entfernen', () => {
@@ -255,6 +265,29 @@ test('handleRequest: leerer Snapshot nennt das Settle-Fenster', async () => {
     deps({ settling: () => true })
   );
   assert.match(text(res), /keine Werte \(verbinde noch/);
+});
+
+// Regression: ein abgelehntes Abo (z. B. "dwd/#/" durch falsches Praefix)
+// blieb unsichtbar, weil der stdio-Client stderr verwirft.
+test('handleRequest: mqtt_snapshot meldet Verbindungs- und Abofehler', async () => {
+  const failing = deps({ status: () => 'Invalid topic dwd/#/', settling: () => true });
+  const empty = await handleRequest(
+    { id: 20, method: 'tools/call', params: { name: 'mqtt_snapshot', arguments: {} } },
+    failing
+  );
+  const emptyText = text(empty);
+  assert.match(emptyText, /Verbindung\/Abonnement fehlgeschlagen: Invalid topic/);
+  assert.match(emptyText, /keine Werte/);
+  assert.doesNotMatch(emptyText, /verbinde noch/, 'Fehler statt Wartehinweis');
+  assert.equal((empty?.result as { isError?: boolean }).isError, true);
+
+  const cache = new LastValueCache();
+  cache.set('netfreq/f', '50.0');
+  const filled = await handleRequest(
+    { id: 21, method: 'tools/call', params: { name: 'mqtt_snapshot', arguments: {} } },
+    deps({ cache, status: () => 'Verbindung getrennt' })
+  );
+  assert.match(text(filled), /^\[MQTT\] Verbindung\/Abonnement fehlgeschlagen: Verbindung getrennt\n\[MQTT\] netfreq\/f=50\.0$/);
 });
 
 test('handleRequest: mqtt_set ohne Freigabe wird abgelehnt (kein Publish)', async () => {

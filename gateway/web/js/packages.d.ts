@@ -3,6 +3,7 @@
 export function setTestPackageHandler(fn: (id: string) => void): void;
 export function getPackageForTest(id: string): { id: string } | null;
 export function diffValue(from: unknown, to: unknown): string;
+export function paramForm(manifest: { params?: unknown[] }, current?: Record<string, string>): string;
 export function cmpVersion(a: unknown, b: unknown): number;
 export function updateChip(installedVersion: unknown, registryVersion: unknown): string;
 export function packageVersionLabel(registryVersion: unknown, installedVersion: unknown): unknown;

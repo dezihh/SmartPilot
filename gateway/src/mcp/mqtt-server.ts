@@ -42,10 +42,11 @@ export function parseSettings(env: NodeJS.ProcessEnv): Settings {
 }
 
 // Praefix wie 'haus/' - fuehrender/abschliessender Slash wird vereinheitlicht.
+// Wildcards gehoeren nicht ins Praefix: der Abo-Filter entsteht als
+// `${prefix}#`, aus "dwd/#" wuerde sonst der ungueltige Filter "dwd/#/".
 export function normalizePrefix(raw: string | undefined): string {
-  const p = (raw ?? '').trim().replace(/^\/+/, '');
-  if (!p) return '';
-  return p.endsWith('/') ? p : `${p}/`;
+  const p = (raw ?? '').trim().replace(/^\/+/, '').replace(/[#*+].*$/, '').replace(/\/+$/, '');
+  return p ? `${p}/` : '';
 }
 
 // Topic fuer Anzeige/Aufruf: fuehrender Slash weg, Praefix ergaenzen, wenn er
@@ -116,6 +117,8 @@ export interface ServerDeps {
   publish: (topic: string, value: string) => Promise<void>;
   /** true, solange nach dem Verbinden die retain-Nachrichten noch ausstehen. */
   settling?: () => boolean;
+  /** Letzter Verbindungs-/Abonnementfehler, null wenn alles ok ist. */
+  status?: () => string | null;
 }
 
 const TOOLS = [
@@ -198,11 +201,15 @@ export async function handleRequest(msg: RpcRequest, deps: ServerDeps): Promise<
     if (name === 'mqtt_snapshot') {
       const limit = Number(args.limit ?? MAX_SNAPSHOTS);
       const rows = deps.cache.snapshot(Number.isFinite(limit) ? limit : MAX_SNAPSHOTS);
+      const error = deps.status?.() ?? null;
+      const warning = error ? `${TAG} Verbindung/Abonnement fehlgeschlagen: ${error}` : '';
       if (!rows.length) {
-        const hint = deps.settling?.() ? ' (verbinde noch, gleich erneut fragen)' : '';
-        return { jsonrpc: '2.0', id, result: textResult(`${TAG} keine Werte${hint}`) };
+        const hint = deps.settling?.() && !error ? ' (verbinde noch, gleich erneut fragen)' : '';
+        const text = warning ? `${warning}\n${TAG} keine Werte` : `${TAG} keine Werte${hint}`;
+        return { jsonrpc: '2.0', id, result: textResult(text, !!error) };
       }
       const lines = rows.map(([topic, value]) => `${TAG} ${displayTopic(topic, settings.prefix)}=${value}`);
+      if (warning) lines.unshift(warning);
       return { jsonrpc: '2.0', id, result: textResult(lines.join('\n')) };
     }
 
@@ -243,6 +250,9 @@ export async function handleRequest(msg: RpcRequest, deps: ServerDeps): Promise<
 // ausschliesslich fuer JSON-RPC reserviert.
 export function startServer(settings: Settings): void {
   const cache = new LastValueCache();
+  // Letzter Fehler wird in mqtt_snapshot gemeldet; stderr allein sieht der
+  // Nutzer nicht, weil der stdio-Client die Ausgabe verwirft.
+  let lastError: string | null = null;
   const client = mqtt.connect(settings.url, {
     clientId: settings.clientId,
     username: settings.username,
@@ -253,12 +263,18 @@ export function startServer(settings: Settings): void {
   });
 
   client.on('connect', () => {
+    lastError = null;
     client.subscribe(`${settings.prefix}#`, { qos: 1 }, (err) => {
+      if (err) lastError = err.message;
       process.stderr.write(`${TAG} verbunden mit ${settings.url}: ${err ? err.message : `abonniert ${settings.prefix}#`}\n`);
     });
   });
   client.on('error', (err: Error) => {
+    lastError = err.message;
     process.stderr.write(`${TAG} Verbindungsfehler: ${err.message}\n`);
+  });
+  client.on('close', () => {
+    lastError = lastError ?? 'Verbindung getrennt';
   });
   client.on('message', (topic: string, payload: Buffer) => {
     cache.set(topic, payload.toString('utf8'));
@@ -273,6 +289,7 @@ export function startServer(settings: Settings): void {
   const deps: ServerDeps = {
     cache,
     settings,
+    status: () => lastError,
     publish: async (topic, value) => {
       await client.publishAsync(topic, value, { qos: 1, retain: true });
     },

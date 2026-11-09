@@ -464,6 +464,19 @@ const PARAM_MANIFEST = {
   allowTools: [],
 };
 
+// Regression: leerer optionaler Parameter verschwand aus existingParams und
+// liess das Speichern der Konfiguration an substituteManifest scheitern.
+const OPT_MANIFEST = {
+  ...PARAM_MANIFEST,
+  id: 'opt-test',
+  params: [
+    { key: 'base_url', label: 'Basis-URL', required: true },
+    { key: 'api_key', label: 'API-Key', secret: true, required: true },
+    { key: 'opt', label: 'Optional' },
+  ],
+  servers: [{ name: 'Opt Srv', transport: 'stdio' as const, command: 'node_modules/.bin/x', env: { BASE_URL: '${base_url}', API_KEY: '${api_key}', OPT: '${opt}' } }],
+};
+
 test('existingParams: nicht-geheim aus params, Secret aus Server-Env', () => {
   installPackage(PARAM_MANIFEST, { source: 'import', dangerousAck: true, values: { base_url: 'http://h', api_key: 'secret123' } });
   const cur = existingParams('reinstall-test', PARAM_MANIFEST);
@@ -471,6 +484,39 @@ test('existingParams: nicht-geheim aus params, Secret aus Server-Env', () => {
   assert.equal(cur.api_key, 'secret123', 'Secret aus Server-Env zurueckgemappt');
   getDb().prepare("DELETE FROM mcp_servers WHERE name='Reinstall Srv'").run();
   db_cleanup('reinstall-test');
+});
+
+test('existingParams: leerer optionaler Parameter bleibt als "" erhalten', () => {
+  installPackage(OPT_MANIFEST, { source: 'import', dangerousAck: true, values: { base_url: 'http://h', api_key: 'secret123', opt: '' } });
+  const cur = existingParams('opt-test', OPT_MANIFEST);
+  assert.equal(cur.opt, '', 'leerer Wert darf nicht verschwinden');
+  db_cleanup('opt-test');
+});
+
+test('Konfiguration speichern mit leerem optionalem Parameter', async () => {
+  const app = express();
+  app.use(express.json({ limit: '1mb' }));
+  app.use(packagesRoutes);
+  const server = app.listen(0);
+  const port = (server.address() as AddressInfo).port;
+  const auth = { Authorization: `Bearer ${config.adminToken}`, 'Content-Type': 'application/json' };
+  try {
+    const install = await fetch(`http://127.0.0.1:${port}/admin/api/packages/opt-test/install`, {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ manifest: OPT_MANIFEST, params: { base_url: 'http://h', api_key: 'secret123' }, dangerousAck: true }),
+    });
+    assert.equal(install.status, 200);
+    const save = await fetch(`http://127.0.0.1:${port}/admin/api/packages/opt-test/config`, {
+      method: 'PATCH',
+      headers: auth,
+      body: JSON.stringify({ params: { opt: '' } }),
+    });
+    assert.equal(save.status, 200, `PATCH /config: ${save.status} ${await save.text()}`);
+  } finally {
+    db_cleanup('opt-test');
+    server.close();
+  }
 });
 
 test('Reinstall ohne erneute Parameter bleibt erhalten; Neu ohne Wert scheitert', async () => {
