@@ -41,7 +41,7 @@ Docker-Netz legen oder die IP des Broker-Hosts angeben.
 |---|---|
 | `mqtt_url` | `mqtt://host:1883` oder `mqtts://host:8883` (Pflicht) |
 | `mqtt_username` / `mqtt_password` | Zugangsdaten, nur nötig wenn der Broker sie verlangt |
-| `mqtt_prefix` | nur Topics unter diesem Präfix werden abonniert (leer = alle) |
+| `mqtt_prefix` | Namensanfang ohne `#`/`*`, z. B. `netfreq/` oder `haus/`; nur Topics darunter werden abonniert (leer = alle) |
 | `mqtt_allow_write` | schaltbare Topics, komma-getrennt: `haus/licht/kuche`, `haus/heizung/#` (leer = kein Topic schaltbar) |
 
 ## Sicherheit
