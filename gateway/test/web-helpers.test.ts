@@ -19,7 +19,7 @@ Object.defineProperty(globalThis, 'document', {
   configurable: true,
   value: { getElementById: () => stubElement, body: { dataset: {} } },
 });
-const { cmpVersion, diffValue, updateChip, packageVersionLabel } = await import('../web/js/packages.js');
+const { cmpVersion, diffValue, updateChip, packageVersionLabel, paramForm } = await import('../web/js/packages.js');
 
 test('esc maskiert alle HTML-Sonderzeichen', () => {
   assert.equal(esc(`<a href="x">&'`), '&lt;a href=&quot;x&quot;&gt;&amp;&#39;');
@@ -75,4 +75,32 @@ test('diffValue klappt lange Werte und Zeilenumbrueche ein', () => {
 test('diffValue stellt leere Werte und Objekte lesbar dar', () => {
   assert.match(diffValue(null, ''), /\(leer\).*\(leer\)/);
   assert.match(diffValue({ a: 1 }, { a: 2 }), /&quot;a&quot;:1/);
+});
+
+// Regression: Label, Eingabe und Hilfe eines Parameters landeten als eigene
+// Grid-Zellen nebeneinander, dadurch stand die Hilfe beim falschen Feld.
+test('paramForm haelt Label, Eingabe und Hilfe je Parameter in einer Zelle', () => {
+  const html = paramForm({
+    params: [
+      { key: 'mqtt_url', label: 'Broker-URL', required: true, placeholder: 'mqtt://host:1883', help: 'Port 1883 fuer MQTT.' },
+      { key: 'mqtt_password', label: 'Passwort', type: 'password', secret: true, help: 'Nur bei Bedarf.' },
+    ],
+  });
+  const cells = html.split('<div class="field">').slice(1);
+  assert.equal(cells.length, 2, 'ein Feld je Parameter');
+  const [urlCell = '', pwCell = ''] = cells;
+  assert.match(urlCell, /^<div class="field-head"><label for="param-mqtt_url">Broker-URL \*<\/label><button type="button" class="help" data-help="Port 1883 fuer MQTT\."/);
+  assert.match(urlCell, /<input id="param-mqtt_url" data-param="mqtt_url" type="text" placeholder="mqtt:\/\/host:1883"/);
+  assert.doesNotMatch(urlCell, /class="field-help"/, 'Hilfe nicht mehr als lose Zeile');
+  assert.match(pwCell, /data-help="Nur bei Bedarf\."/);
+  assert.match(pwCell, /type="password"/);
+});
+
+test('paramForm setzt den Pflicht-Stern nicht bei schon gesetztem Passwort', () => {
+  const html = paramForm(
+    { params: [{ key: 'secret', label: 'Geheim', type: 'password', required: true }] },
+    { secret: 'gesetzt' }
+  );
+  assert.match(html, /<label for="param-secret">Geheim<\/label>/);
+  assert.match(html, /\(gesetzt – leer lassen zum Behalten\)/);
 });
