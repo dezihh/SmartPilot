@@ -342,6 +342,23 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
   return out;
 }
 
+// Funktionstest fuer die Paket-Pruefung: Das Manifest darf pro Server ein
+// Health-Tool nennen, das der Health-Check nach dem MCP-Handshake aufruft.
+// Ohne diesen Aufruf meldet ein MQTT-Server mit falschem Broker "ok", weil
+// initialize/tools/list unabhaengig von der Broker-Verbindung antworten.
+export function healthToolForServer(serverName: string): string | undefined {
+  const row = getDb()
+    .prepare(
+      `SELECT p.manifest AS manifest FROM package_items i
+       JOIN packages p ON p.id = i.package_id
+       WHERE i.kind = 'server' AND i.name = ?`
+    )
+    .get(serverName) as { manifest: string | null } | undefined;
+  if (!row?.manifest) return undefined;
+  const manifest = parseStoredManifest(row.manifest);
+  return manifest?.servers?.find((s) => s.name === serverName)?.healthTool;
+}
+
 // Install = Upsert (mehrfach installieren ueberschreibt/aktualisiert).
 // Provenienz in packages + package_items. dangerAck: bei shell()-Templates
 // erforderlich. decisions: pro Item 'take' (Paket-Inhalt uebernehmen) oder
