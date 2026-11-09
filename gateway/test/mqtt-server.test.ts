@@ -78,6 +78,16 @@ test('normalizePrefix: fuehrende und fehlende Slashes', () => {
   assert.equal(normalizePrefix('//haus//keller/'), 'haus//keller/');
 });
 
+// Regression: "dwd/#" wurde zu "dwd/#/" und der Broker lehnte das Abo ab.
+test('normalizePrefix: Wildcards und Trailing-Slash fallen weg', () => {
+  assert.equal(normalizePrefix('dwd/#'), 'dwd/');
+  assert.equal(normalizePrefix('dwd/*'), 'dwd/');
+  assert.equal(normalizePrefix('/haus/#/'), 'haus/');
+  assert.equal(normalizePrefix('haus/+/keller'), 'haus/');
+  assert.equal(normalizePrefix('#'), '');
+  assert.equal(normalizePrefix('*'), '');
+});
+
 // ---- Topics ----
 
 test('normalizeTopic: Praefix ergaenzen, fuehrenden Slash entfernen', () => {

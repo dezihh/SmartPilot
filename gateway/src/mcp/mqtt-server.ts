@@ -42,10 +42,11 @@ export function parseSettings(env: NodeJS.ProcessEnv): Settings {
 }
 
 // Praefix wie 'haus/' - fuehrender/abschliessender Slash wird vereinheitlicht.
+// Wildcards gehoeren nicht ins Praefix: der Abo-Filter entsteht als
+// `${prefix}#`, aus "dwd/#" wuerde sonst der ungueltige Filter "dwd/#/".
 export function normalizePrefix(raw: string | undefined): string {
-  const p = (raw ?? '').trim().replace(/^\/+/, '');
-  if (!p) return '';
-  return p.endsWith('/') ? p : `${p}/`;
+  const p = (raw ?? '').trim().replace(/^\/+/, '').replace(/[#*+].*$/, '').replace(/\/+$/, '');
+  return p ? `${p}/` : '';
 }
 
 // Topic fuer Anzeige/Aufruf: fuehrender Slash weg, Praefix ergaenzen, wenn er
