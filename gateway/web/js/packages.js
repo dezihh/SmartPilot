@@ -143,18 +143,26 @@ function renderPackages() {
   };
 }
 
-function paramForm(manifest, current = {}) {
+// Ein Parameter = eine Grid-Zelle. Label, Eingabe und Hilfe muessen zusammen
+// bleiben, sonst legt das Formular-Grid sie als eigene Zellen nebeneinander
+// und die Hilfe steht beim falschen Feld. Lange Hilfetexte liegen wie in den
+// Einstellungen hinter einem "?"-Button (globaler Overlay-Handler in app.js).
+export function paramForm(manifest, current = {}) {
   return (manifest.params ?? []).map((p) => {
     const isSet = current[p.key] != null && current[p.key] !== '';
     const type = p.type === 'password' || p.secret ? 'password' : p.type === 'number' ? 'number' : 'text';
-    const help = p.help ? `<div class="field-help">${esc(p.help)}</div>` : '';
     const placeholder = p.placeholder ?? p.default ?? '';
+    const required = p.required && !(type === 'password' && isSet) ? ' *' : '';
+    const help = p.help
+      ? `<button type="button" class="help" data-help="${esc(p.help)}" aria-label="Hilfe zu ${esc(p.label)}">?</button>`
+      : '';
+    const head = `<div class="field-head"><label for="param-${esc(p.key)}">${esc(p.label)}${required}</label>${help}</div>`;
     if (type === 'password') {
       const ph = isSet ? '(gesetzt – leer lassen zum Behalten)' : placeholder;
-      return `<label for="param-${esc(p.key)}">${esc(p.label)}${p.required && !isSet ? ' *' : ''}</label><input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="password" placeholder="${esc(ph)}" value="">${help}`;
+      return `<div class="field">${head}<input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="password" placeholder="${esc(ph)}" value=""></div>`;
     }
     const val = isSet ? current[p.key] : (p.default ?? '');
-    return `<label for="param-${esc(p.key)}">${esc(p.label)}${p.required ? ' *' : ''}</label><input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="${type}" placeholder="${esc(placeholder)}" value="${esc(val)}">${help}`;
+    return `<div class="field">${head}<input id="param-${esc(p.key)}" data-param="${esc(p.key)}" type="${type}" placeholder="${esc(placeholder)}" value="${esc(val)}"></div>`;
   }).join('');
 }
 
