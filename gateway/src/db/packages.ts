@@ -300,7 +300,10 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
     try {
       const stored = JSON.parse(pkg.params) as Record<string, string>;
       for (const [k, v] of Object.entries(stored)) {
-        if (!secretKeys.has(k) && v && v !== '(gesetzt)') out[k] = v;
+        // Leere Werte behalten: substituteManifest braucht jeden Platzhalter.
+        // Ein fehlender leerer Parameter liess das Speichern der Konfiguration
+        // mit "Platzhalter ... hat keinen Wert" scheitern.
+        if (!secretKeys.has(k) && v !== '(gesetzt)') out[k] = typeof v === 'string' ? v : String(v ?? '');
       }
     } catch {
       // defekte params: ignorieren
@@ -333,6 +336,9 @@ export function existingParams(id: string, m: PackageManifest): Record<string, s
       for (const [name, value] of Object.entries(s.headers)) map(value, rheaders[name] ?? null);
     }
   }
+  // Jeder deklarierte Parameter muss einen String haben (auch ''), sonst
+  // scheitert substituteManifest beim Rebuild der alten Manifest-Version.
+  for (const p of m.params ?? []) if (out[p.key] === undefined) out[p.key] = '';
   return out;
 }
 
