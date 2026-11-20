@@ -35,7 +35,8 @@ test('redactTrace: Primitive und null bleiben unveraendert', () => {
 test('parseAgentAnswer: Tool-Call-Leak wird gefiltert und vermerkt', () => {
   const trace: TraceEvent[] = [];
   const out = parseAgentAnswer('Hallo <|tool_call>{"x":1}<tool_call|> Welt', trace);
-  assert.equal(out.speech, 'Hallo  Welt');
+  // Issue #35: Leerraum wird fuer die Sprachausgabe zusammengefasst.
+  assert.equal(out.speech, 'Hallo Welt');
   assert.ok(trace.some((t) => t.step === 'agent.leak_filtered'));
 });
 

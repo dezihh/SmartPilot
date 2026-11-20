@@ -52,6 +52,31 @@ export function withDisplay(resp: AssistantResponse): AssistantResponse {
   return { ...resp, display: { ...resp.display, title, text } };
 }
 
+const NO_ANSWER_SPEECH = 'Entschuldigung, dazu habe ich gerade nichts gefunden.';
+
+// Sprachausgabe von Datenresten befreien (Issue #35): Markdown-Links werden
+// zu ihrem Label, URLs, Code-Fences und Fett-Marker fliegen raus. Alexa liest
+// sonst Woertlich Zeichen vor, die nur in der Anzeige Sinn ergeben.
+export function sanitizeSpeech(text: string): string {
+  return text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\b(?:https?:\/\/|www\.)[^\s]*[^\s.,;:!?]/gi, ' ')
+    .replace(/`{1,3}/g, '')
+    .replace(/\*\*|__/g, '')
+    .replace(/^\s*#{1,6}\s*/gm, '')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// JSON-Rohdaten duerfen niemals gesprochen werden. `{` ist immer JSON-Verdacht;
+// bei `[` nicht, weil auch ein Markdown-Link so beginnt (`[Quelle](url)`).
+export function looksLikeJsonData(text: string): boolean {
+  const t = text.trim();
+  return t.startsWith('{') || /^\[\s*[{["\d-]/.test(t);
+}
+
 export function parseAgentAnswer(content: string, trace: TraceEvent[]): AssistantResponse {
   const filtered = content
     .replace(/<\|?tool_call>[\s\S]*?(?:<tool_call\|>|<\|end_of_turn\|>|$)/gi, '')
@@ -61,21 +86,26 @@ export function parseAgentAnswer(content: string, trace: TraceEvent[]): Assistan
     trace.push({ ts: Date.now(), step: 'agent.leak_filtered', detail: { lenBefore: content.length, lenAfter: filtered.length } });
   }
   const text = filtered.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
-  if (text.startsWith('{')) {
+  if (looksLikeJsonData(text)) {
     try {
       const parsed = JSON.parse(text) as { needs_clarification?: boolean; speech?: string; keep_open?: boolean };
-      if (typeof parsed.speech === 'string' && parsed.speech.trim().length > 0) {
-        return { speech: parsed.speech, followUp: parsed.needs_clarification === true, keepOpen: parsed.keep_open === true };
+      const speech = typeof parsed.speech === 'string' ? sanitizeSpeech(parsed.speech) : '';
+      if (speech && !looksLikeJsonData(speech)) {
+        return { speech, followUp: parsed.needs_clarification === true, keepOpen: parsed.keep_open === true };
       }
       trace.push({ ts: Date.now(), step: 'agent.empty_speech' });
-      return { speech: 'Entschuldigung, dazu habe ich gerade nichts gefunden.' };
+      return { speech: NO_ANSWER_SPEECH };
     } catch {
+      // Abgeschnittenes JSON (z. B. lange Suchtreffer): frueher landete der
+      // Rohtext in der Sprachausgabe, jetzt bewusst keine Daten vorlesen.
       trace.push({ ts: Date.now(), step: 'agent.json_parse_error' });
+      return { speech: NO_ANSWER_SPEECH };
     }
   }
-  if (text.length === 0) {
+  const speech = sanitizeSpeech(text);
+  if (speech.length === 0) {
     trace.push({ ts: Date.now(), step: 'agent.empty_content' });
-    return { speech: 'Entschuldigung, dazu habe ich gerade nichts gefunden.' };
+    return { speech: NO_ANSWER_SPEECH };
   }
-  return { speech: text };
+  return { speech };
 }

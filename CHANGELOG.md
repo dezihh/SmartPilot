@@ -77,6 +77,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   eigene Meldung und den Trace-Schritt `tool.iter_limit`. Das Standardbudget
   je Runde steigt von 9 auf 12 Sekunden.
 
+- **Alexa las rohe Suchdaten (JSON/URL) vor (Issue #35):** Lieferte das Modell
+  ein abgeschnittenes oder unbekanntes JSON-Objekt, landete der Rohtext in der
+  Sprachausgabe. JSON-Verdacht (`{`/`[`) wird jetzt nie gesprochen: gültiges
+  JSON nur über das `speech`-Feld, sonst die neutrale Ausweichantwort. Aus
+  jeder Spracheingabe fliegen zusätzlich Markdown-Links (Label bleibt), URLs,
+  Code-Fences und Fett-Marker (`sanitizeSpeech`).
+
 - **MQTT-Präfix mit Wildcard blockierte das Abonnement:** Der Abo-Filter wird
   als `${prefix}#` gebaut; ein Feldwert wie `dwd/#` ergab den ungültigen Filter
   `dwd/#/` und der Cache blieb leer. `normalizePrefix` schneidet jetzt am ersten
