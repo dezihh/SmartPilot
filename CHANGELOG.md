@@ -10,7 +10,7 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-## [Unreleased]
+## [0.6.0] – 2026-11-20
 
 ### Hinzugefügt
 
@@ -72,6 +72,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Namensanfang ohne Wildcards hingehört; das Passwort ist als Secret markiert
   und wird damit maskiert gespeichert und aus Backups ohne `tokens=1`
   ausgelassen.
+- **Portainer-Paket 1.0.1:** Container-, Image- und Inspect-Funktionen nehmen
+  eine optionale Endpoint-ID (Standard aus der Konfiguration); die
+  Endpoint-Liste nennt die IDs. Alle sechs Funktionen stehen in `allowTools`,
+  nicht erreichbare Umgebungen werden als solche gemeldet.
 
 ### Behoben
 
@@ -1047,7 +1051,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/dezihh/SmartPilot/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/dezihh/SmartPilot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.4.0
