@@ -58,3 +58,40 @@ test('parseAgentAnswer: tool-call-Leak wird gefiltert', () => {
   assert.equal(out.speech, 'Hinweis Ergebnis 22 Grad');
 assert.ok(trace.some((t) => t.step === 'agent.leak_filtered'));
 });
+
+// Issue #35: abgeschnittenes JSON (Suchtreffer) wurde als Rohtext vorgelesen.
+test('parseAgentAnswer: kaputtes JSON wird nie vorgelesen', () => {
+  const trace: { step: string }[] = [];
+  const out = parseAgentAnswer('{"url":"https://faz.net/aktuell/politik/usa-unter-trump/attentat', trace as never);
+  assert.equal(out.speech, 'Entschuldigung, dazu habe ich gerade nichts gefunden.');
+  assert.equal(out.speech.includes('{'), false);
+  assert.ok(trace.some((t) => t.step === 'agent.json_parse_error'));
+});
+
+test('parseAgentAnswer: JSON-Array wird nie vorgelesen', () => {
+  const trace: { step: string }[] = [];
+  const out = parseAgentAnswer('[{"url":"https://example.com/a","title":"Treffer"}]', trace as never);
+  assert.equal(out.speech, 'Entschuldigung, dazu habe ich gerade nichts gefunden.');
+  assert.ok(trace.some((t) => t.step === 'agent.empty_speech'));
+});
+
+test('parseAgentAnswer: URLs fliegen aus der Sprachausgabe', () => {
+  const out = parseAgentAnswer('Die Meldung steht unter https://example.com/a und www.example.org.', []);
+  assert.equal(out.speech, 'Die Meldung steht unter und.');
+  assert.equal(out.speech.includes('http'), false);
+});
+
+test('parseAgentAnswer: Markdown-Link bleibt als Label sprechbar', () => {
+  const out = parseAgentAnswer('Quelle: [FAZ](https://faz.net/a) berichtet.', []);
+  assert.equal(out.speech, 'Quelle: FAZ berichtet.');
+});
+
+test('parseAgentAnswer: speech-Feld wird ebenfalls bereinigt', () => {
+  const out = parseAgentAnswer('{"speech":"Mehr auf https://example.com"}', []);
+  assert.equal(out.speech, 'Mehr auf');
+});
+
+test('parseAgentAnswer: Markdown-Link am Anfang ist kein JSON', () => {
+  const out = parseAgentAnswer('[Quelle](https://example.com) sagt 22 Grad.', []);
+  assert.equal(out.speech, 'Quelle sagt 22 Grad.');
+});

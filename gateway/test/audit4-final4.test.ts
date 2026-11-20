@@ -8,10 +8,12 @@ import type { TraceEvent } from '../src/types.js';
 
 const BASE = { id: 'p', version: '1.0.0', name: 'P', summary: 'S', description: 'D' };
 
-test('parseAgentAnswer: kaputtes JSON faellt auf Text zurueck und vermerkt es', () => {
+// Issue #35: kaputtes JSON darf nicht mehr als Rohtext gesprochen werden.
+test('parseAgentAnswer: kaputtes JSON faellt auf die Ausweichantwort zurueck', () => {
   const trace: TraceEvent[] = [];
   const out = parseAgentAnswer('{kaputt', trace);
-  assert.equal(out.speech, '{kaputt');
+  assert.match(out.speech, /nichts gefunden/);
+  assert.equal(out.speech.includes('{'), false);
   assert.ok(trace.some((t) => t.step === 'agent.json_parse_error'));
 });
 
