@@ -13,9 +13,9 @@
       "id": "music-assistant",
       "name": "Music Assistant Anbindung",
       "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "category": "mixed",
-      "sha256": "0df48ed4ee54cc70732ddd29472c89bd12297d65545717f5ecd8b5127072f1e0"
+      "sha256": "0db6cd71885847d67bc1ccbe96a84a34a7ce0ea9d7f65a1e9e8ff6986039b877"
     },
     {
       "id": "searxng",
@@ -125,9 +125,9 @@
       "id": "portainer",
       "name": "Portainer",
       "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "function",
-      "sha256": "320f0e485021b1a9c462e371c59f9c5139f7d20a3227a51e4b986fb433f86ebd"
+      "sha256": "8ca487f0438ffbe2104b27374c892a234e9a76f9115c592b1764098e0691b8b3"
     }
   ]
 }

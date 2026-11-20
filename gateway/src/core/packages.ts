@@ -165,25 +165,57 @@ export function meetsMinVersion(current: string, min: string | undefined): boole
 // "gefaehrliche Aktion": Templates, die shell() mitbringen (Befehle im
 // Gateway-Container). http() gilt als Info (externe Aufrufe), ohne
 // Bestaetigungspflicht.
+// Host einer literalen http()-URL. Bewusst ohne `new URL`: vor der
+// Substitution steht dort oft ein Platzhalter (`http://${host}/x`), den
+// `new URL` verwirft - dann fehlte die Gefahrenwarnung (F-001).
+function httpUrlHost(raw: string): string | null {
+  const m = /^[a-z][a-z0-9+.-]*:\/\/([^/?#]+)/i.exec(raw.trim());
+  if (!m) return null;
+  let host = m[1]!;
+  const at = host.lastIndexOf('@');
+  if (at >= 0) host = host.slice(at + 1);
+  if (host.startsWith('[')) {
+    const end = host.indexOf(']');
+    return end > 1 ? host.slice(1, end) : null;
+  }
+  host = host.replace(/:\d+$/, '');
+  return host || null;
+}
+
+// Alle Hosts literaler http()-Aufrufe (Funktionen + Vorgaenge), sortiert.
+// Geht in die Gefahrensignatur: aendert ein Parameter den Host, muss neu
+// bestaetigt werden (F-001).
+function httpHostsOf(m: PackageManifest): string[] {
+  const hosts = new Set<string>();
+  const templates = [...(m.functions ?? []).map((f) => f.template), ...(m.actions ?? []).map((a) => a.template ?? '')];
+  for (const tpl of templates) {
+    for (const hit of tpl.matchAll(/\bhttp\(\s*['"]([^'"]+)['"]/g)) {
+      const h = httpUrlHost(hit[1]!);
+      if (h) hosts.add(h);
+    }
+  }
+  return [...hosts].sort();
+}
+
 export function manifestDangerous(m: PackageManifest): { dangerous: boolean; items: string[]; info: string[] } {
   const items: string[] = [];
   const info: string[] = [];
   // Literale http()-URLs werden nicht SSRF-geprueft (dynamische schon).
   // Loopback/Metadaten sind ack-pflichtig, reine LAN-Ziele bleiben Hinweis.
-  const literalHosts = (template: string): { sensitive: string[]; internal: string[] } => {
-    const re = /\bhttp\(\s*['"]([^'"]+)['"]/g;
+  // Ein Host aus einem Platzhalter ist ack-pflichtig: das Ziel steht erst
+  // nach der Substitution fest (F-001).
+  const literalHosts = (template: string): { sensitive: string[]; internal: string[]; placeholder: string[] } => {
     const sensitive = new Set<string>();
     const internal = new Set<string>();
-    for (let hit = re.exec(template); hit; hit = re.exec(template)) {
-      try {
-        const h = new URL(hit[1]!).hostname;
-        if (isSensitiveHost(h)) sensitive.add(h);
-        else if (isPrivateHost(h)) internal.add(h);
-      } catch {
-        // keine absolute URL - ignorieren
-      }
+    const placeholder = new Set<string>();
+    for (const hit of template.matchAll(/\bhttp\(\s*['"]([^'"]+)['"]/g)) {
+      const h = httpUrlHost(hit[1]!);
+      if (!h) continue;
+      if (h.includes('${')) placeholder.add(h);
+      else if (isSensitiveHost(h)) sensitive.add(h);
+      else if (isPrivateHost(h)) internal.add(h);
     }
-    return { sensitive: [...sensitive], internal: [...internal] };
+    return { sensitive: [...sensitive], internal: [...internal], placeholder: [...placeholder] };
   };
   // stdio-Server starten einen beliebigen Prozess im Gateway-Container
   // (command/args) - immer als gefaehrlich einstufen, unabhaengig vom command.
@@ -206,6 +238,9 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
         items.push(`Funktion "${f.name}" ruft sensible Adresse ${hosts.sensitive.join(', ')} auf (Loopback/Metadaten) - Bestaetigung erforderlich`);
       }
       if (hosts.internal.length) info.push(`Funktion "${f.name}" ruft interne Adresse ${hosts.internal.join(', ')} auf (literale http()-URL)`);
+      if (hosts.placeholder.length) {
+        items.push(`Funktion "${f.name}" bezieht den http()-Host aus Parametern (${hosts.placeholder.join(', ')}) - Ziel erst nach Substitution bekannt, Bestaetigung erforderlich`);
+      }
     }
   }
   for (const a of m.actions ?? []) {
@@ -217,6 +252,9 @@ export function manifestDangerous(m: PackageManifest): { dangerous: boolean; ite
         items.push(`Vorgang "${a.name}" ruft sensible Adresse ${hosts.sensitive.join(', ')} auf (Loopback/Metadaten) - Bestaetigung erforderlich`);
       }
       if (hosts.internal.length) info.push(`Vorgang "${a.name}" ruft interne Adresse ${hosts.internal.join(', ')} auf (literale http()-URL)`);
+      if (hosts.placeholder.length) {
+        items.push(`Vorgang "${a.name}" bezieht den http()-Host aus Parametern (${hosts.placeholder.join(', ')}) - Ziel erst nach Substitution bekannt, Bestaetigung erforderlich`);
+      }
     }
   }
   // Vom Paketautor erklaerte Gefahren (z. B. destruktive MCP-Tools), die
@@ -240,6 +278,11 @@ export function dangerSignature(m: PackageManifest): string {
     actions: (m.actions ?? [])
       .filter((a) => a.template && /\bshell\s*\(/.test(a.template))
       .map((a) => [a.name, a.template]),
+    // Aendert ein Parameter den Host einer literalen http()-URL, muss neu
+    // bestaetigt werden (F-001).
+    httpHosts: httpHostsOf(m),
+    // allow_private einer benannten Verbindung ist sicherheitsrelevant (F-002).
+    httpConnections: (m.httpConnections ?? []).map((c) => [c.name, c.baseUrl, c.allowPrivate ? 1 : 0]),
     dangerousItems: m.dangerousItems ?? [],
   });
 }

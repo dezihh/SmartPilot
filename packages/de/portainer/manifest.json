@@ -1,6 +1,6 @@
 {
   "id": "portainer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Portainer",
   "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
   "description": "Nutzt die Portainer-REST-API direkt (ohne MCP-Sidecar). Das Paket legt die benannte HTTP-Verbindung 'portainer' mit URL und API-Key an; alle Funktionen lesen nur. Die Verbindung darf ausdruecklich ins private Netz, weil Portainer typischerweise im LAN laeuft.",
@@ -10,7 +10,7 @@
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Erreichbare Portainer-Instanz (REST-API, Port 9000/9443) und ein API-Key mit Lesezugriff. Der Gateway-Container muss die Instanz erreichen.",
   "minGatewayVersion": "0.6.0",
-  "changelog": "1.0.0 — Erstveroeffentlichung: direkte Portainer-REST-Anbindung ueber eine benannte HTTP-Verbindung (ohne MCP-Sidecar).",
+  "changelog": "1.0.1 — Containers/Images/Inspect nehmen optional eine Endpoint-ID (Standard aus der Konfiguration); portainer_endpoints nennt die ID; nicht erreichbare Umgebungen werden benannt; alle Portainer-Funktionen stehen in der Agent-Allowlist.\n1.0.0 — Erstveroeffentlichung: direkte Portainer-REST-Anbindung ueber eine benannte HTTP-Verbindung (ohne MCP-Sidecar).",
   "category": "function",
   "params": [
     {
@@ -45,6 +45,14 @@
       "description": "Portainer REST-API (direkt, ohne MCP-Sidecar)"
     }
   ],
+  "allowTools": [
+    "fn_portainer_system",
+    "fn_portainer_endpoints",
+    "fn_portainer_containers",
+    "fn_portainer_stacks",
+    "fn_portainer_images",
+    "fn_portainer_container_inspect"
+  ],
   "functions": [
     {
       "name": "portainer_system",
@@ -61,7 +69,7 @@
     {
       "name": "portainer_endpoints",
       "description": "Portainer-Umgebungen (Endpunkte) mit Name, URL und Status.",
-      "template": "{%- set d = http('portainer:/api/endpoints') -%}\n{%- if d and d.length -%}{%- for e in d -%}{{ e.Name }} ({{ e.URL }}, {{ 'online' if e.Status == 1 else 'offline' }}){% if not loop.last %}; {% endif %}{%- endfor -%}{%- else -%}Keine Endpunkte gefunden.{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints') -%}\n{%- if d and d.length -%}{%- for e in d -%}#{{ e.Id }}: {{ e.Name }} ({{ e.URL }}, {{ 'online' if e.Status == 1 else 'offline' }}){% if not loop.last %}; {% endif %}{%- endfor -%}{%- else -%}Keine Endpunkte gefunden.{%- endif -%}",
       "parameters": {
         "type": "object",
         "properties": {}
@@ -73,13 +81,18 @@
     {
       "name": "portainer_containers",
       "description": "Container auf der gewaehlten Portainer-Umgebung, auch gestoppte.",
-      "template": "{%- set d = http('portainer:/api/endpoints/${endpoint_id}/docker/containers/json?all=1') -%}\n{%- if d and d.length -%}{%- for c in d -%}{{ (c.Names[0] or c.Id) | replace('/', '') }} ({{ c.State }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Container gefunden.{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/containers/json?all=1') -%}\n{%- if d and d.length -%}{%- for c in d -%}{{ (c.Names[0] or c.Id) | replace('/', '') }} ({{ c.State }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Container auf Endpoint {{ args.endpoint or ${endpoint_id} }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "endpoint": {
+            "type": "number",
+            "description": "Portainer-Endpoint-ID (siehe portainer_endpoints); leer = konfigurierte ID"
+          }
+        }
       },
       "budget": 1,
-      "inventory_prompt": "Portainer-Container: fn_portainer_containers (Name und State, auch gestoppte).",
+      "inventory_prompt": "Portainer-Container: fn_portainer_containers (Name und State, auch gestoppte; optional endpoint-ID aus fn_portainer_endpoints).",
       "sideEffect": "read"
     },
     {
@@ -97,25 +110,34 @@
     {
       "name": "portainer_images",
       "description": "Docker-Images auf der gewaehlten Portainer-Umgebung.",
-      "template": "{%- set d = http('portainer:/api/endpoints/${endpoint_id}/docker/images/json') -%}\n{%- if d and d.length -%}{%- for i in d -%}{{ i.RepoTags[0] if i.RepoTags else i.Id }}{% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Images gefunden.{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/images/json') -%}\n{%- if d and d.length -%}{%- for i in d -%}{{ i.RepoTags[0] if i.RepoTags else i.Id }}{% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Images auf Endpoint {{ args.endpoint or ${endpoint_id} }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "endpoint": {
+            "type": "number",
+            "description": "Portainer-Endpoint-ID (siehe portainer_endpoints); leer = konfigurierte ID"
+          }
+        }
       },
       "budget": 1,
-      "inventory_prompt": "Portainer-Images: fn_portainer_images (Repo-Tags).",
+      "inventory_prompt": "Portainer-Images: fn_portainer_images (Repo-Tags; optional endpoint-ID aus fn_portainer_endpoints).",
       "sideEffect": "read"
     },
     {
       "name": "portainer_container_inspect",
       "description": "Details zu einem Container (ID oder Name) auf der gewaehlten Umgebung.",
-      "template": "{%- set d = http('portainer:/api/endpoints/${endpoint_id}/docker/containers/' ~ (args.id | urlencode) ~ '/json') -%}\n{%- if d and d.Id -%}Container {{ d.Name }}: Status {{ d.State.Status }}, Image {{ d.Config.Image }}.{%- else -%}Container nicht gefunden.{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/containers/' ~ (args.id | urlencode) ~ '/json') -%}\n{%- if d and d.Id -%}Container {{ d.Name }}: Status {{ d.State.Status }}, Image {{ d.Config.Image }} (Endpoint {{ args.endpoint or ${endpoint_id} }}).{%- else -%}Container auf Endpoint {{ args.endpoint or ${endpoint_id} }} nicht gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "description": "Container-ID oder -Name"
+          },
+          "endpoint": {
+            "type": "number",
+            "description": "Portainer-Endpoint-ID (siehe portainer_endpoints); leer = konfigurierte ID"
           }
         },
         "required": [
@@ -123,7 +145,7 @@
         ]
       },
       "budget": 1,
-      "inventory_prompt": "Container-Details: fn_portainer_container_inspect mit id (ID oder Name).",
+      "inventory_prompt": "Container-Details: fn_portainer_container_inspect mit id (ID oder Name); optional endpoint-ID aus fn_portainer_endpoints.",
       "sideEffect": "read"
     }
   ]

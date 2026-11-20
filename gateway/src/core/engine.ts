@@ -241,6 +241,7 @@ async function runToolLoop(
     const results = await Promise.all(
       (message.tool_calls ?? []).map(async (call) => {
         let result: string;
+        let argsForLog: Record<string, unknown> = {};
         try {
           const route = routes.get(call.function.name);
           if (!route) throw new Error(`unbekanntes Tool: ${call.function.name}`);
@@ -257,6 +258,7 @@ async function runToolLoop(
           }
           toolCalls[call.function.name] = used + 1;
           const args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
+          argsForLog = args;
           // Issue #4 Stufe 3: Parameter-Allowlist je Tool auch zur Laufzeit -
           // das Schema ist nur ein Hinweis, das Modell kann mehr schicken.
           const allowedArgs = toolParams?.[call.function.name];
@@ -286,7 +288,7 @@ async function runToolLoop(
           trace.push({
             ts: Date.now(),
             step: 'tool.error',
-            detail: { tool: call.function.name, error: String(e) },
+            detail: { tool: call.function.name, args: argsForLog, error: String(e) },
           });
         }
         return { id: call.id, content: result };
@@ -296,8 +298,8 @@ async function runToolLoop(
       messages.push({ role: 'tool', content: r.content, tool_call_id: r.id });
     }
   };
-  const completeRound = async (withTools: boolean, timeoutMs: number): Promise<ChatMessage> => {
-    const result = await chatCompletion(messages, withTools && specs.length > 0 ? specs : undefined, timeoutMs, roundModel);
+  const completeRound = async (withTools: boolean, timeoutMs: number, toolChoice?: 'auto' | 'none'): Promise<ChatMessage> => {
+    const result = await chatCompletion(messages, withTools && specs.length > 0 ? specs : undefined, timeoutMs, roundModel, undefined, toolChoice);
     traceUsage(trace, roundModel ?? config.llm.model, result);
     return result.message;
   };
@@ -319,13 +321,14 @@ async function runToolLoop(
     const remaining = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), MIN_ROUND_TIMEOUT_MS));
     let message: ChatMessage;
     try {
-      // Letzte Runde ohne Tool-Specs: mit Specs kann das Modell erneut
-      // recherchieren, die Schleife endet dann ohne Antwort und der Nutzer
-      // bekommt nur die Timeout-Meldung (Issue #33).
-      message = lastRound ? await completeRound(false, remaining) : await completeRound(true, remaining);
+      // Letzte Runde: Tool-Specs bleiben drin, aber tool_choice='none'
+      // verbietet Aufrufe auf API-Ebene. Ohne Specs formulierte DeepSeek den
+      // Aufruf als Rohtext (Issue #35); mit Specs + 'none' muss es Text liefern.
+      message = await completeRound(true, remaining, lastRound ? 'none' : undefined);
       // Provider liefern gelegentlich einen Tool-Aufruf als Text statt als
       // tool_calls (DeepSeek: <｜｜DSML｜｜tool_calls>). Die Sprachausgabe filtert
-      // ihn, dann fehlt aber die Antwort - einmal ohne Tools nachfassen.
+      // ihn, dann fehlt aber die Antwort - einmal mit tool_choice='none'
+      // nachfassen.
       if (lastRound && !message.tool_calls?.length && containsToolCallSyntax(message.content ?? '')) {
         trace.push({ ts: Date.now(), step: 'tool.raw_call_retry' });
         messages.push({
@@ -334,7 +337,7 @@ async function runToolLoop(
             'Werkzeug-Aufrufe sind nicht mehr moeglich. Formuliere die Antwort jetzt in zwei bis drei ganzen Saetzen als reinen Text - ohne Werkzeug- oder Sonder-Tokens.',
         });
         const retryMs = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), MIN_ROUND_TIMEOUT_MS));
-        message = await completeRound(false, retryMs);
+        message = await completeRound(true, retryMs, 'none');
       }
     } catch (e) {
       if (!isTimeoutError(e)) throw e;

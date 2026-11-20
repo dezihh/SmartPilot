@@ -10,7 +10,7 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-## [Unreleased]
+## [0.6.0] – 2026-11-20
 
 ### Hinzugefügt
 
@@ -72,8 +72,31 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Namensanfang ohne Wildcards hingehört; das Passwort ist als Secret markiert
   und wird damit maskiert gespeichert und aus Backups ohne `tokens=1`
   ausgelassen.
+- **Portainer-Paket 1.0.1:** Container-, Image- und Inspect-Funktionen nehmen
+  eine optionale Endpoint-ID (Standard aus der Konfiguration); die
+  Endpoint-Liste nennt die IDs. Alle sechs Funktionen stehen in `allowTools`,
+  nicht erreichbare Umgebungen werden als solche gemeldet.
 
 ### Behoben
+
+- **Letzte Agent-Runde erzwingt Text statt Tool-Tokens:** `tool_choice=none`
+  bei weiterhin sichtbaren Tool-Specs; ergänzt den Rohtext-Filter aus #35.
+  Fehlgeschlagene Tool-Aufrufe zeigen ihre Argumente jetzt im Trace
+  (`tool.error.args`).
+
+- **Musikwiedergabe von Künstlern (Music Assistant):** Eine Artist-URI lehnt
+  MA mit „No playable item found" ab; `radio=true` spielt eine Mischung
+  ähnlicher Künstler statt des gewünschten. Das Paket `music-assistant` 1.1.6
+  holt die Alben des Künstlers, wählt ein Best-of bzw. das erste Album und
+  spielt dessen URI ohne `radio`.
+
+- **Paket-Gefahrenprüfung und Verbindungs-DNS (F-001/F-002/F-007):** Ein
+  Host aus einem Manifest-Parameter (`http('http://${host}/…')`) ist jetzt
+  bestätigungspflichtig (`manifestDangerous`); `dangerSignature` enthält die
+  literalen http-Hosts und `allow_private` benannter Verbindungen, damit eine
+  Parameter-Änderung ein neues Ack erzwingt. Benannte Verbindungen pinnen die
+  aufgelöste IP (Rebinding-Schutz) und blockieren private DNS-Antworten ohne
+  `allow_private`.
 
 - **Recherche endete nach dem Rundenlimit mit „zu lange gedauert" (Issue
   #33):** Die letzte erlaubte Runde lief mit Tool-Specs, das Modell startete
@@ -1028,7 +1051,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/dezihh/SmartPilot/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/dezihh/SmartPilot/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/dezihh/SmartPilot/releases/tag/v0.4.0
