@@ -37,6 +37,12 @@ body {
   letter-spacing: 0.03em;
 }
 
+.sidebar-version {
+  padding: 1.5rem 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .sidebar nav a {
   display: block;
   padding: 0.65rem 1.5rem;

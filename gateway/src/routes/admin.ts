@@ -3,6 +3,7 @@ import type { TraceEvent } from '../types.js';
 import { requireAdminAuth } from '../auth.js';
 import { errMsg, parseId } from './helpers.js';
 import { config } from '../config.js';
+import { GATEWAY_VERSION } from '../version.js';
 import {
   createAction,
   deleteAction,
@@ -42,6 +43,7 @@ const INDEX_KEY_ERROR = 'Ungültiger Key (a-z 0-9 _ -, max. 30)';
 adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (_req, res) => {
   const rawSettings = getSettings();
   res.json({
+    version: GATEWAY_VERSION,
     settings: maskSettings(rawSettings),
     settingSet: secretSettingFlags(rawSettings),
     // Effektive Defaults (aus .env bzw. Code) fuer die Web-UI-Platzhalter:

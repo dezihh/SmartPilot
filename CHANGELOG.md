@@ -14,6 +14,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Hinzugefügt
 
+- **Version sichtbar (Issue #34):** `GET /admin/api/bootstrap` liefert die
+  Gateway-Version aus `package.json`; die Admin-UI zeigt sie unter der
+  Navigation. Fragen wie „Welche Version hast du?" beantwortet der Agent
+  deterministisch ohne LLM-Aufruf (Trace `version.shortcut`).
+
 - **Paket-Prüfung testet die Funktion, nicht nur den Prozess:** Ein
   Manifest-Server darf `healthTool` nennen; der Health-Check ruft es nach dem
   MCP-Handshake auf. Das MQTT-Paket nutzt `mqtt_snapshot`, damit ein falscher

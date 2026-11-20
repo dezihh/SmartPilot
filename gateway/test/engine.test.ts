@@ -8,6 +8,7 @@ import { setSetting, deleteSetting } from '../src/db/settings.js';
 import { resetSessionsForTests, setPendingConfirm, CONFIRM_TTL_MS } from '../src/core/session.js';
 import { indexInvalidationsForTests } from '../src/core/entityIndex.js';
 import type { TraceEvent } from '../src/types.js';
+import { GATEWAY_VERSION } from '../src/version.js';
 import { tmpDb } from './_tmpdb.js';
 
 const DB_PATH = tmpDb('engine');
@@ -126,6 +127,20 @@ test('Chat-Modus aus: Session wird geschlossen', async () => {
   assert.equal(r.response.followUp, false);
   assert.equal(isChatSession('chat-off'), false);
   assert.equal(llmCalls, 0, 'Modus-Wechsel ohne LLM-Aufruf');
+});
+
+// Issue #34: Version deterministisch, ohne LLM und ohne Router-Treffer.
+test('Versionsfrage wird ohne LLM-Aufruf beantwortet', async () => {
+  const r = await q('Welche Version hast du?', 'version-q');
+  assert.equal(r.route, 'chat');
+  assert.ok(r.response.speech.includes(GATEWAY_VERSION), `Version ${GATEWAY_VERSION} in der Antwort`);
+  assert.equal(llmCalls, 0, 'Versionsfrage ohne LLM-Aufruf');
+  assert.ok(findStep(r.trace, 'version.shortcut'));
+});
+
+test('Versionsfrage greift nicht bei fremden Versionen', async () => {
+  await q('Die Version von Python ist 3.12', 'version-other');
+  assert.equal(llmCalls, 1, 'fremde Version laeuft normal durch den Agenten');
 });
 
 test('offene Frage -> Agent-Route mit LLM-Antwort', async () => {
