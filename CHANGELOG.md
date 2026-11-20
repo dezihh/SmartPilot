@@ -89,6 +89,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   jeder Spracheingabe fliegen zusätzlich Markdown-Links (Label bleibt), URLs,
   Code-Fences und Fett-Marker (`sanitizeSpeech`).
 
+- **DeepSeek-Tool-Tokens wurden vorgelesen (Issue #35, Rezidiv):** Der
+  Provider liefert Tool-Aufrufe als Text (`<｜｜DSML｜｜tool_calls>`, volle Balken
+  U+FF5C, DSML-Marker) statt als `tool_calls`. Der Leak-Filter normalisiert
+  die Balken und verwirft ab dem ersten Tool-Token; die letzte Runde fragt
+  einmal ohne Tools nach (`tool.raw_call_retry`), damit trotzdem eine
+  Textantwort entsteht.
+
 - **MQTT-Präfix mit Wildcard blockierte das Abonnement:** Der Abo-Filter wird
   als `${prefix}#` gebaut; ein Feldwert wie `dwd/#` ergab den ungültigen Filter
   `dwd/#/` und der Cache blieb leer. `normalizePrefix` schneidet jetzt am ersten
