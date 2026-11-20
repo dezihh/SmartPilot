@@ -125,9 +125,9 @@
       "id": "portainer",
       "name": "Portainer",
       "summary": "Container, Stacks, Images und Systemstatus direkt aus Portainer lesen.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "function",
-      "sha256": "320f0e485021b1a9c462e371c59f9c5139f7d20a3227a51e4b986fb433f86ebd"
+      "sha256": "2540b280f8c176e76b4c3a98ed7ba08458a6522d82f4d9394b7a8f80e8f42dd1"
     }
   ]
 }
