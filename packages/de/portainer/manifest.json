@@ -10,7 +10,7 @@
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Erreichbare Portainer-Instanz (REST-API, Port 9000/9443) und ein API-Key mit Lesezugriff. Der Gateway-Container muss die Instanz erreichen.",
   "minGatewayVersion": "0.6.0",
-  "changelog": "1.0.1 — Containers/Images/Inspect nehmen optional eine Endpoint-ID; portainer_endpoints nennt die ID; nicht erreichbare Umgebungen werden benannt.\n1.0.0 — Erstveroeffentlichung: direkte Portainer-REST-Anbindung ueber eine benannte HTTP-Verbindung (ohne MCP-Sidecar).",
+  "changelog": "1.0.1 — Containers/Images/Inspect nehmen optional eine Endpoint-ID (Standard aus der Konfiguration); portainer_endpoints nennt die ID; nicht erreichbare Umgebungen werden benannt; alle Portainer-Funktionen stehen in der Agent-Allowlist.\n1.0.0 — Erstveroeffentlichung: direkte Portainer-REST-Anbindung ueber eine benannte HTTP-Verbindung (ohne MCP-Sidecar).",
   "category": "function",
   "params": [
     {
@@ -45,6 +45,14 @@
       "description": "Portainer REST-API (direkt, ohne MCP-Sidecar)"
     }
   ],
+  "allowTools": [
+    "fn_portainer_system",
+    "fn_portainer_endpoints",
+    "fn_portainer_containers",
+    "fn_portainer_stacks",
+    "fn_portainer_images",
+    "fn_portainer_container_inspect"
+  ],
   "functions": [
     {
       "name": "portainer_system",
@@ -73,7 +81,7 @@
     {
       "name": "portainer_containers",
       "description": "Container auf der gewaehlten Portainer-Umgebung, auch gestoppte.",
-      "template": "{%- set ep = args.endpoint or ${endpoint_id} -%}\n{%- set d = http('portainer:/api/endpoints/' ~ ep ~ '/docker/containers/json?all=1') -%}\n{%- if d and d.length -%}{%- for c in d -%}{{ (c.Names[0] or c.Id) | replace('/', '') }} ({{ c.State }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Container auf Endpoint {{ ep }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/containers/json?all=1') -%}\n{%- if d and d.length -%}{%- for c in d -%}{{ (c.Names[0] or c.Id) | replace('/', '') }} ({{ c.State }}){% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Container auf Endpoint {{ args.endpoint or ${endpoint_id} }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
         "properties": {
@@ -102,7 +110,7 @@
     {
       "name": "portainer_images",
       "description": "Docker-Images auf der gewaehlten Portainer-Umgebung.",
-      "template": "{%- set ep = args.endpoint or ${endpoint_id} -%}\n{%- set d = http('portainer:/api/endpoints/' ~ ep ~ '/docker/images/json') -%}\n{%- if d and d.length -%}{%- for i in d -%}{{ i.RepoTags[0] if i.RepoTags else i.Id }}{% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Images auf Endpoint {{ ep }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/images/json') -%}\n{%- if d and d.length -%}{%- for i in d -%}{{ i.RepoTags[0] if i.RepoTags else i.Id }}{% if not loop.last %}, {% endif %}{%- endfor -%}{%- else -%}Keine Images auf Endpoint {{ args.endpoint or ${endpoint_id} }} gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
         "properties": {
@@ -119,7 +127,7 @@
     {
       "name": "portainer_container_inspect",
       "description": "Details zu einem Container (ID oder Name) auf der gewaehlten Umgebung.",
-      "template": "{%- set ep = args.endpoint or ${endpoint_id} -%}\n{%- set d = http('portainer:/api/endpoints/' ~ ep ~ '/docker/containers/' ~ (args.id | urlencode) ~ '/json') -%}\n{%- if d and d.Id -%}Container {{ d.Name }}: Status {{ d.State.Status }}, Image {{ d.Config.Image }} (Endpoint {{ ep }}).{%- else -%}Container auf Endpoint {{ ep }} nicht gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
+      "template": "{%- set d = http('portainer:/api/endpoints/' ~ (args.endpoint or ${endpoint_id}) ~ '/docker/containers/' ~ (args.id | urlencode) ~ '/json') -%}\n{%- if d and d.Id -%}Container {{ d.Name }}: Status {{ d.State.Status }}, Image {{ d.Config.Image }} (Endpoint {{ args.endpoint or ${endpoint_id} }}).{%- else -%}Container auf Endpoint {{ args.endpoint or ${endpoint_id} }} nicht gefunden (oder Umgebung nicht erreichbar).{%- endif -%}",
       "parameters": {
         "type": "object",
         "properties": {
