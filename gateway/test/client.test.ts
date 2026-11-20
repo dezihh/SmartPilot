@@ -12,7 +12,7 @@ interface LlmStub {
   respond?: (url: string, body: Record<string, unknown>) => { status?: number; data?: unknown };
 }
 
-let calls: { url: string; model?: string; tools?: number; signal?: AbortSignal }[] = [];
+let calls: { url: string; model?: string; tools?: number; toolChoice?: string; signal?: AbortSignal }[] = [];
 let stub: LlmStub = {};
 
 function chatJson(model: string, content: string | null): Record<string, unknown> {
@@ -31,6 +31,7 @@ function stubFetchLlm(): void {
       url: u,
       model: body.model as string,
       tools: Array.isArray(body.tools) ? (body.tools as unknown[]).length : undefined,
+      toolChoice: typeof body.tool_choice === 'string' ? body.tool_choice : undefined,
       signal: init?.signal as AbortSignal | undefined,
     });
     const r = stub.respond?.(u, body) ?? { status: 500, data: {} };
@@ -91,6 +92,13 @@ test('Tool-Runden gehen ans Primaermodell', async () => {
   await chatCompletion(msgs, [{ type: 'function', function: { name: 'x', parameters: {} } }], 1000);
   assert.equal(calls.length, 1);
   assert.equal(calls[0]!.tools, 1);
+  assert.equal(calls[0]!.toolChoice, 'auto', 'Standard erlaubt Aufrufe');
+});
+
+test('tool_choice=none wird an das Modell durchgereicht', async () => {
+  stub.respond = () => ({ data: chatJson('m', 'ok') });
+  await chatCompletion(msgs, [{ type: 'function', function: { name: 'x', parameters: {} } }], 1000, undefined, undefined, 'none');
+  assert.equal(calls[0]!.toolChoice, 'none', 'Formulierungsrunde verbietet Aufrufe');
 });
 
 test('Primaerfehler -> klare Rejection', async () => {
