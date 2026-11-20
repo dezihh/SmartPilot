@@ -884,3 +884,34 @@ test('Issue #25: lokale Namenskollision bleibt ohne Entscheidung erhalten', () =
   uninstallPackage('collision-pack');
   db.prepare("DELETE FROM tpl_functions WHERE name = 'strompreis'").run();
 });
+
+// F-001/F-002: Die Gefahrensignatur muss die tatsaechlichen http-Ziele und
+// die LAN-Freigabe benannter Verbindungen abbilden, sonst erzwingt eine
+// Parameter-Aenderung kein neues Ack.
+test('dangerSignature enthaelt http-Hosts und allow_private', () => {
+  const base = {
+    ...OK_MANIFEST,
+    id: 'sig-test',
+    functions: [{ name: 'sig_fn', template: "{{ http('http://a.example/x') }}" }],
+    actions: [],
+    indexes: [],
+    allowTools: [],
+  };
+  assert.notEqual(
+    dangerSignature(base as never),
+    dangerSignature({ ...base, functions: [{ name: 'sig_fn', template: "{{ http('http://b.example/x') }}" }] } as never),
+    'anderer http-Host aendert die Signatur'
+  );
+  const conn = {
+    ...base,
+    httpConnections: [{ name: 'svc', baseUrl: 'https://api.example.org', allowPrivate: false }],
+  };
+  assert.notEqual(
+    dangerSignature(conn as never),
+    dangerSignature({
+      ...conn,
+      httpConnections: [{ name: 'svc', baseUrl: 'https://api.example.org', allowPrivate: true }],
+    } as never),
+    'allow_private aendert die Signatur'
+  );
+});
