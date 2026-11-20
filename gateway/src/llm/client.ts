@@ -40,11 +40,12 @@ export async function chatCompletion(
   tools?: ToolSpec[],
   timeoutMs?: number,
   modelOverride?: string,
-  maxTokensOverride?: number
+  maxTokensOverride?: number,
+  toolChoice?: 'auto' | 'none'
 ): Promise<ChatCompletionResult> {
   // Betriebs-Tuning via Web-UI-Settings; .env/Code liefert die Defaults
   const primaryModel = modelOverride ?? (getSetting('llm_model')?.trim() || config.llm.model);
-  return callLlm(config.llm.baseUrl, config.llm.apiKey, primaryModel, messages, tools, timeoutMs, maxTokensOverride);
+  return callLlm(config.llm.baseUrl, config.llm.apiKey, primaryModel, messages, tools, timeoutMs, maxTokensOverride, toolChoice);
 }
 
 async function callLlm(
@@ -54,7 +55,8 @@ async function callLlm(
   messages: ChatMessage[],
   tools?: ToolSpec[],
   timeoutMs?: number,
-  maxTokensOverride?: number
+  maxTokensOverride?: number,
+  toolChoice?: 'auto' | 'none'
 ): Promise<ChatCompletionResult> {
   const body: Record<string, unknown> = {
     model,
@@ -64,7 +66,10 @@ async function callLlm(
   };
   if (tools && tools.length > 0) {
     body.tools = tools;
-    body.tool_choice = 'auto';
+    // 'none' verbietet Aufrufe auf API-Ebene. Ohne Tools emittiert DeepSeek
+    // den Aufruf als Rohtext (Issue #35) - Specs + 'none' ist die sichere
+    // Kombination fuer die Formulierungsrunde.
+    body.tool_choice = toolChoice ?? 'auto';
   }
   const reasoningEffort = getSetting('llm_reasoning_effort')?.trim() || config.llm.reasoningEffort;
   if (reasoningEffort) {

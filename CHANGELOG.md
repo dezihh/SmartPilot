@@ -75,6 +75,11 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Letzte Agent-Runde erzwingt Text statt Tool-Tokens:** `tool_choice=none`
+  bei weiterhin sichtbaren Tool-Specs; ergänzt den Rohtext-Filter aus #35.
+  Fehlgeschlagene Tool-Aufrufe zeigen ihre Argumente jetzt im Trace
+  (`tool.error.args`).
+
 - **Recherche endete nach dem Rundenlimit mit „zu lange gedauert" (Issue
   #33):** Die letzte erlaubte Runde lief mit Tool-Specs, das Modell startete
   eine weitere Recherche und die Schleife endete ohne Antwort. Sie läuft jetzt

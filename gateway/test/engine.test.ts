@@ -250,7 +250,7 @@ test('Tool-Budget-Hit: zweiter Aufruf wird blockiert, Schleife endet sauber', as
 // Regression zu Issue #33: Vorher lief die letzte Runde mit Tool-Specs. Das
 // Modell recherchierte weiter, die Schleife endete ohne Antwort und der Nutzer
 // bekam die Timeout-Meldung, obwohl nur die Rundenzahl aufgebraucht war.
-test('letzte Tool-Runde formuliert ohne Tool-Specs', async () => {
+test('letzte Tool-Runde formuliert mit tool_choice=none', async () => {
   setSetting('max_tool_iterations', '2');
   try {
     llmScript = [
@@ -260,8 +260,9 @@ test('letzte Tool-Runde formuliert ohne Tool-Specs', async () => {
     const r = await q('recherchiere etwas', 'lastround1');
     assert.match(r.response.speech, /Zwischenstand nach der Recherche/);
     assert.equal(llmCalls, 2);
-    const lastBody = llmBodies[1] as { tools?: unknown };
-    assert.equal(lastBody.tools, undefined, 'letzte Runde bekommt keine Tool-Specs');
+    const lastBody = llmBodies[1] as { tools?: unknown; tool_choice?: string };
+    assert.equal(Array.isArray(lastBody.tools), true, 'Tool-Specs bleiben sichtbar');
+    assert.equal(lastBody.tool_choice, 'none', 'Aufrufe sind auf API-Ebene verboten');
     assert.equal(findStep(r.trace, 'tool.iter_limit'), undefined, 'kein Rundenlimit-Abbruch');
   } finally {
     deleteSetting('max_tool_iterations');
