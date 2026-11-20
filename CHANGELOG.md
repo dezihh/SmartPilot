@@ -80,6 +80,12 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Fehlgeschlagene Tool-Aufrufe zeigen ihre Argumente jetzt im Trace
   (`tool.error.args`).
 
+- **Musikwiedergabe von Künstlern (Music Assistant):** Eine Artist-URI lehnt
+  MA mit „No playable item found" ab; `radio=true` spielt eine Mischung
+  ähnlicher Künstler statt des gewünschten. Das Paket `music-assistant` 1.1.6
+  holt die Alben des Künstlers, wählt ein Best-of bzw. das erste Album und
+  spielt dessen URI ohne `radio`.
+
 - **Recherche endete nach dem Rundenlimit mit „zu lange gedauert" (Issue
   #33):** Die letzte erlaubte Runde lief mit Tool-Specs, das Modell startete
   eine weitere Recherche und die Schleife endete ohne Antwort. Sie läuft jetzt
