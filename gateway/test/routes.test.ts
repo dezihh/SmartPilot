@@ -19,6 +19,7 @@ const { initDb, closeDb, getDb } = await import('../src/db/schema.js');
 const { createApp } = await import('../src/app.js');
 const { resetRateLimitsForTests } = await import('../src/rateLimit.js');
 const { createMcpServer } = await import('../src/db/mcpServers.js');
+const { GATEWAY_VERSION } = await import('../src/version.js');
 const { getSetting, deleteSetting, setSetting } = await import('../src/db/settings.js');
 const { invalidateMcpCache } = await import('../src/mcp/registry.js');
 
@@ -201,7 +202,8 @@ test('login: Rate-Limit greift nach zu vielen Versuchen (429)', async () => {
 test('bootstrap mit Cookie liefert Settings und Actions', async () => {
   const r = await call('GET', '/admin/api/bootstrap', { cookie });
   assert.equal(r.status, 200);
-  const j = r.json as { settings: Record<string, string>; actions: unknown[]; servers: unknown[] };
+  const j = r.json as { version: string; settings: Record<string, string>; actions: unknown[]; servers: unknown[] };
+  assert.equal(j.version, GATEWAY_VERSION, 'Version kommt aus package.json');
   assert.equal(typeof j.settings, 'object');
   assert.ok(Array.isArray(j.actions));
   assert.ok(Array.isArray(j.servers));

@@ -17,6 +17,8 @@ async function loadBootstrap() {
     renderFunctions();
     renderIndexes();
     renderServers();
+    const version = state.bootstrap.version;
+    if (typeof version === 'string' && version) $('app-version').textContent = `Version ${version}`;
   } catch (e) {
     alert(`Bootstrap fehlgeschlagen: ${e.message}`);
   }

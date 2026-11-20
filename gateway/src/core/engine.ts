@@ -18,6 +18,7 @@ import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
 import { renderHelpCatalog, renderHelpFallback } from './help.js';
 import { stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
+import { GATEWAY_VERSION } from '../version.js';
 import { buildTools, toolSpecStats } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
 import { invalidateIndex } from './entityIndex.js';
@@ -477,6 +478,10 @@ function actionNeedsMcp(action: ParsedAction, helpAllow?: string[] | null): bool
 
 const CHAT_ON_RE = /(chat[-\s]?modus|chatmodus|unterhaltung[-\s]?modus|gespraechs?[-\s]?modus|im gespraech bleiben)/i;
 const CHAT_OFF_RE = /(one[-\s]?shot|einzelmodus|alltag[-\s]?modus|beende.*chat|chat[-\s]?beenden|wechsle.*one[-\s]?shot)/i;
+// Issue #34: Versionsfrage deterministisch beantworten (ohne LLM). Bewusst eng
+// gefasst, damit "die Version von Python" nicht die Gateway-Version ausloest.
+const VERSION_RE =
+  /\b(?:welche|was für eine|was fuer eine|deine|eure)\s+version\b|\bversion\s+(?:hast du|habt ihr|läuft|laeuft|ist das|von smartpilot|vom gateway)\b|^\s*version\s*\??\s*$/i;
 // Issue #4: Antworten auf "Sag ja oder nein." - bewusst eng gefasst, damit
 // "ja, aber ..." nicht versehentlich einen schreibenden Vorgang startet.
 const CONFIRM_YES_RE = /^(ja|jawohl|ja bitte|ja gerne|bestätigen|bestaetigen|ausführen|ausfuehren|mach das|mach es|okay|ok)$/i;
@@ -599,6 +604,15 @@ export async function processQuery(query: VoiceQuery): Promise<EngineResult> {
       }
     }
     trace.push({ ts: Date.now(), step: 'action.confirm_discarded', detail: { actionId: pending.actionId } });
+  }
+
+  // Issue #34: Versionsfrage ohne LLM beantworten. Nach der Bestaetigungs-
+  // Behandlung, damit eine offene Rueckfrage wie jede andere Aeusserung endet.
+  if (VERSION_RE.test(qLower)) {
+    trace.push({ ts: Date.now(), step: 'version.shortcut' });
+    const response: AssistantResponse = { speech: `Ich bin SmartPilot, Version ${GATEWAY_VERSION}.` };
+    rememberTurn(query.sessionId, query.text, response.speech);
+    return finishResult(query, trace, start, response, { route: 'chat' });
   }
 
   if (CHAT_OFF_RE.test(qLower)) {
