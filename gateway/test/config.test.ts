@@ -32,7 +32,7 @@ test('config: ungueltige Zahlen fallen auf Defaults (kein NaN)', () => {
   assert.equal(config.llm.maxTokens, 2000);
   assert.equal(config.agentClarificationBudget, 2);
   assert.equal(config.maxToolIterations, 6);
-  assert.equal(config.toolDeadlineMs, 9000);
+  assert.equal(config.toolDeadlineMs, 12_000);
 });
 
 test('resolveDbPath: explizites DB_PATH hat Vorrang', () => {

@@ -206,6 +206,12 @@ async function runToolLoop(
   ];
   const overallDeadline = Date.now() + toolDeadline() * 2;
   const TimeoutAnswer = 'Das hat gerade zu lange gedauert, bitte versuche es gleich noch einmal.';
+  // Zwei verschiedene Abbruchgruende brauchen zwei Meldungen: eine echte
+  // Zeitueberschreitung und das Aufbrauchen der Tool-Runden. Vorher meldete
+  // beides "zu lange gedauert", obwohl die Recherche nur viele Schritte
+  // gebraucht hatte (Issue #33).
+  const LoopLimitAnswer =
+    'Ich habe zu viele Schritte gebraucht, um die Frage zu beantworten. Bitte frage konkreter oder versuche es noch einmal.';
   const toolCalls: Record<string, number> = {};
   const executeRoute = async (
     route: NonNullable<ReturnType<typeof routes.get>>,
@@ -294,15 +300,16 @@ async function runToolLoop(
     traceUsage(trace, roundModel ?? config.llm.model, result);
     return result.message;
   };
-  const maxIter = getSettingNum('max_tool_iterations', config.maxToolIterations);
+  const maxIter = Math.max(2, getSettingNum('max_tool_iterations', config.maxToolIterations));
   for (let i = 0; i < maxIter; i++) {
     if (i > 0 && Date.now() >= overallDeadline) {
       trace.push({ ts: Date.now(), step: 'tool.deadline' });
       return { speech: TimeoutAnswer };
     }
+    const lastRound = i === maxIter - 1;
     // Letzte Runde: Formulierung erzwingen (sonst kaufte das Modell das Budget
     // voll und die Schleife endete ohne Antwort).
-    if (i === maxIter - 1) {
+    if (lastRound) {
       messages.push({
         role: 'system',
         content: 'Letzte Runde: formuliere JETZT die finale Antwort aus den bisherigen Tool-Ergebnissen - keine weiteren Tool-Aufrufe.',
@@ -311,7 +318,10 @@ async function runToolLoop(
     const remaining = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), MIN_ROUND_TIMEOUT_MS));
     let message: ChatMessage;
     try {
-      message = await completeRound(true, remaining);
+      // Letzte Runde ohne Tool-Specs: mit Specs kann das Modell erneut
+      // recherchieren, die Schleife endet dann ohne Antwort und der Nutzer
+      // bekommt nur die Timeout-Meldung (Issue #33).
+      message = lastRound ? await completeRound(false, remaining) : await completeRound(true, remaining);
     } catch (e) {
       if (!isTimeoutError(e)) throw e;
       trace.push({ ts: Date.now(), step: 'llm.timeout', detail: { round: i } });
@@ -335,9 +345,17 @@ async function runToolLoop(
     if (!message.tool_calls || message.tool_calls.length === 0) {
       return parseAgentAnswer(message.content ?? '', trace);
     }
+    if (lastRound) {
+      // Ohne Tool-Specs sollte das nicht passieren; falls doch, nie die
+      // Timeout-Meldung als Antwort ausgeben.
+      trace.push({ ts: Date.now(), step: 'tool.iter_limit', detail: { round: i, maxIter } });
+      if (message.content?.trim()) return parseAgentAnswer(message.content, trace);
+      return { speech: LoopLimitAnswer };
+    }
     await runTools(message);
   }
-  return { speech: TimeoutAnswer };
+  trace.push({ ts: Date.now(), step: 'tool.iter_limit', detail: { maxIter } });
+  return { speech: LoopLimitAnswer };
 }
 
 async function runAgent(query: VoiceQuery, mcp: McpContext, trace: TraceEvent[]): Promise<AssistantResponse> {
