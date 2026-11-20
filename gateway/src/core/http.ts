@@ -76,6 +76,10 @@ export interface HttpRequestOptions {
   timeoutMs?: number;
   /** Globale http_headers anwenden (Default true; Verbindungen: false). */
   useGlobalHeaders?: boolean;
+  /** DNS auch fuer benannte Verbindungen pinnen (Rebinding-Schutz, F-007). */
+  pin?: boolean;
+  /** Bei pin: private Ziele ausdruecklich erlaubt (allow_private der Verbindung). */
+  allowPrivate?: boolean;
 }
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
@@ -144,7 +148,10 @@ export async function fetchHttp(
       // Ziele blockieren UND die gepruefte IP im Request pinnen (dispatcher).
       // So ist ein Rebinding zwischen Pruefung und Verbindungsaufbau wirkungslos.
       let dispatcher: PinnedDispatcher | undefined;
-      if (dynamic) {
+      if (dynamic || opts.pin) {
+        // Benannte Verbindungen haben ihre eigene LAN-Freigabe; dynamische
+        // URLs nutzen die http_private_allow-Liste.
+        const privateAllowed = dynamic ? allowedPrivate : opts.allowPrivate === true;
         const addrs = await resolveDynamicHost(u.hostname);
         // Fail-closed: ohne aufloesbaren Host keine Verbindung, auch wenn
         // fetch spaeter selbst noch einmal aufloesen wuerde (Rebinding).
@@ -152,7 +159,7 @@ export async function fetchHttp(
           trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS nicht aufloesbar' } });
           return null;
         }
-        if (!allowedPrivate && addrs.some((a) => isPrivateHost(a.address))) {
+        if (!privateAllowed && addrs.some((a) => isPrivateHost(a.address))) {
           trace.push({ ts: Date.now(), step: 'template.http.blocked', detail: { url: target, reason: 'DNS -> privates Netz' } });
           return null;
         }

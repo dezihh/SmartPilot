@@ -1,7 +1,8 @@
 // Benannte HTTP-Verbindungen: Validierung, Request-Pfad, Maskierung, Paket-
 // Installation und das Zusammenspiel mit der bestehenden http_headers-Auth.
-import { test, before, after, beforeEach } from 'node:test';
+import { test, before, after, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { promises as dns } from 'node:dns';
 import type { McpContext } from '../src/mcp/registry.js';
 import type { TraceEvent } from '../src/types.js';
 import type { PackageManifest } from '../src/core/packages.js';
@@ -27,7 +28,7 @@ const {
 const { normalizeHttpConnectionInput, buildConnectionUrl, runConnectionRequest } = await import(
   '../src/core/httpConnections.js'
 );
-const { fetchUrl } = await import('../src/core/http.js');
+const { fetchUrl, setPinDispatcherFactoryForTests } = await import('../src/core/http.js');
 const { renderActionTemplate } = await import('../src/core/template.js');
 
 before(() => {
@@ -41,12 +42,23 @@ after(() => {
 });
 
 const originalFetch = globalThis.fetch;
+// Benannte Verbindungen pinnen seit F-007 die aufgeloeste IP. Tests duerfen
+// dafuer keine echte DNS-Aufloesung (api.example.org) ausloesen.
+let dnsMock: { mock: { restore(): void } } | null = null;
 
 beforeEach(() => {
   globalThis.fetch = originalFetch;
   deleteSetting('http_headers');
   deleteSetting('http_private_allow');
   getDb().prepare('DELETE FROM http_connections').run();
+  dnsMock = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]) as unknown as {
+    mock: { restore(): void };
+  };
+});
+
+afterEach(() => {
+  dnsMock?.mock.restore();
+  dnsMock = null;
 });
 
 interface Call {
@@ -95,6 +107,56 @@ test('buildConnectionUrl: Pfad bleibt auf Origin und Prefix', () => {
   assert.equal(buildConnectionUrl('http://h:9000/base', '/api/x').toString(), 'http://h:9000/base/api/x');
   assert.throws(() => buildConnectionUrl('http://h:9000', '//evil/x'), /genau ein/);
   assert.throws(() => buildConnectionUrl('http://h:9000', '/../x'), /\.\./);
+});
+
+test('benannte Verbindung pinnt die aufgeloeste IP (F-007)', async () => {
+  createHttpConnection({
+    name: 'pin',
+    base_url: 'https://api.example.org',
+    headers: null,
+    allow_private: 0,
+    timeout_ms: null,
+    description: null,
+    enabled: 1,
+  });
+  const calls = stubFetch({ ok: true });
+  const pins: { address: string; family: number }[] = [];
+  const sentinel = { close: async () => {} };
+  setPinDispatcherFactoryForTests((pin) => {
+    pins.push(pin);
+    return sentinel;
+  });
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '203.0.113.5', family: 4 }]);
+  try {
+    await runConnectionRequest('pin', '/x', {}, []);
+    assert.deepEqual(pins, [{ address: '203.0.113.5', family: 4 }]);
+    assert.equal((calls[0]!.init as { dispatcher?: unknown }).dispatcher, sentinel);
+  } finally {
+    lk.mock.restore();
+    setPinDispatcherFactoryForTests();
+  }
+});
+
+test('benannte Verbindung blockiert private DNS-Antwort ohne allow_private (F-007)', async () => {
+  createHttpConnection({
+    name: 'rebind',
+    base_url: 'https://api.example.org',
+    headers: null,
+    allow_private: 0,
+    timeout_ms: null,
+    description: null,
+    enabled: 1,
+  });
+  const calls = stubFetch({ ok: true });
+  const lk = mock.method(dns, 'lookup', async () => [{ address: '127.0.0.1', family: 4 }]);
+  const trace: TraceEvent[] = [];
+  try {
+    assert.equal(await runConnectionRequest('rebind', '/x', {}, trace), null);
+    assert.equal(calls.length, 0, 'kein Fetch bei privater Aufloesung');
+    assert.ok(trace.some((t) => t.step === 'template.http.blocked'));
+  } finally {
+    lk.mock.restore();
+  }
 });
 
 test('runConnectionRequest: GET sendet Verbindungs-Header', async () => {

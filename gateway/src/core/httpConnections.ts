@@ -132,6 +132,10 @@ export async function runConnectionRequest(
         sameOrigin: base.origin,
         timeoutMs: row.timeout_ms ?? undefined,
         useGlobalHeaders: false,
+        // Benannte Verbindung: DNS pinnen (Rebinding-Schutz, F-007);
+        // private Ziele nur mit allow_private der Verbindung.
+        pin: true,
+        allowPrivate: row.allow_private === 1,
       },
       trace,
       false

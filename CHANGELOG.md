@@ -75,6 +75,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Paket-Gefahrenprüfung und Verbindungs-DNS (F-001/F-002/F-007):** Ein
+  Host aus einem Manifest-Parameter (`http('http://${host}/…')`) ist jetzt
+  bestätigungspflichtig (`manifestDangerous`); `dangerSignature` enthält die
+  literalen http-Hosts und `allow_private` benannter Verbindungen, damit eine
+  Parameter-Änderung ein neues Ack erzwingt. Benannte Verbindungen pinnen die
+  aufgelöste IP (Rebinding-Schutz) und blockieren private DNS-Antworten ohne
+  `allow_private`.
+
 - **Recherche endete nach dem Rundenlimit mit „zu lange gedauert" (Issue
   #33):** Die letzte erlaubte Runde lief mit Tool-Specs, das Modell startete
   eine weitere Recherche und die Schleife endete ohne Antwort. Sie läuft jetzt
