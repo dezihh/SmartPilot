@@ -81,7 +81,7 @@ const SETTINGS_FIELDS = [
     key: 'max_tool_iterations',
     label: 'Agent max. Tool-Runden',
     type: 'number',
-    help: 'Wie viele Tool-Runden der Agent pro Frage maximal laufen lässt. Leer = Default (4). Jede Runde kostet LLM-Zeit; die letzte Runde formuliert zwingend (kein Budget-Tod).',
+    help: 'Wie viele Tool-Runden der Agent pro Frage maximal laufen lässt. Leer = Default (6). Jede Runde kostet LLM-Zeit; die letzte Runde formuliert ohne Tools (kein Budget-Tod).',
   },
   {
     key: 'tool_deadline_ms',

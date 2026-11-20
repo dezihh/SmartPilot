@@ -186,10 +186,33 @@ test('Tool-Budget-Hit: zweiter Aufruf wird blockiert, Schleife endet sauber', as
     );
     const r = await q('spame das echo tool', 'budget1');
     assert.ok(findStep(r.trace, 'tool.budget_hit'), 'budget_hit Trace fehlt');
-    assert.match(r.response.speech, /zu lange gedauert/);
+    // Issue #33: Rundenlimit ist kein Timeout - eigene Meldung, eigener Trace.
+    assert.match(r.response.speech, /zu viele Schritte/);
+    assert.ok(findStep(r.trace, 'tool.iter_limit'), 'iter_limit Trace fehlt');
     assert.equal(llmCalls, 4, 'Schleife endet nach max_iter');
   } finally {
     getDb().prepare("UPDATE tpl_functions SET budget = NULL WHERE name = 'test_echo'").run();
+    deleteSetting('max_tool_iterations');
+  }
+});
+
+// Regression zu Issue #33: Vorher lief die letzte Runde mit Tool-Specs. Das
+// Modell recherchierte weiter, die Schleife endete ohne Antwort und der Nutzer
+// bekam die Timeout-Meldung, obwohl nur die Rundenzahl aufgebraucht war.
+test('letzte Tool-Runde formuliert ohne Tool-Specs', async () => {
+  setSetting('max_tool_iterations', '2');
+  try {
+    llmScript = [
+      toolCalls([{ name: 'fn_test_echo', args: '{"x":"recherche"}' }]),
+      content('Zwischenstand nach der Recherche.'),
+    ];
+    const r = await q('recherchiere etwas', 'lastround1');
+    assert.match(r.response.speech, /Zwischenstand nach der Recherche/);
+    assert.equal(llmCalls, 2);
+    const lastBody = llmBodies[1] as { tools?: unknown };
+    assert.equal(lastBody.tools, undefined, 'letzte Runde bekommt keine Tool-Specs');
+    assert.equal(findStep(r.trace, 'tool.iter_limit'), undefined, 'kein Rundenlimit-Abbruch');
+  } finally {
     deleteSetting('max_tool_iterations');
   }
 });

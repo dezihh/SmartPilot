@@ -122,7 +122,7 @@ export const config = {
   },
   agentClarificationBudget: envPositiveNumber(process.env.AGENT_CLARIFICATION_BUDGET, 2),
   maxToolIterations: envPositiveNumber(process.env.MAX_TOOL_ITERATIONS, 6),
-  toolDeadlineMs: envPositiveNumber(process.env.LLM_TOOL_DEADLINE_MS, 9000),
+  toolDeadlineMs: envPositiveNumber(process.env.LLM_TOOL_DEADLINE_MS, 12_000),
   // Paket-Registry-Basis (die Sprache wird angehaengt). Default = Haupt-Repo;
   // per PACKAGES_REGISTRY_URL z. B. auf einen Test-Branch umstellbar.
   packagesRegistryUrl:

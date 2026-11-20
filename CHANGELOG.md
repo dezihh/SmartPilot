@@ -70,6 +70,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Behoben
 
+- **Recherche endete nach dem Rundenlimit mit „zu lange gedauert" (Issue
+  #33):** Die letzte erlaubte Runde lief mit Tool-Specs, das Modell startete
+  eine weitere Recherche und die Schleife endete ohne Antwort. Sie läuft jetzt
+  ohne Tools und formuliert den Zwischenstand; ein echtes Rundenlimit hat eine
+  eigene Meldung und den Trace-Schritt `tool.iter_limit`. Das Standardbudget
+  je Runde steigt von 9 auf 12 Sekunden.
+
 - **MQTT-Präfix mit Wildcard blockierte das Abonnement:** Der Abo-Filter wird
   als `${prefix}#` gebaut; ein Feldwert wie `dwd/#` ergab den ungültigen Filter
   `dwd/#/` und der Cache blieb leer. `normalizePrefix` schneidet jetzt am ersten
