@@ -17,7 +17,7 @@ import { renderFunction } from './template.js';
 import { extractLiterals } from './extract.js';
 import { buildInventoryPrompt, agentFnAllowlist } from './inventory.js';
 import { renderHelpCatalog, renderHelpFallback } from './help.js';
-import { stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer } from './response.js';
+import { stripSsmlTags, withSsmlBreaks, withDisplay, parseAgentAnswer, containsToolCallSyntax } from './response.js';
 import { GATEWAY_VERSION } from '../version.js';
 import { buildTools, toolSpecStats } from './tools.js';
 import { findIndexEntries, getIndexEntry } from './indexTools.js';
@@ -323,6 +323,19 @@ async function runToolLoop(
       // recherchieren, die Schleife endet dann ohne Antwort und der Nutzer
       // bekommt nur die Timeout-Meldung (Issue #33).
       message = lastRound ? await completeRound(false, remaining) : await completeRound(true, remaining);
+      // Provider liefern gelegentlich einen Tool-Aufruf als Text statt als
+      // tool_calls (DeepSeek: <｜｜DSML｜｜tool_calls>). Die Sprachausgabe filtert
+      // ihn, dann fehlt aber die Antwort - einmal ohne Tools nachfassen.
+      if (lastRound && !message.tool_calls?.length && containsToolCallSyntax(message.content ?? '')) {
+        trace.push({ ts: Date.now(), step: 'tool.raw_call_retry' });
+        messages.push({
+          role: 'system',
+          content:
+            'Werkzeug-Aufrufe sind nicht mehr moeglich. Formuliere die Antwort jetzt in zwei bis drei ganzen Saetzen als reinen Text - ohne Werkzeug- oder Sonder-Tokens.',
+        });
+        const retryMs = Math.min(toolDeadline(), Math.max(overallDeadline - Date.now(), MIN_ROUND_TIMEOUT_MS));
+        message = await completeRound(false, retryMs);
+      }
     } catch (e) {
       if (!isTimeoutError(e)) throw e;
       trace.push({ ts: Date.now(), step: 'llm.timeout', detail: { round: i } });

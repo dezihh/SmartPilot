@@ -143,6 +143,42 @@ test('Versionsfrage greift nicht bei fremden Versionen', async () => {
   assert.equal(llmCalls, 1, 'fremde Version laeuft normal durch den Agenten');
 });
 
+// Issue #35 (Rezidiv): DeepSeek schickt den Tool-Aufruf als Text. Die Antwort
+// wird gefiltert; damit der Nutzer nicht ohne Inhalt dasteht, fragt die letzte
+// Runde einmal ohne Tools nach.
+test('Roh-Tool-Token in der letzten Runde wird nachgefasst (#35)', async () => {
+  setSetting('max_tool_iterations', '2');
+  try {
+    llmScript = [
+      toolCalls([{ name: 'fn_missing', args: '{}' }]),
+      content('<｜｜DSML｜｜tool_calls> <｜｜DSML｜｜invoke name="web_url_read"> <｜｜DSML｜｜parameter name="url" string="true"> </｜｜DSML｜｜invoke> </｜｜DSML｜｜tool_calls>'),
+      content('Der Taeter wurde gefasst.'),
+    ];
+    const r = await q('wer hat auf trump geschossen', 'raw-token');
+    assert.equal(r.response.speech, 'Der Taeter wurde gefasst.');
+    assert.ok(findStep(r.trace, 'tool.raw_call_retry'));
+    assert.equal(llmCalls, 3, 'Tool-Runde, letzte Runde, Retry');
+  } finally {
+    deleteSetting('max_tool_iterations');
+  }
+});
+
+test('Roh-Tool-Token bleibt auch nach Retry stumm (#35)', async () => {
+  setSetting('max_tool_iterations', '2');
+  try {
+    llmScript = [
+      toolCalls([{ name: 'fn_missing', args: '{}' }]),
+      content('<｜｜DSML｜｜tool_calls>'),
+      content('<｜｜DSML｜｜tool_calls>'),
+    ];
+    const r = await q('wer hat auf trump geschossen', 'raw-token-2');
+    assert.match(r.response.speech, /nichts gefunden/);
+    assert.equal(r.response.speech.includes('｜'), false);
+  } finally {
+    deleteSetting('max_tool_iterations');
+  }
+});
+
 test('offene Frage -> Agent-Route mit LLM-Antwort', async () => {
   llmScript = [content('Hier ist die Antwort.')];
   const r = await q('erzaehl mir etwas ueber bayern', 'agent1');

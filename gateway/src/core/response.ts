@@ -77,11 +77,26 @@ export function looksLikeJsonData(text: string): boolean {
   return t.startsWith('{') || /^\[\s*[{["\d-]/.test(t);
 }
 
+// Provider-Sondertokens (DeepSeek u. a.) kommen in voller Breite:
+// `<｜｜DSML｜｜tool_calls>` (U+FF5C) oder ASCII `<|tool_call>`. Balken erst
+// vereinheitlichen, dann mit einem Ausdruck alle Varianten erkennen.
+const TOOL_BARS = /[｜│❘]/g;
+const TOOL_TOKEN_RE = /<\/?\|+\s*(?:DSML\s*\|+\s*)?(?:tool_calls?|invoke|parameter)\b/i;
+
+export function containsToolCallSyntax(text: string): boolean {
+  return TOOL_TOKEN_RE.test(text.replace(TOOL_BARS, '|'));
+}
+
 export function parseAgentAnswer(content: string, trace: TraceEvent[]): AssistantResponse {
-  const filtered = content
+  // Erst XML-artige Leaks, dann Provider-Tokens: ab dem ersten Tool-Token ist
+  // alles Weitere Tool-Syntax (Invoke/Parameter) und darf nicht gesprochen
+  // werden. Text davor bleibt als Antwort erhalten.
+  const withoutXml = content
     .replace(/<\|?tool_call>[\s\S]*?(?:<tool_call\|>|<\|end_of_turn\|>|$)/gi, '')
-    .replace(/<\|[^>]*\|>/g, '')
-    .trim();
+    .replace(/<\|[^>]*\|>/g, '');
+  const normalized = withoutXml.replace(TOOL_BARS, '|');
+  const tokenAt = normalized.search(TOOL_TOKEN_RE);
+  const filtered = (tokenAt >= 0 ? normalized.slice(0, tokenAt) : normalized).trim();
   if (filtered !== content.trim()) {
     trace.push({ ts: Date.now(), step: 'agent.leak_filtered', detail: { lenBefore: content.length, lenAfter: filtered.length } });
   }

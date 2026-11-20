@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { escapeXml, stripSsmlTags, withSsmlBreaks, parseAgentAnswer } from '../src/core/response.js';
+import { escapeXml, stripSsmlTags, withSsmlBreaks, parseAgentAnswer, containsToolCallSyntax } from '../src/core/response.js';
 
 test('escapeXml maskiert XML-Sonderzeichen', () => {
   assert.equal(escapeXml('a & b < c > d'), 'a &amp; b &lt; c &gt; d');
@@ -94,4 +94,34 @@ test('parseAgentAnswer: speech-Feld wird ebenfalls bereinigt', () => {
 test('parseAgentAnswer: Markdown-Link am Anfang ist kein JSON', () => {
   const out = parseAgentAnswer('[Quelle](https://example.com) sagt 22 Grad.', []);
   assert.equal(out.speech, 'Quelle sagt 22 Grad.');
+});
+
+// Issue #35 (Rezidiv): DeepSeek liefert den Tool-Aufruf als Text, mit vollen
+// Balken (U+FF5C) und DSML-Marker statt ASCII-Pipes.
+const DEEPSEEK_TOKENS =
+  '<｜｜DSML｜｜tool_calls> <｜｜DSML｜｜invoke name="web_url_read"> <｜｜DSML｜｜parameter name="url" string="true"> </｜｜DSML｜｜invoke> </｜｜DSML｜｜tool_calls>';
+
+test('parseAgentAnswer: DeepSeek-Tool-Tokens werden nie gesprochen', () => {
+  const trace: { step: string }[] = [];
+  const out = parseAgentAnswer(DEEPSEEK_TOKENS, trace as never);
+  assert.equal(out.speech, 'Entschuldigung, dazu habe ich gerade nichts gefunden.');
+  assert.equal(out.speech.includes('｜'), false);
+  assert.equal(out.speech.includes('web_url_read'), false);
+  assert.ok(trace.some((t) => t.step === 'agent.leak_filtered'));
+});
+
+test('parseAgentAnswer: Text vor einem Tool-Token bleibt erhalten', () => {
+  const out = parseAgentAnswer('Kurz: 42. <｜｜DSML｜｜tool_calls> <｜｜DSML｜｜invoke name="x">', []);
+  assert.equal(out.speech, 'Kurz: 42.');
+});
+
+test('parseAgentAnswer: ASCII-Variante <|invoke ...> wird ebenfalls gefiltert', () => {
+  const out = parseAgentAnswer('<|invoke name="x"><|parameter name="y" string="true">', []);
+  assert.match(out.speech, /nichts gefunden/);
+});
+
+test('containsToolCallSyntax erkennt beide Schreibweisen', () => {
+  assert.equal(containsToolCallSyntax('<|tool_call>'), true);
+  assert.equal(containsToolCallSyntax('<｜｜DSML｜｜invoke name="x">'), true);
+  assert.equal(containsToolCallSyntax('Normale Antwort ohne Tokens.'), false);
 });
