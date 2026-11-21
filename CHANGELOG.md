@@ -10,6 +10,16 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
+## [Unreleased]
+
+### Behoben
+
+- **CI: Push des Images nach GHCR:** Dem Build fehlte im `outputs` ein Ziel
+  (`name=…`); ohne das brach der Push per Digest mit „tag is needed when
+  pushing to registry" ab. Die Revision im Image-Label stammt jetzt aus dem
+  Tag statt aus dem Workflow-SHA. Das Image `0.6.1` wurde deshalb per
+  `workflow_dispatch` aus dem Tag gebaut.
+
 ## [0.6.1] – 2026-11-21
 
 ### Hinzugefügt
