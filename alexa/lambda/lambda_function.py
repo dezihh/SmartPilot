@@ -488,18 +488,21 @@ class GptQueryIntentHandler(AbstractRequestHandler):
 
     def handle(self, handler_input):
         request = handler_input.request_envelope.request
-        session = handler_input.request_envelope.session
-        response_builder = handler_input.response_builder
 
         slots = request.intent.slots or {}
         slot = slots.get("query")
         query = (slot.value if slot else None) or ""
         if not query.strip():
             logger.info("GptQueryIntent ohne query-Slot empfangen")
-            return response_builder.speak(t(handler_input, "no_query")).set_should_end_session(False).response
+            return handler_input.response_builder.speak(t(handler_input, "no_query")).set_should_end_session(False).response
         # Issue #7: Aufrufname/Fuellwoerter aus dem Slot entfernen, bevor die
         # Frage an das Gateway (und damit an den Router) geht.
-        query = clean_query_slot(query)
+        return self.answer(handler_input, clean_query_slot(query))
+
+    def answer(self, handler_input, query):
+        request = handler_input.request_envelope.request
+        session = handler_input.request_envelope.session
+        response_builder = handler_input.response_builder
         session_id = session.session_id if session else "unknown"
         user_id = None
         if session and session.user:
@@ -549,6 +552,26 @@ class GptQueryIntentHandler(AbstractRequestHandler):
             # Dynamische Rueckfrage vom Gateway (situativ), sonst statischer Hinweis
             return response_builder.ask(followup_prompt or t(handler_input, "help")).response
         return response_builder.set_should_end_session(True).response
+
+
+class YesNoIntentHandler(GptQueryIntentHandler):
+    """Kurze Bestaetigungen in einer offenen Rueckfrage-Session.
+
+    "ja"/"nein" loest bei Alexa AMAZON.YesIntent/NoIntent aus. Ohne diesen
+    Handler landen sie im FallbackIntent (Hilfetext) und erreichen das Gateway
+    nie - dort liegt aber die Gespraechshistorie, aus der die Rueckfrage
+    beantwortet wird.
+    """
+
+    REPLIES = {"AMAZON.YesIntent": "ja", "AMAZON.NoIntent": "nein"}
+
+    def can_handle(self, handler_input):
+        intent = getattr(handler_input.request_envelope.request, "intent", None)
+        return bool(intent and intent.name in self.REPLIES)
+
+    def handle(self, handler_input):
+        name = handler_input.request_envelope.request.intent.name
+        return self.answer(handler_input, self.REPLIES[name])
 
 
 class HelpIntentHandler(AbstractRequestHandler):
@@ -655,6 +678,7 @@ if not alexa_skill_id:
 sb.skill_id = alexa_skill_id
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(GptQueryIntentHandler())
+sb.add_request_handler(YesNoIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())

@@ -10,6 +10,24 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
+## [Unreleased]
+
+### Behoben
+
+- Alexa: „ja“/„nein“ auf eine Rückfrage erreichte das Gateway nie, weil
+  `AMAZON.YesIntent`/`NoIntent` im FallbackIntent (Hilfetext) landeten. Beide
+  Intents sind jetzt im Interaktionsmodell deklariert und werden als „ja“/„nein“
+  in der laufenden Session ans Gateway weitergereicht (Kontext-Historie löst
+  die Rückfrage auf).
+- Agent-Prompt: kurze Bestätigungen beziehen sich auf die letzte Rückfrage;
+  bei unbrauchbarer Antwort keine identische Wiederholung, sondern
+  naheliegendste Wahl treffen und nennen.
+- Paket `music-assistant` 1.1.8: `library_get_artist_albums` in der Allowlist
+  (Kette Artist → Album → Wiedergabe war unterbrochen), player_id im
+  `fn_ma_players`-Output explizit gelabelt, `fn_ma_players` mit Leer-Guard und
+  Budget 2 gegen transiente MCP-Fehler, Queue-Fallback (`queue_id` =
+  `player_id`) und Regel für „ja“-Antworten auf Player-Rückfragen.
+
 ## [0.6.0] – 2026-11-20
 
 ### Hinzugefügt

@@ -477,6 +477,46 @@ class AuditFindingsTest(unittest.TestCase):
         )
 
 
+class YesNoIntentTest(unittest.TestCase):
+    """AMAZON.YesIntent/NoIntent muessen ans Gateway (Rueckfrage-Kontext)."""
+
+    def _handler_input(self, name):
+        hi = FakeHandlerInput(
+            request=FakeRequest(),
+            session=FakeSession("amzn1.session.yesno"),
+        )
+        hi.request_envelope.request.intent = FakeIntent(name=name)
+        lambda_function._RAW_ENVELOPE.value = {}
+        return hi
+
+    def test_can_handle_nur_ja_nein(self):
+        handler = lambda_function.YesNoIntentHandler()
+        self.assertTrue(handler.can_handle(self._handler_input("AMAZON.YesIntent")))
+        self.assertTrue(handler.can_handle(self._handler_input("AMAZON.NoIntent")))
+        self.assertFalse(handler.can_handle(self._handler_input("GptQueryIntent")))
+
+    def test_ja_wird_als_ja_ans_gateway_geschickt(self):
+        hi = self._handler_input("AMAZON.YesIntent")
+        with mock.patch.object(lambda_function, "requests") as req:
+            req.post.return_value = fake_response({"speech": "ok", "followUp": True})
+            lambda_function.YesNoIntentHandler().handle(hi)
+        query_call = next(c for c in req.post.call_args_list if str(c.args[0]).endswith("/api/query"))
+        body = json.loads(query_call.kwargs["data"])
+        self.assertEqual(body["text"], "ja")
+        self.assertEqual(body["sessionId"], "amzn1.session.yesno")
+        # followUp=true haelt die Session offen (ask statt end)
+        self.assertTrue([c for c in hi.response_builder.calls if c[0] == "ask"])
+
+    def test_nein_wird_als_nein_ans_gateway_geschickt(self):
+        hi = self._handler_input("AMAZON.NoIntent")
+        with mock.patch.object(lambda_function, "requests") as req:
+            req.post.return_value = fake_response({"speech": "ok", "followUp": False})
+            lambda_function.YesNoIntentHandler().handle(hi)
+        query_call = next(c for c in req.post.call_args_list if str(c.args[0]).endswith("/api/query"))
+        body = json.loads(query_call.kwargs["data"])
+        self.assertEqual(body["text"], "nein")
+
+
 class HelpIntentTest(unittest.TestCase):
     def _handler_input(self):
         hi = FakeHandlerInput(request=FakeRequest(), session=FakeSession())
