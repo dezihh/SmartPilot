@@ -195,7 +195,7 @@ Für `amd64` und `arm64` liegt ein fertiges Image in GHCR. Dann entfällt der
 Build aus Schritt 3:
 
     mkdir -p gateway/data
-    echo "SMARTPILOT_VERSION=0.6.0" > .env
+    echo "SMARTPILOT_VERSION=0.6.1" > .env
     docker compose -f compose.release.yaml pull
     docker compose -f compose.release.yaml up -d
 
@@ -211,7 +211,7 @@ Compose) trägt nur die Image-Version für die Compose-Ersetzung,
 
 Beide Architekturen prüfen:
 
-    docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.0
+    docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.1
 
 `armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut.
 
