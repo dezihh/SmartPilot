@@ -189,6 +189,32 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
 Weitere Fähigkeiten installierst du später über Pakete im Tab
 „Wartung und Pakete“ oder richtest sie manuell ein.
 
+### Variante: fertiges Image statt lokaler Build
+
+Für `amd64` und `arm64` liegt ein fertiges Image in GHCR. Dann entfällt der
+Build aus Schritt 3:
+
+    mkdir -p gateway/data
+    echo "SMARTPILOT_VERSION=0.6.0" > .env
+    docker compose -f compose.release.yaml pull
+    docker compose -f compose.release.yaml up -d
+
+Die beiden `.env`-Dateien haben verschiedene Aufgaben: `./.env` (neben dem
+Compose) trägt nur die Image-Version für die Compose-Ersetzung,
+`gateway/.env` die Laufzeit-Konfiguration des Containers.
+
+- **Update:** `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
+  `pull`, `up -d`.
+- **Rollback:** alte Version eintragen, `pull`, `up -d`.
+- **Vor jedem Update** `gateway/data` sichern: Die Datenbank wird beim Start
+  migriert; ein Rückschritt auf ein älteres Schema ist nicht garantiert.
+
+Beide Architekturen prüfen:
+
+    docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.0
+
+`armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut.
+
 ### Prüfen
 
 - Monitor-Antwort auf „Wie heißt du?“ lautet „Ich bin Dein SmartPilot.“

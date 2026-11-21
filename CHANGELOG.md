@@ -12,6 +12,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Fertiges Gateway-Image (GHCR, amd64 + arm64):** Ein `v*`-Tag baut das
+  Runtime-Image nativ auf beiden Architekturen, prüft je einen Start samt
+  `/healthz` und verbindet die Digests zu `X.Y.Z` und `latest`. Dazu
+  `compose.release.yaml` für den Betrieb ohne lokalen Build; Update und
+  Rollback laufen über die gepinnte `SMARTPILOT_VERSION`.
+
 ### Behoben
 
 - Alexa: „ja“/„nein“ auf eine Rückfrage erreichte das Gateway nie, weil

@@ -1,0 +1,173 @@
+name: Docker Image
+
+# Baut das Gateway-Image fuer amd64 und arm64 und veroeffentlicht es in GHCR.
+# - Push eines Tags v* -> Tags X.Y.Z und latest
+# - workflow_dispatch -> baut aus dem Tag v<version>; die Version ist Pflicht,
+#   damit ein Branch-Stand nie als Release-Version erscheint.
+# Kein Deploy: die Aktualisierung einer Instanz bleibt manuell
+# (docker compose -f compose.release.yaml pull && up -d).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release-Version ohne v (z. B. 0.6.0) - baut aus Tag v<version>"
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # GHCR verlangt Kleinbuchstaben; der Repo-Name (SmartPilot) ist gemischt.
+  IMAGE: ghcr.io/dezihh/smartpilot
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      ref: ${{ steps.meta.outputs.ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Version und Tag bestimmen
+        id: meta
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+            version="${version#v}"
+            ref="v${version}"
+            git rev-parse --verify --quiet "refs/tags/${ref}" >/dev/null \
+              || { echo "Tag ${ref} existiert nicht"; exit 1; }
+          else
+            ref="${{ github.ref_name }}"
+            version="${ref#v}"
+          fi
+          test -n "$version"
+          [ "$ref" != "$version" ] || { echo "Tag-Format vX.Y.Z erwartet, bekam ${ref}"; exit 1; }
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "Version ${version} aus ${ref}"
+
+      - name: Tag-Version passt zu gateway/package.json
+        run: |
+          set -euo pipefail
+          git checkout --quiet "${{ steps.meta.outputs.ref }}"
+          pkg=$(node -p "require('./gateway/package.json').version")
+          if [ "$pkg" != "${{ steps.meta.outputs.version }}" ]; then
+            echo "gateway/package.json sagt ${pkg}, der Tag sagt ${{ steps.meta.outputs.version }}"
+            exit 1
+          fi
+          echo "OK: ${pkg}"
+
+  build:
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native Runner je Architektur: kein QEMU, echter Laufzeit-Test.
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    outputs:
+      digest-amd64: ${{ steps.digest.outputs.amd64 }}
+      digest-arm64: ${{ steps.digest.outputs.arm64 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.meta.outputs.ref }}
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Login GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image bauen (per Digest pushen)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ./gateway
+          file: ./gateway/Dockerfile
+          target: runtime
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          outputs: type=image,name-canonical=true,push-by-digest=true
+          labels: |
+            org.opencontainers.image.source=https://github.com/dezihh/SmartPilot
+            org.opencontainers.image.version=${{ needs.meta.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+
+      - name: Digest merken
+        id: digest
+        run: echo "${{ matrix.arch }}=${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-Test (Image starten, /healthz)
+        run: |
+          set -euo pipefail
+          docker pull "$IMAGE@${{ steps.build.outputs.digest }}"
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 \
+            -e ADMIN_TOKEN=smoke-admin-0123456789abcdefghij \
+            -e API_TOKEN=smoke-api-0123456789abcdefghijkl \
+            -e LLM_BASE_URL=http://127.0.0.1:9/v1 \
+            -e LLM_API_KEY=smoke \
+            -e LLM_MODEL=smoke \
+            "$IMAGE@${{ steps.build.outputs.digest }}"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/healthz >/dev/null; then
+              echo "healthz ok nach ${i} Versuchen (linux/${{ matrix.arch }})"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "healthz antwortet nicht:"
+          docker logs smoke || true
+          exit 1
+
+      - name: Container entfernen
+        if: always()
+        run: docker rm -f smoke || true
+
+  merge:
+    needs: [meta, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Login GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Manifest verbinden
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            -t "$IMAGE:${{ needs.meta.outputs.version }}" \
+            -t "$IMAGE:latest" \
+            "$IMAGE@${{ needs.build.outputs.digest-amd64 }}" \
+            "$IMAGE@${{ needs.build.outputs.digest-arm64 }}"
+
+      - name: Ergebnis pruefen
+        run: docker buildx imagetools inspect "$IMAGE:${{ needs.meta.outputs.version }}"

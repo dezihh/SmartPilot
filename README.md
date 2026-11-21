@@ -84,6 +84,27 @@ Details: [doc/CONCEPTS.md](doc/CONCEPTS.md) ·
 Voraussetzungen: Docker mit Compose-Plugin und eine OpenAI-kompatible
 LLM-Schnittstelle (mit Tool-Calling).
 
+**Variante A — mit fertigem Image (kein Build):** läuft auf `amd64` und
+`arm64` (Raspberry Pi 4/5, Rock64, NAS).
+
+```bash
+git clone https://github.com/dezihh/SmartPilot.git
+cd SmartPilot
+mkdir -p gateway/data
+cp gateway/.env.example gateway/.env
+# gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
+echo "SMARTPILOT_VERSION=0.6.0" > .env
+docker compose -f compose.release.yaml pull
+docker compose -f compose.release.yaml up -d
+```
+
+Update später: `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
+dann `pull` und `up -d`. Rollback: alte Version eintragen und erneut starten.
+Die Version steht bewusst als feste Zahl — `latest` ist nur der Bequemlichkeits-
+Tag für neue Installationen.
+
+**Variante B — selbst bauen (Repository-Stand):**
+
 ```bash
 git clone https://github.com/dezihh/SmartPilot.git
 cd SmartPilot
