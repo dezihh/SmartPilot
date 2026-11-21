@@ -60,7 +60,10 @@ werden Redirects selbst verfolgt und pro Etappe neu geprüft — ein Header geht
 nie an ein fremdes Redirect-Ziel. Die Werte sind in Admin-Antworten maskiert
 und erscheinen nicht in Logs; `{}` löscht die Konfiguration. Dynamische URLs
 (aus `args`) bleiben auf öffentliche Ziele beschränkt; `http_private_allow`
-nennt exakte private Hosts als Ausnahme (z. B. `192.168.10.3:9000`).
+nennt exakte private Hosts als Ausnahme (z. B. `192.0.2.10:9000`).
+`http_headers` ist der Ausnahmeweg für rohe oder dynamische URLs; für feste
+Systeme gehört das Ziel in eine benannte Verbindung (Abgrenzung und
+Token-Landkarte: `CONFIGURATION.md`).
 
 **Benannte Verbindungen** (`http_connections`) bündeln Base-URL, Header und
 eine explizite LAN-Freigabe. Im Template: `http('portainer:/api/endpoints')`

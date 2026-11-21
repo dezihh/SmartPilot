@@ -32,6 +32,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Budget 2 gegen transiente MCP-Fehler, Queue-Fallback (`queue_id` =
   `player_id`) und Regel für „ja“-Antworten auf Player-Rückfragen.
 
+## [Unreleased]
+
+### Geändert
+
+- **Zugangsdaten-Wege klarer getrennt:** `doc/CONFIGURATION.md` nennt in
+  einer Tabelle, wo ein Token hingehört (MCP-Server, Paket-Parameter,
+  benannte HTTP-Verbindung, `http_headers`), und grenzt Verbindung und
+  `http_headers` ab — Regel: ein Ziel gehört nur an eine Stelle. Der
+  Hilfetext des Felds beschreibt den Ausnahmefall und die Wirkung auf alle
+  Templates; Beispiel-Adressen in Doku und UI nutzen den
+  Dokumentationsbereich `192.0.2.10`.
+
 ## [0.6.0] – 2026-11-20
 
 ### Hinzugefügt

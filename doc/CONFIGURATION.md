@@ -219,21 +219,58 @@ Ein Setting mit leerem Wert fällt auf den `.env`- bzw. Code-Default zurück.
 sonst sieht das Gateway nur die Proxy-IP.
 
 `http_headers` trägt Zugangsdaten für `http()`-Ziele (JSON
-`{"host[:port]":{"Header":"Wert"}}`). In der Admin-API ist der Wert maskiert;
-ein leeres Feld lässt ihn unverändert, `{}` entfernt alle Einträge. Die
-Header gehen nur an exakt passende Ziele, auch nach Redirects.
-`http_private_allow` ist die ausdrückliche Ausnahme für dynamische
-`http()`-URLs ins private Netz (kommagetrennte exakte Hosts, z. B.
-`192.168.10.3:9000`).
+`{"host[:port]":{"Header":"Wert"}}`; `host:port` gewinnt vor `host`). In der
+Admin-API ist der Wert maskiert; ein leeres Feld lässt ihn unverändert, `{}`
+entfernt alle Einträge. Die Header gehen nur an exakt passende Ziele, auch
+nach Redirects. `http_private_allow` ist die ausdrückliche Ausnahme für
+dynamische `http()`-URLs ins private Netz (kommagetrennte exakte Hosts, z. B.
+`192.0.2.10:9000`).
+
+## Wo gehört welcher Token hin?
+
+Das Gateway spricht über drei Wege mit fremden Systemen. Der Token gehört zu
+dem Weg, über den aufgerufen wird — nicht in das erstbeste Feld:
+
+| Aufruf | Token liegt | Beispiel |
+|---|---|---|
+| MCP-Werkzeug (`mcp.call`) | MCP-Server, Feld `auth_token`/`env`/`headers` | Home Assistant, Music Assistant, MQTT, SearXNG |
+| Paket-Parameter (`${param}`) | Parameter des installierten Pakets (`secret: true`) | `ma_token`, `mqtt_password` |
+| `http('name:/pfad')` | benannte HTTP-Verbindung (`http_connections`) | `portainer` |
+| `http('http://host/pfad')` | Grundeinstellung `http_headers` | nur Ausnahmefälle |
+
+`http_headers` ist also **kein** Sammelbecken für alle Zugangsdaten: Die
+Tokens von MCP-Servern und Paketen stehen dort nie.
+
+## Verbindung oder `http_headers`?
+
+| | Benannte Verbindung | `http_headers` |
+|---|---|---|
+| Ziel | fest (Base-URL im Eintrag) | roh, zur Laufzeit gebildet |
+| Im Template sichtbar | ja: `http('portainer:/api/…')` | nein |
+| LAN-Freigabe, Timeout, `enabled` | pro Verbindung | global über eigene Felder |
+| Empfohlen für | feste, wiederkehrende Systeme | dynamische Hosts (z. B. aus `args`) |
+
+**Regel:** Ein Ziel gehört entweder in eine Verbindung oder in
+`http_headers` — nie in beides. Beispiel mit zwei Zielen:
+
+```json
+{
+  "192.0.2.10:9000": { "X-API-Key": "ptr_…" },
+  "api.example.org": { "Authorization": "Bearer …" }
+}
+```
+
+`192.0.2.10` steht für ein privates Ziel; die Adresse ist für Dokumentation
+reserviert. Der Wert ist ein Header, kein Token in der URL.
 
 ## HTTP-Verbindungen
 
 Benannte Verbindungen kombinieren Base-URL, Header und eine explizite
-LAN-Freigabe. Sie ergänzen `http_headers`/`http_private_allow` für rohe URLs;
-beide Wege bleiben parallel nutzbar. Pflege über die Admin-API
-`/admin/api/http-connections` oder das Paket-Manifest `httpConnections`.
-Header sind in Admin-Antworten maskiert; `{}` löscht sie. Nach einer
-Schlüsselrotation den Eintrag ersetzen.
+LAN-Freigabe; sie sind der empfohlene Weg für feste Systeme und ergänzen
+`http_headers` nur für rohe oder dynamische URLs. Pflege über die Admin-API
+`/admin/api/http-connections` oder das Paket-Manifest `httpConnections`; eine
+Liste in der Admin-UI fehlt noch (Issue #36). Header sind in Admin-Antworten
+maskiert; `{}` löscht sie. Nach einer Schlüsselrotation den Eintrag ersetzen.
 
 ## Abnahme
 
