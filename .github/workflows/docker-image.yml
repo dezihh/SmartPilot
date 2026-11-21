@@ -58,9 +58,11 @@ jobs:
           test -n "$version"
           [ "$ref" != "$version" ] || { echo "Tag-Format vX.Y.Z erwartet, bekam ${ref}"; exit 1; }
           revision=$(git rev-parse "refs/tags/${ref}^{commit}")
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "ref=${ref}" >> "$GITHUB_OUTPUT"
-          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=${version}"
+            echo "ref=${ref}"
+            echo "revision=${revision}"
+          } >> "$GITHUB_OUTPUT"
           echo "Version ${version} aus ${ref} (${revision})"
 
       - name: Tag-Version passt zu gateway/package.json
