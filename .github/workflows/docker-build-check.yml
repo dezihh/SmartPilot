@@ -1,0 +1,104 @@
+name: Docker Build Check
+
+# Baut das Gateway-Image bei jeder Aenderung an Version oder Dockerfile auf
+# main - auf beiden Architekturen und mit einem echten Start (/healthz) -
+# veroeffentlicht aber nichts. Die Veroeffentlichung bleibt beim Tag (siehe
+# docker-image.yml), damit der Tag die Freigabe-Grenze bleibt.
+# Ist der Commit bereits mit passendem v*-Tag versehen, wird uebersprungen:
+# der Tag-Lauf baut dasselbe Image ohnehin.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gateway/package.json'
+      - 'gateway/Dockerfile'
+      - 'gateway/docker-entrypoint.sh'
+      - '.github/workflows/docker-build-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Bereits getaggt?
+        id: check
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./gateway/package.json').version")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git tag --points-at HEAD | grep -qx "v${version}"; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "HEAD ist bereits als v${version} getaggt - Tag-Lauf uebernimmt"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Test-Build fuer ${version} (ohne Veroeffentlichung)"
+          fi
+
+  build:
+    needs: meta
+    if: needs.meta.outputs.run == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Image bauen (ohne Push)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ./gateway
+          file: ./gateway/Dockerfile
+          target: runtime
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          push: false
+          tags: smartpilot-build-check:${{ matrix.arch }}
+
+      - name: Smoke-Test (Image starten, /healthz)
+        run: |
+          set -euo pipefail
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 \
+            -e ADMIN_TOKEN=smoke-admin-0123456789abcdefghij \
+            -e API_TOKEN=smoke-api-0123456789abcdefghijkl \
+            -e LLM_BASE_URL=http://127.0.0.1:9/v1 \
+            -e LLM_API_KEY=smoke \
+            -e LLM_MODEL=smoke \
+            "smartpilot-build-check:${{ matrix.arch }}"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/healthz >/dev/null; then
+              echo "healthz ok nach ${i} Versuchen (linux/${{ matrix.arch }}, Version ${{ needs.meta.outputs.version }})"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "healthz antwortet nicht:"
+          docker logs smoke || true
+          exit 1
+
+      - name: Container entfernen
+        if: always()
+        run: docker rm -f smoke || true

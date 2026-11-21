@@ -3,7 +3,7 @@
 #
 # Erststart:
 #   1. Verzeichnis layout wie im Repo anlegen: ./gateway/.env, ./gateway/data
-#   2. in ./.env (neben dieser Datei) SMARTPILOT_VERSION=0.6.0 setzen
+#   2. in ./.env (neben dieser Datei) SMARTPILOT_VERSION=0.6.1 setzen
 #   3. docker compose -f compose.release.yaml pull
 #      docker compose -f compose.release.yaml up -d
 #

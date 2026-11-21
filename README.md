@@ -93,7 +93,7 @@ cd SmartPilot
 mkdir -p gateway/data
 cp gateway/.env.example gateway/.env
 # gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-echo "SMARTPILOT_VERSION=0.6.0" > .env
+echo "SMARTPILOT_VERSION=0.6.1" > .env
 docker compose -f compose.release.yaml pull
 docker compose -f compose.release.yaml up -d
 ```
