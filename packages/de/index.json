@@ -13,9 +13,9 @@
       "id": "music-assistant",
       "name": "Music Assistant Anbindung",
       "summary": "MCP-Server (ma-provider-mcp), Player-Liste und Wiedergabe-Kaskade mit generischer Player-Wahl.",
-      "version": "1.1.7",
+      "version": "1.1.8",
       "category": "mixed",
-      "sha256": "24a2b068b799a37f1b9cbb4c108f45049a83507640e57caac39eb9da12ff556d"
+      "sha256": "44f4ce1155e1552ef097be901d7b6b09b30c09a9151e2bfc3388ac81b90d868d"
     },
     {
       "id": "searxng",
