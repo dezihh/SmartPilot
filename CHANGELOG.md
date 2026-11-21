@@ -22,6 +22,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - Agent-Prompt: kurze Bestätigungen beziehen sich auf die letzte Rückfrage;
   bei unbrauchbarer Antwort keine identische Wiederholung, sondern
   naheliegendste Wahl treffen und nennen.
+- CI: `sync-model` verglich nur die GptQueryIntent-Samples und übersah damit
+  neue Intents (z. B. Yes/No) – jetzt wird das komplette Sprachmodell
+  verglichen. `deploy-alexa` bricht bei fehlgeschlagenem CodeCommit-Push
+  sichtbar ab, statt Erfolg zu melden, wenn der Skill nicht Alexa-hosted ist.
 - Paket `music-assistant` 1.1.8: `library_get_artist_albums` in der Allowlist
   (Kette Artist → Album → Wiedergabe war unterbrochen), player_id im
   `fn_ma_players`-Output explizit gelabelt, `fn_ma_players` mit Leer-Guard und

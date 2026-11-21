@@ -119,7 +119,11 @@ jobs:
           git add -A lambda skill-package
           git status --short | head -5
           git -c user.email="ci@smartpilot" -c user.name="SmartPilot CI" commit -m "deploy: ${{ inputs.note || 'Lauffaehige Files' }}" || echo "keine Dateiaenderung"
-          git push alexa "HEAD:${BRANCH}" 2>&1 | tail -4
+          set -o pipefail
+          if ! git push alexa "HEAD:${BRANCH}" 2>&1 | tail -4; then
+            echo "::error::CodeCommit-Push fehlgeschlagen - Skill ist vermutlich NICHT Alexa-hosted. Fuer eigene Lambda stattdessen deploy-aws-lambda + sync-model ausfuehren."
+            exit 1
+          fi
 
       - name: SMAPI Build-Status pollen
         env:

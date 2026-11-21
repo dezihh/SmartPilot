@@ -55,7 +55,7 @@ jobs:
             NEED_SYNC=1
             ETAG=""
             if [ "${HTTP}" = "200" ] && [ "${FORCE}" != "1" ]; then
-              LOCAL_MODEL="${MODEL}" python3 -c 'import json,os; stage=json.load(open("/tmp/current.json")); local=json.load(open(os.environ["LOCAL_MODEL"])); s=lambda m: next((i.get("samples",[]) for i in m["interactionModel"]["languageModel"]["intents"] if i["name"]=="GptQueryIntent"), []); ss, ls = s(stage), s(local); print("STAGE-SAMPLES:", len(ss), "| LOCAL-SAMPLES:", len(ls)); print("Identisch:", ss==ls); open("/tmp/need_sync","w").write("0" if ss==ls else "1")'
+              LOCAL_MODEL="${MODEL}" python3 -c 'import json,os; stage=json.load(open("/tmp/current.json")); local=json.load(open(os.environ["LOCAL_MODEL"])); norm=lambda m: (lambda lm: {"invocation": lm.get("invocationName"), "intents": lm.get("intents"), "types": lm.get("types")})(m["interactionModel"]["languageModel"]); ss, ls = norm(stage), norm(local); print("STAGE-INTENTS:", len(ss["intents"]), "| LOCAL-INTENTS:", len(ls["intents"])); print("Identisch:", ss==ls); open("/tmp/need_sync","w").write("0" if ss==ls else "1")'
               NEED_SYNC=$(cat /tmp/need_sync)
               ETAG=$(grep -i '^etag:' /tmp/h.txt | tr -d '\r' | cut -d' ' -f2)
               echo "eTag: ${ETAG}, NEED_SYNC=${NEED_SYNC}"
