@@ -143,7 +143,7 @@ const SETTINGS_FIELDS = [
     type: 'secret',
     span: true,
     rows: 3,
-    help: 'JSON-Objekt: Ziel (host oder host:port) → Header. Beispiel: {"192.168.10.3:9000":{"X-API-Key":"ptr_…"}}. Der Header wird nur an exakt passende Ziele gesendet, nie an ein Redirect-Ziel. Leer lassen = bestehenden Wert behalten; {} = alle Einträge entfernen.',
+    help: 'JSON-Objekt: Ziel (host oder host:port) → Header. Beispiel: {"192.0.2.10:9000":{"X-API-Key":"ptr_…"}} und {"api.example.org":{"Authorization":"Bearer …"}}. Der Header wird nur an exakt passende Ziele gesendet, nie an ein Redirect-Ziel. Ausnahmeweg für rohe oder dynamische http()-URLs; für feste Systeme bitte eine HTTP-Verbindung anlegen — der Header gilt für alle Templates, die diesen Host aufrufen. Leer lassen = bestehenden Wert behalten; {} = alle Einträge entfernen.',
   },
   {
     key: 'http_private_allow',
@@ -335,7 +335,7 @@ function buildSettingField(field) {
     control.value = '';
     control.placeholder = state.bootstrap.settingSet?.[field.key]
       ? '(gesetzt — leer lassen = unverändert; {} = entfernen)'
-      : '(JSON, z. B. {"host:port":{"Header":"Wert"}})';
+      : '(JSON, z. B. {"192.0.2.10:9000":{"X-API-Key":"ptr_…"},\n "api.example.org":{"Authorization":"Bearer …"}})';
   } else if (field.type === 'textarea') {
     control = document.createElement('textarea');
     control.rows = field.rows ?? 8;

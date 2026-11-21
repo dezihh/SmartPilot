@@ -12,6 +12,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Hinzugefügt
+
+- **Fertiges Gateway-Image (GHCR, amd64 + arm64):** Ein `v*`-Tag baut das
+  Runtime-Image nativ auf beiden Architekturen, prüft je einen Start samt
+  `/healthz` und verbindet die Digests zu `X.Y.Z` und `latest`. Dazu
+  `compose.release.yaml` für den Betrieb ohne lokalen Build; Update und
+  Rollback laufen über die gepinnte `SMARTPILOT_VERSION`.
+
 ### Behoben
 
 - Alexa: „ja“/„nein“ auf eine Rückfrage erreichte das Gateway nie, weil
@@ -31,6 +39,18 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   `fn_ma_players`-Output explizit gelabelt, `fn_ma_players` mit Leer-Guard und
   Budget 2 gegen transiente MCP-Fehler, Queue-Fallback (`queue_id` =
   `player_id`) und Regel für „ja“-Antworten auf Player-Rückfragen.
+
+## [Unreleased]
+
+### Geändert
+
+- **Zugangsdaten-Wege klarer getrennt:** `doc/CONFIGURATION.md` nennt in
+  einer Tabelle, wo ein Token hingehört (MCP-Server, Paket-Parameter,
+  benannte HTTP-Verbindung, `http_headers`), und grenzt Verbindung und
+  `http_headers` ab — Regel: ein Ziel gehört nur an eine Stelle. Der
+  Hilfetext des Felds beschreibt den Ausnahmefall und die Wirkung auf alle
+  Templates; Beispiel-Adressen in Doku und UI nutzen den
+  Dokumentationsbereich `192.0.2.10`.
 
 ## [0.6.0] – 2026-11-20
 
