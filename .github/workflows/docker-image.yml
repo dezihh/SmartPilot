@@ -33,6 +33,7 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
       ref: ${{ steps.meta.outputs.ref }}
+      revision: ${{ steps.meta.outputs.revision }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -56,9 +57,11 @@ jobs:
           fi
           test -n "$version"
           [ "$ref" != "$version" ] || { echo "Tag-Format vX.Y.Z erwartet, bekam ${ref}"; exit 1; }
+          revision=$(git rev-parse "refs/tags/${ref}^{commit}")
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "ref=${ref}" >> "$GITHUB_OUTPUT"
-          echo "Version ${version} aus ${ref}"
+          echo "revision=${revision}" >> "$GITHUB_OUTPUT"
+          echo "Version ${version} aus ${ref} (${revision})"
 
       - name: Tag-Version passt zu gateway/package.json
         run: |
@@ -108,12 +111,11 @@ jobs:
           file: ./gateway/Dockerfile
           target: runtime
           platforms: linux/${{ matrix.arch }}
-          push: true
-          outputs: type=image,name-canonical=true,push-by-digest=true
+          outputs: type=image,name=ghcr.io/dezihh/smartpilot,push-by-digest=true,name-canonical=true,push=true
           labels: |
             org.opencontainers.image.source=https://github.com/dezihh/SmartPilot
             org.opencontainers.image.version=${{ needs.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ needs.meta.outputs.revision }}
             org.opencontainers.image.licenses=MIT
 
       - name: Digest merken
