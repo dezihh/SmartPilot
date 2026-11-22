@@ -10,6 +10,33 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
+## [0.6.3] – 2026-11-22
+
+### Hinzugefügt
+
+- **Beispieldaten beim Erststart:** Ohne vorhandene Datenbank legt das Gateway
+  die Vorgänge „Wetter" (Open-Meteo, Beispielstandort Berlin) und „Laufzeit"
+  an — ohne Zugangsdaten, aus einem Manifest im Image, über den normalen
+  Paketpfad (Herkunft `seed`, deinstallierbar). Schalter `SEED_PROFILE`
+  (`example` = Default, `none` = leer starten). Neue Template-Variable
+  `uptime` liefert die Prozess-Laufzeit in Sekunden. Betrieb: `doc/DOCKER.md`.
+
+### Geändert
+
+- **Klarere Namen für die HTTP-Beispiele:** `beispiel-http` heißt jetzt
+  „Beispiel: HTTP-Abruf" (dynamische URLs), `beispiel-http-verbindung`
+  „Beispiel: HTTP mit Verbindung" (feste Base-URL) — Versionen 1.0.1. IDs
+  bleiben gleich, bestehende Installationen sind nicht betroffen.
+
+### Behoben
+
+- **Hilfe nennt Fähigkeiten und den Kanal:** Der Leer-Fall des Hilfe-Prompts
+  gilt nur noch, wenn wirklich nichts eingerichtet ist (vorher wählte das
+  Modell ihn trotz vorhandenem Katalog). Beispielkommandos sind einheitlich
+  reine Befehle ohne Anrede; Monitor, Alexa und reine API-Aufrufe werden über
+  `channel` unterschieden und entsprechend formuliert. Bestands-DBs ersetzen
+  das alte Beispiel per Migration.
+
 ## [0.6.2] – 2026-11-22
 
 ### Geändert
@@ -23,13 +50,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Port-Mapping gehört in die Compose:** `GATEWAY_PORT` und `GATEWAY_BIND`
   entfallen als Umgebungsvariablen; die Compose veröffentlicht fest `3000`.
   Abweichende Host-Ports oder eine Bindung nur an `127.0.0.1` stehen in einer
-  nicht versionierten `docker-compose.override.yml`.
+  nicht versionierten `compose.override.yaml`.
 - **Image-Betrieb ohne Klon:** `compose.release.yaml` liest eine einzige
   `.env` (Vorlage `env.example`, identisch mit `gateway/.env.example`) und
   legt die Datenbank unter `./data`
   ab. Die Compose nennt den Image-Tag der Version fest; Compose und
-  `.env`-Vorlage liegen als Release-Assets bereit. Eigene Anpassungen (Port, Image) gehören in eine
-  `docker-compose.override.yml`.
+  `.env`-Vorlage liegen als Release-Assets bereit. Eigene Anpassungen (Port,
+  Image) gehören in eine `compose.override.yaml`.
 
 ### Behoben
 
@@ -1123,7 +1150,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/dezihh/SmartPilot/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/dezihh/SmartPilot/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/dezihh/SmartPilot/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...v0.6.0

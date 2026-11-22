@@ -4,10 +4,15 @@ export type ActionMode = 'deterministic' | 'llm' | 'hybrid';
 // (Default) verwirft den Entity-Index-Cache nach dem Aufruf, 'read' nicht.
 export type SideEffect = 'read' | 'write';
 
+// Woher die Frage kommt: Monitor der Admin-UI, Alexa oder ein anderer
+// API-Client. Bestimmt nur die Formulierung von Hilfetexten.
+export type QueryChannel = 'monitor' | 'alexa' | 'api';
+
 export interface VoiceQuery {
   sessionId: string;
   userId?: string;
   text: string;
+  channel?: QueryChannel;
 }
 
 export interface DisplayPayload {

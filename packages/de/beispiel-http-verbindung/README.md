@@ -1,4 +1,4 @@
-# Beispiel: HTTP-Verbindung
+# Beispiel: HTTP mit Verbindung
 
 Zeigt, wie ein Paket eine **benannte HTTP-Verbindung** mitbringt und darüber
 GET- und POST-Aufrufe macht. Die Verbindung `jsonplaceholder` zeigt auf eine

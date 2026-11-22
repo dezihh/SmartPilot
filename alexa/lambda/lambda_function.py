@@ -365,7 +365,8 @@ def call_gateway(query, session_id, user_id, skill_id=None):
         raise RuntimeError("gateway_url nicht konfiguriert")
     if not api_token:
         raise RuntimeError("api_token nicht konfiguriert")
-    data = {"sessionId": session_id, "text": query}
+    # channel: das Gateway formuliert Hilfetexte passend zum Kanal.
+    data = {"sessionId": session_id, "text": query, "channel": "alexa"}
     if user_id:
         data["userId"] = user_id
     body = _canonical_body(data)

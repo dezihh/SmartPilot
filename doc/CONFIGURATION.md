@@ -8,7 +8,7 @@ und Grenzen stehen in [Referenz](REFERENCE.md).
 ## Empfohlene Reihenfolge
 
 1. Admin-Token im Browser speichern.
-2. Grundeinstellungen (Assistentenname, Modell) prüfen.
+2. Grundeinstellungen (Assistentenname, Laufzeitwerte) prüfen.
 3. **Optional:** unter **Wartung und Pakete** fertige Pakete installieren — sie
    legen Server, Index und Funktionen in einem Schritt an. Ohne Paket die
    Schritte 4–6 von Hand gehen.
@@ -27,8 +27,7 @@ werden dabei nicht überschrieben.
 | Einstellung | Empfehlung für den Einstieg |
 |---|---|
 | Assistentenname (`assistant_name`) | kurz und aussprechbar; Grundlage von Begrüßung und Identität |
-| Hauptmodell | tool- und JSON-fähiges Modell |
-| Tool-Modell (`tool_model`) | zunächst leer; dann gilt das Hauptmodell |
+| Modell | nicht hier: `LLM_MODEL` steht in der `.env` (Wechsel = Neustart) |
 | Tool-Runden | Standard beibehalten |
 | Tool-Deadline | innerhalb des verfügbaren Antwortfensters halten |
 | Agent-Tool-Auswahl | nur tatsächlich benötigte Werkzeuge erlauben |
@@ -209,8 +208,8 @@ im jeweiligen Editor (MCP-Server, Funktion, Index) angepasst.
 
 | Ebene | Inhalt | Beispiele |
 |---|---|---|
-| `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `TRUST_PROXY` |
-| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_model`, `llm_max_tokens`, `tool_model`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `agent_tool_limit`, `http_timeout_ms`, `http_body_cap`, `http_headers`, `http_private_allow` |
+| `.env` | Secrets und Start-Infrastruktur (vor dem Prozessstart fest) | `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `TRUST_PROXY`, `SEED_PROFILE` |
+| Grundeinstellungen (Admin-UI) | Betriebs-Tuning zur Laufzeit | `llm_max_tokens`, `llm_reasoning_effort`, `max_tool_iterations`, `tool_deadline_ms`, `agent_tools`, `agent_tool_limit`, `http_timeout_ms`, `http_body_cap`, `http_headers`, `http_private_allow` |
 | Paket-Parameter | Werte eines installierten Pakets | `host`, `token`, `port` (aus `manifest.params`) |
 | DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
 

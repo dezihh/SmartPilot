@@ -19,6 +19,7 @@ interface VoiceQuery {
   sessionId: string;
   userId?: string;
   text: string;
+  channel?: 'monitor' | 'alexa' | 'api';  // formuliert Hilfetexte passend
 }
 
 interface AssistantResponse {
@@ -103,9 +104,11 @@ EngineResult { response, route, actionId?, score?, durationMs, trace }
 
 - **LLM-Client** (`llm/client.ts`): eigener OpenAI-kompatibler Client gegen
   `POST {LLM_BASE_URL}/chat/completions` (mit Tool-Calling).
-  Modell/Token/Reasoning stammen aus Env bzw. überschreibenden DB-Settings
-  (`llm_model`, `llm_max_tokens`, `llm_reasoning_effort`). Tool-Runden können
-  ein eigenes, schnelles Modell nutzen (`tool_model`).
+  Das Modell kommt ausschließlich aus der `.env` (`LLM_MODEL`, optional
+  `TOOL_MODEL` für Werkzeugrunden). Token-Budget und Reasoning sind
+  Betriebswerte und stammen aus den DB-Settings (`llm_max_tokens`,
+  `llm_reasoning_effort`) mit Code-Default; eine Env-Variable gibt es dafür
+  bewusst nicht.
 - **Tool-Loop** (`runToolLoop`): baut Tool-Specs (`buildTools`), schickt sie
   mit System-Prompt + Gedächtnis an das LLM, führt Tool-Calls **parallel** aus,
   zählt Budgets pro Tool, respektiert ein Gesamt-Deadline
@@ -362,9 +365,10 @@ Token-/Cache-Auswertung (`summarizeUsage`, Admin `GET /admin/api/usage`).
 
 ## Betrieb und Tests
 
-- **Docker**: Wurzel-`docker-compose.yaml` (Runtime-Target, Port via
-  `GATEWAY_PORT`), `gateway/docker-compose.yml` (Dev-Target, tsx-watch,
-  Volume-Mount `.:/app`).
+- **Docker**: Wurzel-`docker-compose.yaml` (Runtime-Target, Port fest
+  `3000:3000`), `gateway/docker-compose.yml` (Dev-Target, tsx-watch,
+  Volume-Mount `.:/app`). Eigene Host-Ports oder Bind-Adressen stehen in einer
+  nicht versionierten `compose.override.yaml` (`ports: !override`).
 - **Tests**: `gateway/test/*.test.ts` mit `node:test`/`node:assert/strict`
   (`npm test`), Typecheck `npm run typecheck`, Build `npm run build`. Der
   Lambda-Adapter hat eigene Python-Tests unter `alexa/lambda/`.

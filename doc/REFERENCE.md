@@ -7,7 +7,7 @@ der [Installation](INSTALLATION.md).
 
 | Tab | Aufgabe |
 |---|---|
-| Grundeinstellungen | Modelle, Laufzeitwerte und Agent-Prompts |
+| Grundeinstellungen | Laufzeitwerte, Darstellung und Agent-Vorgaben (das Modell steht in der `.env`) |
 | Monitor / Test | Anfrage ohne Alexa ausführen und Trace ansehen |
 | Vorgänge | Trigger und Antwortmodus konfigurieren |
 | Funktionen | wiederverwendbare Templates erstellen und testen |
@@ -178,13 +178,14 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
 | `LLM_MODEL` | – | Startmodell (Pflicht); Wechsel erfordert einen Neustart |
 | `TOOL_MODEL` | leer | eigenes Modell nur für Router-/Werkzeugrunden; leer = wie `LLM_MODEL` |
-| `LLM_KEEPALIVE_MS` | `120000` | Modell warm halten; `0` = aus |
+| `LLM_KEEPALIVE_MS` | leer | Modell warm halten (Millisekunden); leer oder `0` = aus |
 | `AGENT_CLARIFICATION_BUDGET` | `2` | Rückfragebudget |
 | `TRUST_PROXY` | leer | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); leer = aus |
 | `QUERY_MAX_CHARS` | `500` | max. Zeichen für `/api/query` (Kostenschutz) |
 | `QUERY_RATE_MAX` | `30` | max. `/api/query`-Anfragen pro Minute und Client |
 | `ADMIN_RATE_MAX` | `240` | max. Admin-Anfragen pro Minute und Client-IP für Admin-API **und** `/metrics` (eigene Buckets, auch fehlgeschlagene Tokens) |
 | `MCP_NPM_ALLOW_SCRIPTS` | leer | `1` = Lifecycle-Skripte beim Provisionieren erlauben; Standard aus |
+| `SEED_PROFILE` | `example` | Beispieldaten beim Erststart: `example` legt Wetter (Berlin) und den Vorgang „Laufzeit" an, `none` startet leer; wirkt nur, solange keine Datenbank existiert |
 | `TZ` | `Europe/Berlin` | Zeitzone fuer `now.hour`/`now.date`/`now.time` im Template-Kontext |
 | `MCP_FAILURE_TTL_MS` | `30000` | Sperre nach fehlgeschlagenem MCP-Init (kein erneuter Versuch im Fenster) |
 | `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; prüft den Header `X-Alexa-Skill-Id` der Lambda nur warnend (reine Log-Info, **keine** Sicherheitsgrenze) |

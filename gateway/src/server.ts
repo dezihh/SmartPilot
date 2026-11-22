@@ -1,5 +1,6 @@
 import { config } from './config.js';
 import { initDb, closeDb } from './db/schema.js';
+import { seedExample } from './db/exampleSeed.js';
 import { listMcpServers } from './db.js';
 import { stopAllClients } from './mcp/registry.js';
 import { provisionMcpServers, npmInstallRunner, npmPruneRunner } from './mcp/provision.js';
@@ -13,6 +14,9 @@ setLogLevel(config.logLevel);
 // DB explizit vor dem ersten Zugriff initialisieren (kein Import-Seiteneffekt
 // in db.ts). Tests rufen initDb weiterhin selbst mit Temp-Pfad auf.
 initDb(config.dbPath, true);
+// Beispieldaten nur bei neuer Datenbank (Marker in settings); Fehler blockieren
+// den Start nicht.
+seedExample();
 
 // stdio-MCP-Artefakte vor dem Start bereitstellen (persistentes Volume). Fehler
 // blockieren den Start nicht - der betroffene Server bleibt "unavailable" und

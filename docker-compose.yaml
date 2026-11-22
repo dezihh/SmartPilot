@@ -1,7 +1,8 @@
 services:
   gateway:
     build:
-      context: ./gateway
+      context: .
+      dockerfile: gateway/Dockerfile
       target: runtime
     restart: unless-stopped
     ports:

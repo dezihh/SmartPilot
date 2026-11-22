@@ -3,7 +3,8 @@ name: smartpilot-gateway
 services:
   gateway:
     build:
-      context: .
+      context: ..
+      dockerfile: gateway/Dockerfile
       target: dev
     ports:
       # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz
