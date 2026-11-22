@@ -6,7 +6,9 @@ services:
       context: .
       target: dev
     ports:
-      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:3000"
+      # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz
+      # betreiben oder das Mapping auf 127.0.0.1:3000:3000 einschraenken.
+      - "3000:3000"
     env_file: .env
     volumes:
       - .:/app

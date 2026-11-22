@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { TraceEvent } from '../types.js';
 import { requireAdminAuth } from '../auth.js';
 import { errMsg, parseId } from './helpers.js';
-import { config } from '../config.js';
+import { DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_ITERATIONS, DEFAULT_TOOL_DEADLINE_MS } from '../config.js';
 import { GATEWAY_VERSION } from '../version.js';
 import {
   createAction,
@@ -49,11 +49,10 @@ adminRoutes.get('/admin/api/bootstrap', requireAdminAuth, (_req, res) => {
     // Effektive Defaults (aus .env bzw. Code) fuer die Web-UI-Platzhalter:
     // leeres Setting = dieser Wert gilt.
     settingDefaults: {
-      llm_model: config.llm.model,
-      llm_max_tokens: String(config.llm.maxTokens),
-      llm_reasoning_effort: config.llm.reasoningEffort ?? '',
-      tool_deadline_ms: String(config.toolDeadlineMs),
-      max_tool_iterations: String(config.maxToolIterations),
+      llm_max_tokens: String(DEFAULT_MAX_TOKENS),
+      llm_reasoning_effort: '',
+      tool_deadline_ms: String(DEFAULT_TOOL_DEADLINE_MS),
+      max_tool_iterations: String(DEFAULT_MAX_TOOL_ITERATIONS),
       http_timeout_ms: String(HTTP_TIMEOUT_MS),
       http_body_cap: String(HTTP_BODY_CAP),
       ...Object.fromEntries(SEED_SETTINGS),

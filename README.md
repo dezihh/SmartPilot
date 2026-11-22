@@ -84,24 +84,26 @@ Details: [doc/CONCEPTS.md](doc/CONCEPTS.md) ·
 Voraussetzungen: Docker mit Compose-Plugin und eine OpenAI-kompatible
 LLM-Schnittstelle (mit Tool-Calling).
 
-**Variante A — mit fertigem Image (kein Build):** läuft auf `amd64` und
-`arm64` (Raspberry Pi 4/5, Rock64, NAS).
+**Variante A — mit fertigem Image (kein Build, kein Klon):** läuft auf
+`amd64` und `arm64` (Raspberry Pi 4/5, Rock64, NAS).
 
 ```bash
-git clone https://github.com/dezihh/SmartPilot.git
-cd SmartPilot
-mkdir -p gateway/data
-cp gateway/.env.example gateway/.env
-# gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-echo "SMARTPILOT_VERSION=0.6.1" > .env
-docker compose -f compose.release.yaml pull
-docker compose -f compose.release.yaml up -d
+mkdir smartpilot && cd smartpilot
+curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/.env.release.example
+mv .env.release.example .env
+# .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
+docker compose up -d
 ```
 
-Update später: `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
-dann `pull` und `up -d`. Rollback: alte Version eintragen und erneut starten.
-Die Version steht bewusst als feste Zahl — `latest` ist nur der Bequemlichkeits-
-Tag für neue Installationen.
+Beide Dateien stammen aus dem GitHub-Release und gehören zu **genau dieser
+Version** — die Image-Version steht in der Compose. Im Verzeichnis liegen danach
+nur `compose.yaml`, `.env` und `data/`.
+
+- **Update:** die `compose.yaml` des neuen Releases laden, dann `pull`
+  und `up -d`.
+- **Anpassung** (anderer Port, anderes Image, zusätzliche Umgebungsvariable):
+  in eine `compose.override.yaml` daneben — die Compose bleibt unverändert.
 
 **Variante B — selbst bauen (Repository-Stand):**
 
@@ -110,12 +112,12 @@ git clone https://github.com/dezihh/SmartPilot.git
 cd SmartPilot
 cp gateway/.env.example gateway/.env
 # gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-GATEWAY_PORT=3000 docker compose up -d --build
+docker compose up -d --build
 ```
 
-Der Compose bindet den Port standardmäßig nur lokal (`GATEWAY_BIND=127.0.0.1`).
-Für Zugriff aus dem LAN/über eine andere Maschine `GATEWAY_BIND=0.0.0.0`
-setzen — die Admin-UI gehört ohnehin nur ins vertrauenswürdige Netz.
+Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört nur
+ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
+`compose.override.yaml` auf `127.0.0.1:3000:3000` einschränken.
 
 Danach: `http://<host>:3000/admin` öffnen, mit `ADMIN_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.

@@ -1,29 +1,25 @@
-# Betrieb mit dem fertigen Image aus GHCR (kein lokaler Build, kein Repo-Klon
-# fuer den Build-Schritt).
+# Betrieb mit dem fertigen Image aus GHCR: kein Build, kein Repo-Klon.
 #
-# Erststart:
-#   1. Verzeichnis layout wie im Repo anlegen: ./gateway/.env, ./gateway/data
-#   2. in ./.env (neben dieser Datei) SMARTPILOT_VERSION=0.6.1 setzen
-#   3. docker compose -f compose.release.yaml pull
-#      docker compose -f compose.release.yaml up -d
+# Diese Datei gehoert zu genau einer Release-Version (Tag im Image-Namen) und
+# liegt im Release als compose.yaml. Layout daneben:
+#   .env    Laufzeit-Konfiguration (Vorlage: .env.release.example)
+#   data/   SQLite-Datenbank, Backups, installierte MCP-Server (entsteht beim Start)
 #
-# Update: SMARTPILOT_VERSION auf die neue Version setzen, dann pull + up -d.
-# Rollback: SMARTPILOT_VERSION auf die alte Version zurueckstellen.
-#
-# Die beiden .env-Dateien haben verschiedene Aufgaben: ./.env traegt nur die
-# Image-Version (Compose-Ersetzung), ./gateway/.env die Laufzeit-Konfiguration
-# des Containers (ADMIN_TOKEN, API_TOKEN, LLM_*).
+# Erststart: docker compose up -d
+# Update:    die compose.yaml des neuen Releases laden, dann pull und up -d
+# Anpassungen (anderer Port, anderes Image): compose.override.yaml
 services:
   gateway:
-    image: ghcr.io/dezihh/smartpilot:${SMARTPILOT_VERSION:-latest}
+    image: ghcr.io/dezihh/smartpilot:0.6.1
     restart: unless-stopped
     ports:
-      # Nur lokal binden (Default 127.0.0.1); fuer LAN-Zugriff GATEWAY_BIND=0.0.0.0 setzen.
-      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:3000"
+      # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz
+      # betreiben oder das Mapping auf 127.0.0.1:3000:3000 einschraenken.
+      - "3000:3000"
     env_file:
-      - ./gateway/.env
+      - .env
     volumes:
-      - ./gateway/data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

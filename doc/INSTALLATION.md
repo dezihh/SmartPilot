@@ -85,15 +85,15 @@ Diese Variablen liest der Gateway-Code beim Start:
 | `API_TOKEN` | ja | schützt nur die Adapter-API (`/api/query`, `/api/lambda-trace`); gleiche Längenregel, muss sich von `ADMIN_TOKEN` unterscheiden |
 | `LLM_BASE_URL` | ja | Basis-URL der OpenAI-kompatiblen Schnittstelle |
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
-| `PORT` | nein | Gateway-Port, Standard `3000` |
 | `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/smartpilot.db` |
 | `BASE_PATH` | nein | Pfad-Prefix nur für die Admin-UI (leer = `/admin`); z. B. `/smartpilot` |
 | `TRUST_PROXY` | nein | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); hinter dem Reverse-Proxy setzen, sonst gilt das Login-Rate-Limit für alle Clients gemeinsam |
 | `LLM_MODEL` | ja | Name des LLM-Modells |
-| `LLM_MAX_TOKENS` | nein | Ausgabe-Budget, Standard `2000` |
 
-Weitere optionale Variablen (Tool-Runden, Deadline, Keepalive) sind
-in der [Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Für die
+Weitere optionale Variablen (Keepalive, Grenzen, MCP) sind in der
+[Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Betriebswerte wie
+Token-Budget, Tool-Runden und Deadline stehen dagegen in den Grundeinstellungen
+der Admin-UI und haben bewusst keine Umgebungsvariable. Für die
 Alexa-Anbindung über AWS Lambda benötigt das Gateway keine Alexa-spezifischen
 Umgebungsvariablen. Die Lambda greift mit `API_TOKEN` auf `/api/query` zu.
 
@@ -170,18 +170,17 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
    SQLite-Datenbank. Dieses Verzeichnis nicht löschen, wenn Konfiguration,
    Pakete, Funktionen und Vorgänge ein Update überleben sollen.
 
-3. Container bauen und starten; Host-Port wählen:
+3. Container bauen und starten:
 
-       GATEWAY_PORT=3000 docker compose up -d --build
+       docker compose up -d --build
 
-   `GATEWAY_PORT` ist nur das Host-Port-Mapping (der Code liest `PORT`,
-   im Container 3000). Ohne Angabe: Port 3000. Der Port wird standardmäßig nur
-   lokal gebunden (`GATEWAY_BIND=127.0.0.1`); für Zugriff aus dem LAN
-   `GATEWAY_BIND=0.0.0.0` setzen. Die Compose bringt einen Healthcheck mit.
+   Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört
+   nur ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
+   `compose.override.yaml` auf `127.0.0.1:3000:3000` einschränken. Die
+   Compose bringt einen Healthcheck mit.
 
-4. Admin-Oberfläche öffnen: `http://<host>:<port>/admin` — Login mit
-   `ADMIN_TOKEN` (Login-Seite: `/admin/login.html`). `<port>` ist der bei
-   `GATEWAY_PORT` gewählte Host-Port (Standard `3000`).
+4. Admin-Oberfläche öffnen: `http://<host>:3000/admin` — Login mit
+   `ADMIN_TOKEN` (Login-Seite: `/admin/login.html`).
 
 5. Testmonitor prüfen (Tab „Monitor / Test“): eine Frage stellen und eine
    Antwort erwarten.
@@ -192,28 +191,33 @@ Weitere Fähigkeiten installierst du später über Pakete im Tab
 ### Variante: fertiges Image statt lokaler Build
 
 Für `amd64` und `arm64` liegt ein fertiges Image in GHCR. Dann entfällt der
-Build aus Schritt 3:
+Klon und der Build aus den Schritten 1–3 — es bleiben zwei Dateien und ein
+Datenverzeichnis:
 
-    mkdir -p gateway/data
-    echo "SMARTPILOT_VERSION=0.6.1" > .env
-    docker compose -f compose.release.yaml pull
-    docker compose -f compose.release.yaml up -d
+    mkdir smartpilot && cd smartpilot
+    curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+    curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/.env.release.example
+    mv .env.release.example .env
+    # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
+    docker compose up -d
 
-Die beiden `.env`-Dateien haben verschiedene Aufgaben: `./.env` (neben dem
-Compose) trägt nur die Image-Version für die Compose-Ersetzung,
-`gateway/.env` die Laufzeit-Konfiguration des Containers.
+`compose.yaml` und `.env`-Vorlage stammen aus dem GitHub-Release und gehoeren zu
+genau dieser Version; die Image-Version steht in der Compose. Die Datenbank
+liegt in `./data`.
 
-- **Update:** `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
-  `pull`, `up -d`.
-- **Rollback:** alte Version eintragen, `pull`, `up -d`.
-- **Vor jedem Update** `gateway/data` sichern: Die Datenbank wird beim Start
+- **Update:** die `compose.yaml` des neuen Releases laden, `pull`,
+  `up -d`.
+- **Anpassung oder Rollback:** `image:` in einer `compose.override.yaml`
+  daneben setzen (oder den Port), dann `pull`, `up -d`.
+- **Vor jedem Update** `./data` sichern: Die Datenbank wird beim Start
   migriert; ein Rückschritt auf ein älteres Schema ist nicht garantiert.
 
 Beide Architekturen prüfen:
 
     docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.1
 
-`armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut.
+`armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut. Wer einen Branch
+testen will, nimmt weiter den Weg mit Klon und `--build`.
 
 ### Prüfen
 

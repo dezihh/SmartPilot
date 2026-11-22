@@ -56,28 +56,16 @@ const SETTINGS_FIELDS = [
     help: 'Sprachordner in der Paket-Registry (Standard: de). Die Installation sucht Pakete unter packages/<Sprache>/ im SmartPilot-Repo.',
   },
   {
-    key: 'llm_model',
-    label: 'LLM-Modell',
-    type: 'text',
-    help: 'Modell für alle LLM-Aufrufe (Agent, Hybrid-Formulierung, Index-Assistent). Leer = Default aus .env. Wirkt ab der nächsten Anfrage, kein Neustart. Muss Tool-/JSON-fähig sein, sonst scheitern Agent-Antworten.',
-  },
-  {
-    key: 'tool_model',
-    label: 'Tool-Modell (optional)',
-    type: 'text',
-    help: 'Eigenes Modell nur für die Tool-Runden des Agenten; die Formulierung läuft auf LLM-Modell. Leer = überall dasselbe Modell. Nützlich als gestufte A/B-Schleuse beim Modellwechsel: erst Tool-Runden auf dem Kandidaten testen, dann ganz umstellen. Muss Tool-fähig sein.',
-  },
-  {
     key: 'llm_max_tokens',
     label: 'LLM max. Tokens',
     type: 'number',
-    help: 'Deckel für die Antwortlänge des LLM in Tokens. Leer = Default aus .env. Reasoner-Modelle brauchen >= 800, sonst leere Antworten. Zu klein schneidet lange Berichte ab.',
+    help: 'Deckel für die Antwortlänge des LLM in Tokens. Leer = 2000. Reasoner-Modelle brauchen >= 800, sonst leere Antworten. Zu klein schneidet lange Berichte ab.',
   },
   {
     key: 'llm_reasoning_effort',
     label: 'LLM Reasoning-Stufe',
     type: 'text',
-    help: 'Nur für Reasoner-Modelle: low/medium/high. Leer = wie .env (meist ungesetzt). Bei Normalmodellen ohne Wirkung.',
+    help: 'Nur für Reasoner-Modelle: low/medium/high. Leer = nicht gesetzt. Bei Normalmodellen ohne Wirkung.',
   },
   {
     key: 'max_tool_iterations',
