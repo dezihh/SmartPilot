@@ -87,6 +87,27 @@ test('Hilfe mit Tool: LLM bekommt den vollstaendigen Katalog', async () => {
   assert.match(systemMessage(), /- wetter: Wetter und 3-Tage-Vorhersage/);
 });
 
+test('Hilfe nennt den Kanal: Monitor-Eingabefeld, keine Anrede', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  await processQuery({ text: 'hilfe', sessionId: 'help-monitor', channel: 'monitor' });
+  assert.match(systemMessage(), /Eingabefeld des Monitors/);
+  assert.doesNotMatch(systemMessage(), /frage smart pilot/i);
+});
+
+test('Hilfe ueber Alexa: Skill-Aufruf steht davor', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  await processQuery({ text: 'hilfe', sessionId: 'help-alexa', channel: 'alexa' });
+  assert.match(systemMessage(), /ueber Alexa/);
+  assert.doesNotMatch(systemMessage(), /frage smart pilot/i);
+});
+
+test('Hilfe ohne Kanal: kanalneutral', async () => {
+  fn('wetter', 'Wetter und 3-Tage-Vorhersage');
+  await processQuery({ text: 'hilfe', sessionId: 'help-neutral' });
+  assert.match(systemMessage(), /ohne Anrede/);
+  assert.doesNotMatch(systemMessage(), /frage smart pilot/i);
+});
+
 test('Hilfe ohne Tools: deterministischer Fallback, kein LLM', async () => {
   const r = await processQuery({ text: 'hilfe', sessionId: 'help-empty' });
   assert.equal(r.route, 'action');

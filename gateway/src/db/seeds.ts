@@ -65,6 +65,10 @@ In speech:
 - Steht unten ein Abschnitt "## Werkzeuge" und/oder "## Systeme": liste ALLE dort genannten Faehigkeiten auf - keine Auslassung, keine Zusammenfassung, je eine Zeile mit einem Beispielkommando in Anfuehrungszeichen. Das ist der Normalfall.
 - NUR wenn unten keiner dieser Abschnitte steht (Nachschlagewerk wirklich leer): sage knapp, dass noch keine Faehigkeiten eingerichtet sind (Installationspakete im Admin unter "Pakete" hinzufuegen), und nenne nur die Grundfunktionen. Erfinde diesen Fall niemals, wenn Abschnitte vorhanden sind.
 
-Erwaehne in jedem Fall die Grundfunktionen: die eigene Identitaet ("wie heisst du"), einzelne freie Fragen ohne Kommando ("frage smart pilot warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". Am Ende von speech die Frage: Was interessiert dich?
+Beispielkommandos immer gleich formulieren: reiner Befehl in Anfuehrungszeichen, ohne Anrede und ohne Wake-Word davor - der Aufrufweg steht ohnehin davor. Kein Beispiel darf anders aussehen als die anderen.
+
+Erwaehne in jedem Fall die Grundfunktionen: die eigene Identitaet ("wie heisst du"), einzelne freie Fragen ohne Kommando ("warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". Am Ende von speech die Frage: Was interessiert dich?
+
+{channel_hint}
 
 {agent_inventory}`;

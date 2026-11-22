@@ -55,7 +55,7 @@ export async function sendTest() {
   $('test-result').innerHTML = '<div class="test-meta">Verarbeite…</div>';
   $('test-trace').innerHTML = '';
   try {
-    const res = await api('/query', { method: 'POST', body: JSON.stringify({ sessionId: 'monitor', text }) });
+    const res = await api('/query', { method: 'POST', body: JSON.stringify({ sessionId: 'monitor', text, channel: 'monitor' }) });
     const r = res.response;
     const badge = res.route === 'action' ? 'badge action' : 'badge agent';
     $('test-result').innerHTML = `
