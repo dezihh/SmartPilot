@@ -3,7 +3,8 @@
 **Ein Router für Fragen: beliebige Quellen rein, Antwort per Sprache raus.**
 
 SmartPilot nimmt eine Frage entgegen, entscheidet, woher die Antwort kommt, und
-gibt sie aus — per **Alexa** oder in der **Weboberfläche**. Alles läuft
+gibt sie aus — heute per **Alexa** oder in der **Weboberfläche**. Weitere
+Kanäle (auch Open-Source-Speaker) sind als Adapter vorgesehen. Alles läuft
 self-hosted in Docker; Quellen werden **per Parametrierung** angebunden, nicht
 per Code.
 
