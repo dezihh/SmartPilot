@@ -126,6 +126,28 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           make_latest: true
+          body: |
+            ## Betrieb mit dem Image (amd64/arm64)
+
+            ```bash
+            mkdir smartpilot && cd smartpilot
+            curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+            curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/env.example
+            mv env.example .env
+            # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL,
+            # LLM_API_KEY, LLM_MODEL
+            docker compose up -d
+            ```
+
+            Anpassungen (Port, anderes Image) gehoeren in eine
+            `compose.override.yaml` daneben; die Compose bleibt unveraendert.
+            Vollstaendige Anleitung:
+            [doc/INSTALLATION.md](https://github.com/dezihh/SmartPilot/blob/main/doc/INSTALLATION.md).
+
+            ## Alexa
+
+            - `smartpilot-alexa-lambda.zip` - eigene AWS-Lambda
+            - `smartpilot-alexa-hosted.zip` - Alexa-hosted Skill
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
@@ -140,6 +162,28 @@ jobs:
           name: v${{ steps.ver.outputs.version }}
           prerelease: false
           make_latest: true
+          body: |
+            ## Betrieb mit dem Image (amd64/arm64)
+
+            ```bash
+            mkdir smartpilot && cd smartpilot
+            curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+            curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/env.example
+            mv env.example .env
+            # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL,
+            # LLM_API_KEY, LLM_MODEL
+            docker compose up -d
+            ```
+
+            Anpassungen (Port, anderes Image) gehoeren in eine
+            `compose.override.yaml` daneben; die Compose bleibt unveraendert.
+            Vollstaendige Anleitung:
+            [doc/INSTALLATION.md](https://github.com/dezihh/SmartPilot/blob/main/doc/INSTALLATION.md).
+
+            ## Alexa
+
+            - `smartpilot-alexa-lambda.zip` - eigene AWS-Lambda
+            - `smartpilot-alexa-hosted.zip` - Alexa-hosted Skill
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
