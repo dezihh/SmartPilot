@@ -192,28 +192,33 @@ Weitere Fähigkeiten installierst du später über Pakete im Tab
 ### Variante: fertiges Image statt lokaler Build
 
 Für `amd64` und `arm64` liegt ein fertiges Image in GHCR. Dann entfällt der
-Build aus Schritt 3:
+Klon und der Build aus den Schritten 1–3 — es bleiben zwei Dateien und ein
+Datenverzeichnis:
 
-    mkdir -p gateway/data
-    echo "SMARTPILOT_VERSION=0.6.1" > .env
-    docker compose -f compose.release.yaml pull
+    mkdir smartpilot && cd smartpilot
+    curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/compose.release.yaml
+    curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/.env.release.example
+    mv .env.release.example .env
+    # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
     docker compose -f compose.release.yaml up -d
 
-Die beiden `.env`-Dateien haben verschiedene Aufgaben: `./.env` (neben dem
-Compose) trägt nur die Image-Version für die Compose-Ersetzung,
-`gateway/.env` die Laufzeit-Konfiguration des Containers.
+Eine `.env` für beides: Compose liest daraus `${SMARTPILOT_VERSION}` (und
+`GATEWAY_PORT`/`GATEWAY_BIND`), `env_file` reicht dieselben Werte an den
+Container weiter. Die Datenbank liegt in `./data`, nicht mehr unter
+`gateway/data`.
 
-- **Update:** `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
+- **Update:** `SMARTPILOT_VERSION` in `.env` auf die neue Version setzen,
   `pull`, `up -d`.
 - **Rollback:** alte Version eintragen, `pull`, `up -d`.
-- **Vor jedem Update** `gateway/data` sichern: Die Datenbank wird beim Start
+- **Vor jedem Update** `./data` sichern: Die Datenbank wird beim Start
   migriert; ein Rückschritt auf ein älteres Schema ist nicht garantiert.
 
 Beide Architekturen prüfen:
 
     docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.1
 
-`armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut.
+`armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut. Wer einen Branch
+testen will, nimmt weiter den Weg mit Klon und `--build`.
 
 ### Prüfen
 

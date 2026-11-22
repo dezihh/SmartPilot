@@ -1,18 +1,15 @@
-# Betrieb mit dem fertigen Image aus GHCR (kein lokaler Build, kein Repo-Klon
-# fuer den Build-Schritt).
+# Betrieb mit dem fertigen Image aus GHCR: kein Build, kein Repo-Klon.
 #
-# Erststart:
-#   1. Verzeichnis layout wie im Repo anlegen: ./gateway/.env, ./gateway/data
-#   2. in ./.env (neben dieser Datei) SMARTPILOT_VERSION=0.6.1 setzen
-#   3. docker compose -f compose.release.yaml pull
-#      docker compose -f compose.release.yaml up -d
+# Layout neben dieser Datei:
+#   .env    Image-Version und Laufzeit-Konfiguration (Vorlage: .env.release.example)
+#   data/   SQLite-Datenbank, Backups, installierte MCP-Server (entsteht beim Start)
 #
-# Update: SMARTPILOT_VERSION auf die neue Version setzen, dann pull + up -d.
-# Rollback: SMARTPILOT_VERSION auf die alte Version zurueckstellen.
+# Erststart: docker compose -f compose.release.yaml up -d
+# Update:    SMARTPILOT_VERSION in .env aendern, dann pull und up -d
+# Rollback:  alte Version eintragen, pull, up -d
 #
-# Die beiden .env-Dateien haben verschiedene Aufgaben: ./.env traegt nur die
-# Image-Version (Compose-Ersetzung), ./gateway/.env die Laufzeit-Konfiguration
-# des Containers (ADMIN_TOKEN, API_TOKEN, LLM_*).
+# Eine .env fuer beides: Compose liest sie fuer ${SMARTPILOT_VERSION}, env_file
+# reicht dieselben Werte an den Container weiter.
 services:
   gateway:
     image: ghcr.io/dezihh/smartpilot:${SMARTPILOT_VERSION:-latest}
@@ -21,9 +18,9 @@ services:
       # Nur lokal binden (Default 127.0.0.1); fuer LAN-Zugriff GATEWAY_BIND=0.0.0.0 setzen.
       - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:3000"
     env_file:
-      - ./gateway/.env
+      - .env
     volumes:
-      - ./gateway/data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

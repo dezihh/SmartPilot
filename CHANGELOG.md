@@ -12,6 +12,14 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ## [Unreleased]
 
+### Geändert
+
+- **Image-Betrieb ohne Klon:** `compose.release.yaml` liest eine einzige
+  `.env` (Vorlage `.env.release.example`, per `.gitignore`-Ausnahme
+  eingecheckt) und legt die Datenbank unter `./data` ab. Damit besteht eine
+  Installation aus zwei Dateien und einem Datenverzeichnis; README und
+  Installation beschreiben den Weg ohne `git clone`.
+
 ### Behoben
 
 - **CI: Push des Images nach GHCR:** Dem Build fehlte im `outputs` ein Ziel

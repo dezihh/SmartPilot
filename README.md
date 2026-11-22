@@ -84,24 +84,23 @@ Details: [doc/CONCEPTS.md](doc/CONCEPTS.md) ·
 Voraussetzungen: Docker mit Compose-Plugin und eine OpenAI-kompatible
 LLM-Schnittstelle (mit Tool-Calling).
 
-**Variante A — mit fertigem Image (kein Build):** läuft auf `amd64` und
-`arm64` (Raspberry Pi 4/5, Rock64, NAS).
+**Variante A — mit fertigem Image (kein Build, kein Klon):** läuft auf
+`amd64` und `arm64` (Raspberry Pi 4/5, Rock64, NAS).
 
 ```bash
-git clone https://github.com/dezihh/SmartPilot.git
-cd SmartPilot
-mkdir -p gateway/data
-cp gateway/.env.example gateway/.env
-# gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-echo "SMARTPILOT_VERSION=0.6.1" > .env
-docker compose -f compose.release.yaml pull
+mkdir smartpilot && cd smartpilot
+curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/compose.release.yaml
+curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/.env.release.example
+mv .env.release.example .env
+# .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
 docker compose -f compose.release.yaml up -d
 ```
 
-Update später: `SMARTPILOT_VERSION` in `./.env` auf die neue Version setzen,
-dann `pull` und `up -d`. Rollback: alte Version eintragen und erneut starten.
-Die Version steht bewusst als feste Zahl — `latest` ist nur der Bequemlichkeits-
-Tag für neue Installationen.
+Im Verzeichnis liegen danach nur `compose.release.yaml`, `.env` und `data/` —
+mehr braucht der Betrieb nicht. Update: `SMARTPILOT_VERSION` in `.env` auf die
+neue Version setzen, dann `pull` und `up -d`. Rollback: alte Version eintragen
+und erneut starten. Die Version steht bewusst als feste Zahl — `latest` ist nur
+der Bequemlichkeits-Tag für neue Installationen.
 
 **Variante B — selbst bauen (Repository-Stand):**
 
