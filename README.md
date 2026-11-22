@@ -1,237 +1,149 @@
 # SmartPilot
 
-**Deine Alexa mit Superkräften.** Ein privat betriebener, deutscher
-Sprachassistent: Amazon Echo fragt, dein eigener Server antwortet — schnell,
-wo es zählt, und klug, wo es drauf ankommt.
+**Ein Router für Fragen: beliebige Quellen rein, Antwort per Sprache raus.**
 
-## Warum es SmartPilot gibt
+SmartPilot nimmt eine Frage entgegen, entscheidet, woher die Antwort kommt, und
+gibt sie aus — per **Alexa** oder in der **Weboberfläche**. Alles läuft
+self-hosted in Docker; Quellen werden **per Parametrierung** angebunden, nicht
+per Code.
 
-Zwei Wege führten nach Alexa — jeder mit einem Haken. Die kostenlose
-Alexa-Anbindung von Home Assistant (die kleine Schwester des
-Nabu-Casa-Cloud-Dienstes) ist blitzschnell: „Alexa, schalte das Licht aus" —
-und das Licht ist aus, ohne Skill-Namen, ohne Wartezeit. Aber sie kennt nur
-Befehle. Fragen wie „Ist noch jemand wach?" bleiben offen.
-[HomeAssistantAssistAWS](https://github.com/fabianosan/HomeAssistantAssistAWS)
-ist das Gegenteil: ein Universalschraubenschlüssel, der jede Frage über die
-Assist-Conversation-API und ein LLM beantwortet — dafür mit jeder Antwort
-eine Wartezeit.
-
-SmartPilot ist die Antwort auf die Frage: Warum nicht beides? Ein Router
-entscheidet pro Frage, ob der schnelle feste Weg genügt oder ob der Agent
-mit Werkzeugen ran muss. Und weil ein Zuhause mehr ist als Home Assistant,
-kann SmartPilot alles anzapfen, was MCP, HTTP oder eine Shell anbietet —
-Websuche, Musik, Verkehr, eigene Dienste. Neue Funktionen kommen als
-Installationspakete hinzu: Parameter eingeben, fertig. Kurz: ein
-Universalschlüssel für Alexa — für alles, was eine API, einen MCP-Server
-oder eine Shell hat.
-
-Ein ehrliches Wort: SmartPilot ist ein Custom Skill. Alexa braucht daher den
-Skill-Namen — „Alexa, sage SmartPilot, schalte das Licht aus". Die native
-Anbindung ohne Skill-Namen ist als späterer Ausbau denkbar, bei entsprechendem Wunsch der Community.
-
-Derzeit ist der Skill nur in deutsch ausgeprägt, daher auch nur deutsche Dokumentation. Bei entsprechendem Bedarf aus der Community wäre eine Multisprachlösung aber möglich. 
-
-## Was SmartPilot ausmacht
-
-- **Schnell, wo es zählt.** Klare, wiederkehrende Fragen — „Hausstatus",
-  „Wetter", „Ist jemand zuhause?" — beantwortet ein fester Router
-  deterministisch: gleiche Frage, gleiche Antwort, in Sekundenbruchteilen.
-  Keine KI-Lotterie.
-- **Beides, wenn es passt.** Im Hybrid-Modus holt eine Funktion die Daten
-  fest und verlässlich — das LLM formuliert daraus nur den Satz. Zahlen
-  bleiben Zahlen, die Sprache bleibt natürlich.
-- **Klug, wo es drauf ankommt.** Alles Offene übernimmt ein LLM mit
-  Werkzeugaufrufen — mit Kurzzeitgedächtnis für Folgefragen und Rückfragen bei
-  Mehrdeutigkeit.
-- **Im Gespräch bleiben.** Der Agent stellt Rückfragen bei Mehrdeutigkeit —
-  der Kanal bleibt dann offen. Dass Antworten zum Nachfragen einladen (etwa
-  nach Listen oder Berichten), lässt sich zusätzlich per Einstellung
-  aktivieren. Mit „starte Chat-Modus" wird daraus ein richtiges Gespräch —
-  „chat beenden" schließt es wieder.
-- **Eingebunden, nicht eingebildet.** Über MCP greift SmartPilot auf deine
-  echte Welt zu: Smart Home, Websuche, Musik, Verkehr.
-- **Privat & lokal.** Die Intelligenz läuft auf deiner eigenen Hardware. Deine
-  Fragen bleiben bei dir.
-
-## Wie es funktioniert
-
-```mermaid
-flowchart LR
-    E[Echo] --> P[Alexa-Plattform] --> L[AWS Lambda<br/>dünner Adapter]
-    L -->|HTTPS, Bearer-Token| G[SmartPilot Gateway<br/>lokal, Docker]
-    G --> R{Router}
-    R -->|bekannte Frage| V[Vorgang: Funktion rendern]
-    R -->|offene Frage| A[LLM-Agent mit Tools]
-    V --> M[MCP-Server: Home Assistant,<br/>Websuche, Musik, ...]
-    A --> M
-    G -->|Antwort| L --> P --> E
-```
-
-Zwei Wege, ein Flow: Der **Router** erkennt konfigurierte Vorgänge und
-beantwortet sie ohne LLM (deterministisch) oder mit reiner Formulierung
-(hybrid); LLM-Vorgänge nutzen denselben Agenten mit eigenem Prompt. Alles
-andere übernimmt der **Agent** — ein LLM, das selbst entscheidet,
-welche Werkzeuge und Funktionen es braucht. Standard ist der
-**OneShot-Modus** (eine Frage, eine Antwort); mit „Chat-Modus" bleibt die
-Session für Folgefragen offen, und Rückfragen des Agenten bei Mehrdeutigkeit
-öffnen sie ebenfalls.
-
-Details: [doc/CONCEPTS.md](doc/CONCEPTS.md) ·
-[doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
+Alexa ist dabei ein Kanal, keine Voraussetzung: Das Gateway ist allein
+benutzbar, die erste Antwort gibt es im Browser.
 
 ## Schnellstart
 
-Voraussetzungen: Docker mit Compose-Plugin und eine OpenAI-kompatible
-LLM-Schnittstelle (mit Tool-Calling).
-
-**Variante A — mit fertigem Image (kein Build, kein Klon):** läuft auf
-`amd64` und `arm64` (Raspberry Pi 4/5, Rock64, NAS).
+Voraussetzungen: Docker mit Compose-Plugin und ein **OpenAI-kompatibler
+LLM-Endpunkt mit Tool-Calling** (Base-URL, API-Key, Modellname — Cloud oder
+lokal, egal).
 
 ```bash
 mkdir smartpilot && cd smartpilot
 curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
 curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/env.example
 mv env.example .env
-# .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
+# .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
 docker compose up -d
 ```
 
-Beide Dateien stammen aus dem GitHub-Release und gehören zu **genau dieser
-Version** — die Image-Version steht in der Compose. Im Verzeichnis liegen danach
-nur `compose.yaml`, `.env` und `data/`.
+Läuft auf `amd64` und `arm64` (Raspberry Pi 4/5, Rock64, NAS). Im Verzeichnis
+liegen danach nur `compose.yaml`, `.env` und `data/`.
 
-- **Update:** die `compose.yaml` des neuen Releases laden, dann `pull`
-  und `up -d`.
-- **Anpassung** (anderer Port, anderes Image, zusätzliche Umgebungsvariable):
-  in eine `compose.override.yaml` daneben — die Compose bleibt unverändert.
-- **Betrieb, Update, Rollback und der Weg zu Alexa:** [doc/DOCKER.md](doc/DOCKER.md).
+1. `http://<host>:3000/admin` öffnen, Login mit `ADMIN_TOKEN`.
+2. Tab **Monitor / Test**: erste Frage stellen.
+3. Beim Erststart sind **Wetter (Berlin)** und **Laufzeit** schon eingerichtet —
+   ohne weitere Zugangsdaten. `SEED_PROFILE=none` startet leer (wirkt nur,
+   solange keine Datenbank existiert).
 
-**Variante B — selbst bauen (Repository-Stand):**
+- **Update:** neue `compose.yaml` aus dem Release laden, `pull`, `up -d`.
+- **Anpassung** (anderer Port, anderes Image): `compose.override.yaml` daneben.
+- **Selbst bauen** und alle Betriebsdetails:
+  [doc/INSTALLATION.md](doc/INSTALLATION.md), [doc/DOCKER.md](doc/DOCKER.md).
 
-```bash
-git clone https://github.com/dezihh/SmartPilot.git
-cd SmartPilot
-cp gateway/.env.example gateway/.env
-# gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-docker compose up -d --build
+> Port `3000` ist im Netz offen — die Admin-UI gehört nur ins vertrauenswürdige
+> Netz. Lokal einschränken mit `127.0.0.1:3000:3000` im Override. Mit
+> `BASE_PATH` liegt die UI unter `/<BASE_PATH>/admin/`.
+
+## Was es kann
+
+| Quelle | Beispiele |
+|---|---|
+| **MCP** | Home Assistant, Music Assistant, Websuche |
+| **HTTP / REST** | Wetter, Strompreis, Verkehr, Portainer, eigene Dienste |
+| **MQTT** | Topics lesen, freigegebene Topics schalten (z. B. ioBroker) |
+| **Shell** | Befehle in der Gateway-Umgebung |
+| **LLM** | Einzelfrage oder Chat-Modus mit Gedächtnis |
+
+Drei Antwortwege, ein Router:
+
+- **Deterministisch** — erkannte Frage, fester Ablauf, keine KI-Lotterie.
+- **Hybrid** — Daten fest aus der Quelle, das LLM formuliert nur den Satz.
+- **Agent** — offene Fragen, eigene Werkzeugwahl, Rückfragen bei Mehrdeutigkeit,
+  Erinnerung an vorherige Fragen („Und morgen?").
+
+Aufbereitet wird mit Jinja-Templates (Nunjucks) — ohne Programmieren.
+
+## Beispiel
+
+| Frage | Was passiert |
+|---|---|
+| „Wie ist das Wetter?" | Open-Meteo, fester Ablauf, ohne LLM |
+| „Wie lange läufst du schon?" | Laufzeit des Gateways, ohne externe Quelle |
+| „Wie ist der Strompreis?" | Börsen-API, LLM formuliert den Satz |
+| „Hausstatus" | Home Assistant, sofern als Paket angebunden |
+
+## Wie es funktioniert
+
+```mermaid
+flowchart LR
+    subgraph K[Kanäle]
+        E[Alexa / Echo]
+        W[Weboberfläche]
+        X[weitere vorbereitet]
+    end
+    subgraph GW[SmartPilot Gateway, Docker]
+        R{Router}
+        V[Vorgang<br/>deterministisch / hybrid]
+        A[LLM-Agent<br/>Einzelfrage oder Chat]
+    end
+    subgraph Q[Quellen]
+        M[MCP]
+        H[HTTP]
+        T[MQTT]
+        S[Shell]
+    end
+    E --> R
+    W --> R
+    X -.-> R
+    R -->|bekannte Frage| V
+    R -->|offene Frage| A
+    V --> M & H & T & S
+    A --> M & H & T & S
 ```
 
-Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört nur
-ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
-`compose.override.yaml` auf `127.0.0.1:3000:3000` einschränken.
+Der **Router** erkennt konfigurierte Vorgänge und antwortet ohne LLM
+(deterministisch) oder mit reiner Formulierung (hybrid). Alles andere übernimmt
+der **Agent**: ein LLM, das selbst die passenden Werkzeuge wählt. Standard ist
+der OneShot-Modus (eine Frage, eine Antwort); „starte Chat-Modus" hält die
+Session für Folgefragen offen.
 
-Danach: `http://<host>:3000/admin` öffnen, mit `ADMIN_TOKEN` anmelden und im
-Tab **Monitor / Test** die erste Frage stellen.
-
-> Mit `BASE_PATH` (Sub-URL hinter einem Reverse Proxy) liegt die Admin-UI
-> stattdessen unter `http://<host>:3000/<BASE_PATH>/admin/` — Details in
-> [doc/INSTALLATION.md](doc/INSTALLATION.md).
-
-Die vollständige Anleitung mit allen Etappen, Prüfungen und der
-Alexa-Anbindung: [doc/INSTALLATION.md](doc/INSTALLATION.md)
-
-## Fähigkeiten als Pakete
-
-Neue Systeme (Home Assistant, Music Assistant, Websuche, Wetter, Verkehr,
-System-Info) kommen als **Installationspakete** — Tab „Wartung und Pakete" in
-der Admin-Oberfläche. Ein Paket legt MCP-Server, Entity-Index, Funktionen und
-Vorgänge in einem Rutsch an; du gibst nur Host, Port und Token ein.
-
-- Verfügbare Pakete: [packages/de/index.json](packages/de/index.json)
-- Kategorien: **Treiber** (MCP-Server), **Funktion** (Vorgänge/Funktionen)
-  und **gemischt** — filterbar in der Oberfläche.
-- Parameter nachträglich ändern: **Konfigurieren** an der installierten
-  Karte; die Ansicht entsteht generisch aus dem Manifest.
-- Eigene Pakete schreiben:
-  [packages/README.md](packages/README.md) und
-  [doc/RECIPES.md](doc/RECIPES.md)
+Neue Fähigkeiten kommen als **Installationspakete** — Tab „Wartung und Pakete",
+Parameter eintragen, fertig. Ein Paket legt Server, Index, Funktionen und
+Vorgänge in einem Schritt an. Eigene Pakete:
+[packages/README.md](packages/README.md).
 
 ## Sicherheit
 
-- **Zwei getrennte Schlüssel.** `API_TOKEN` schützt nur die Adapter-API
-  (`/api/query`, `/api/lambda-trace`), `ADMIN_TOKEN` nur die Admin-Oberfläche.
-  Beide werden constant-time verglichen und müssen sich unterscheiden — wer das
-  API-Token hat, kommt damit **nicht** in den Admin-Bereich. Lang und zufällig
-  wählen.
-- **Der öffentliche Weg — Reverse-Proxy mit TLS.** Nur dieser eine Endpunkt
-  (nginx) darf ins Internet; die Admin-UI selbst nie exponieren —
-  Referenz-Konfiguration:
-  [doc/INSTALLATION.md](doc/INSTALLATION.md#netzwerk-und-https)
+- **Zwei getrennte Tokens:** `API_TOKEN` nur für `/api/*` (Alexa-Lambda),
+  `ADMIN_TOKEN` nur für die Admin-UI. Sie müssen sich unterscheiden, sonst
+  bricht der Start ab.
+- **Öffentlich nur über einen HTTPS-Proxy:** nur `/api/query` nach außen, die
+  Admin-UI nie. `TRUST_PROXY` setzen, sonst gilt das Login-Rate-Limit global.
+- **Secrets nur in der `.env`**, nicht im Repo; Admin-Antworten maskieren sie.
+- **Pakete sind nicht signiert:** `shell()` und stdio-Server verlangen vor dem
+  Install eine Bestätigung. Nur Registry-Quellen nutzen, denen du vertraust.
 
-Automatisch abgesichert:
-
-- `/admin/*`: Session-Login (HttpOnly-Cookie, 12 h) mit Rate-Limit gegen
-  Brute-Force
-- CSP, `X-Content-Type-Options`, `X-Frame-Options` und `Referrer-Policy` auf
-  allen Antworten; die Admin-UI lädt keine externen Ressourcen
-- JSON-Body-Limit (1 MB), gepinnte Dependencies (`npm ci` + Lockfile),
-  Secrets nur via `.env` (nie im Repo)
-- `ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden — der Start bricht
-  sonst ab
-
-Für den Betrieb hinter dem Reverse-Proxy:
-
-- **`TRUST_PROXY` setzen** (Anzahl der Hops, z. B. `1`). Sonst sieht das
-  Gateway nur die Proxy-IP: das Login-Rate-Limit gilt dann global statt pro
-  Client, und ein einzelner Angreifer kann den Admin-Login für alle sperren.
-- **`/api/lambda-trace` im öffentlichen VHost sperren.** Die Route ist nur für
-  die Fehlersuche gedacht; der Normalbetrieb braucht sie nicht.
-- **Paket-Registry ist eine Code-Vertrauensgrenze.** Manifeste kommen per
-  HTTPS aus dem Repo, sind aber nicht signiert. `shell()` und stdio-Server
-  verlangen vor dem Install eine Bestätigung; geprüfte Signaturen sind erst
-  geplant. Nur Registry-Quellen einsetzen, denen man vertraut.
-
-## Repository-Struktur
-
-```text
-SmartPilot/
-├── alexa/              Alexa-Skill: Lambda-Adapter (Python/ask-sdk),
-│                       Interaktionsmodell, Sync-Skripte
-├── gateway/            Gateway (Node.js 26 + TypeScript): Router,
-│                       MCP-Clients, LLM-Agent, Admin-API
-│   └── web/            Admin-Weboberfläche (vanilla HTML/CSS/JS)
-├── packages/           Installationspakete (Registry + Manifeste)
-│   └── de/             Sprachspezifische Registry (Manifeste + READMEs)
-├── doc/                Dokumentation (Einstieg, Installation, Rezepte,
-│                       Referenz, Architektur)
-└── .github/            CI/CD: Smoke-Tests, Alexa-Modell-/Manifest-Sync,
-    │                   Lambda-Deployment
-    └── ISSUE_TEMPLATE/ Issue-Vorlagen: bug_report, feature_request
-```
+Details: [doc/DEPLOYMENT.md](doc/DEPLOYMENT.md) ·
+[doc/INSTALLATION.md#netzwerk-und-https](doc/INSTALLATION.md#netzwerk-und-https)
 
 ## Dokumentation
 
-Maßgebliche Dokumentation ist das Verzeichnis [`doc/`](doc/). Empfohlener
-Lernpfad — du musst nicht zuerst die gesamte Architektur verstehen:
-
-1. [Installation](doc/INSTALLATION.md): Gateway, Modell und Netzwerk vorbereiten; erster Erfolg im Testmonitor.
-2. [Grundbegriffe](doc/CONCEPTS.md): Werkzeug, Index, Funktion und Vorgang sicher unterscheiden.
-3. [Konfiguration](doc/CONFIGURATION.md): Parametrier-Reihenfolge und Grundeinstellungen.
-4. [Cache und Aktualität](doc/CACHE.md): Wann Daten lokal bleiben und wann Netzwerkverkehr entsteht.
-5. [Praxisrezepte](doc/RECIPES.md): Pakete installieren und eigene Funktionen erweitern.
-6. [Alexa anbinden](doc/ALEXA.md): Skill, Lambda, Sync und Härtung — erst, wenn der Testmonitor antwortet.
-7. [Fehler beheben](doc/TROUBLESHOOTING.md): Systematische Fehlersuche von innen nach außen.
-8. [Referenz](doc/REFERENCE.md): Felder, Bausteine, Env-Variablen, Sicherheitsgrenzen.
-
-Darüber hinaus:
-
-- [Architektur](doc/ARCHITECTURE.md) — technischer Hintergrund und
-  Architekturregeln (Entwickler)
-- [Deployment](doc/DEPLOYMENT.md) — CI/CD, Secrets und lokale Entwicklung
-  und Tests (Betreiber/Entwickler)
-- [Paket-Registry](packages/README.md) — Aufbau, Parametrierung und
-  Vertrauensmodell der Installationspakete
-- [Beitragen](CONTRIBUTING.md) — Fehler melden, Pakete beisteuern, Code
-  beitragen
-- [Changelog](CHANGELOG.md) — Versionshistorie und geplante Ausbauten
+- [Installation](doc/INSTALLATION.md) — von Null bis zur ersten Antwort
+- [Docker-Betrieb](doc/DOCKER.md) — Update, Rollback, Diagnose, Weg zu Alexa
+- [Grundbegriffe](doc/CONCEPTS.md) · [Konfiguration](doc/CONFIGURATION.md) ·
+  [Praxisrezepte](doc/RECIPES.md)
+- [Alexa anbinden](doc/ALEXA.md) — Skill, Lambda, Härtung (optional)
+- [Referenz](doc/REFERENCE.md) · [Fehlersuche](doc/TROUBLESHOOTING.md) ·
+  [Architektur](doc/ARCHITECTURE.md)
+- [Paket-Registry](packages/README.md) · [Beitragen](CONTRIBUTING.md) ·
+  [Changelog](CHANGELOG.md)
 
 ## Status
 
-**Junge Software, aktiv gepflegt.** Der lokale Weg (Gateway + Testmonitor +
-Pakete) ist stabil und getestet; die Alexa-Anbindung läuft
-produktiv mit eigener AWS-Lambda. Die Doku ist auf aktuellem Stand.
+Junge Software, aktiv gepflegt. Gateway, Testmonitor und Pakete sind getestet;
+die Alexa-Anbindung läuft produktiv mit eigener AWS-Lambda. Fehler sind trotzdem
+möglich — nutze SmartPilot nicht ohne Blick darauf, was es im Smart Home anfasst,
+und melde Auffälligkeiten über
+[Issues](https://github.com/dezihh/SmartPilot/issues).
 
-Trotzdem: Die Software ist jung — sie kann Fehler enthalten. Nutze sie nicht
-ohne Blick auf das, was sie im Smart Home anfasst, und melde Auffälligkeiten
-über [Issues](https://github.com/dezihh/SmartPilot/issues). Wie du selbst
-beitragen kannst (Fehler, Pakete, Code): [CONTRIBUTING.md](CONTRIBUTING.md).
+Vor Updates `data/` sichern (die Datenbank wird migriert) und die Konfiguration
+über „Sicherung herunterladen" exportieren. Lizenz: [AGPL-3.0](LICENSE).
