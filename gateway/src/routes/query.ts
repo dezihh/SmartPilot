@@ -9,7 +9,8 @@ import { addLog, getSetting } from '../db.js';
 export const queryRoutes = Router();
 
 export const handleQuery = async (req: Request, res: Response): Promise<void> => {
-  const body = req.body as { sessionId?: string; userId?: string; text?: string };
+  const body = req.body as { sessionId?: string; userId?: string; text?: string; channel?: string };
+  const channel = body.channel === 'monitor' || body.channel === 'alexa' ? body.channel : 'api';
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) {
     res.status(400).json({ error: 'text erforderlich' });
@@ -30,6 +31,7 @@ export const handleQuery = async (req: Request, res: Response): Promise<void> =>
     sessionId: body.sessionId ?? 'api-test',
     userId: body.userId,
     text,
+    channel,
   });
   res.json(result);
 };

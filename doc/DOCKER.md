@@ -75,6 +75,36 @@ smartpilot/
 └── data/        SQLite-Datenbank, Backups, installierte MCP-Server
 ```
 
+### Beispieldaten beim Erststart
+
+Beim **ersten** Start — genauer: solange `data/` noch keine Datenbank enthält —
+legt das Gateway zwei Beispiel-Vorgänge an:
+
+| Vorgang | Quelle | Frage im Monitor |
+|---|---|---|
+| **Wetter** | Open-Meteo, Beispielstandort **Berlin** | „Wie ist das Wetter?" |
+| **Laufzeit** | Gateway-Prozess, ohne externen Dienst | „Wie lange läufst du schon?" |
+
+Beides braucht **keine** Zugangsdaten und keine weiteren Dienste. Die
+Funktionen stammen aus dem Image (`/app/seed`), nicht aus dem Netz; die
+Installation läuft über den normalen Paketpfad mit der Herkunft `seed`.
+
+**Abschalten:** in der `.env`
+
+```dotenv
+SEED_PROFILE=none
+```
+
+Ohne Eintrag gilt `example`. Der Schalter wirkt **nur bei leerer Datenbank** —
+auf eine bestehende Installation hat er keinen Einfluss.
+
+**Loswerden, wenn schon geseedet wurde:** Tab **Wartung und Pakete** → die
+Einträge `open-meteo-wetter` und `seed-starter` deinstallieren. Alternativ
+`data/` leeren und mit `SEED_PROFILE=none` neu starten (löscht alle Daten).
+
+**Marker:** Nach dem Seed steht `seed_profile` in den Einstellungen; ein
+zweiter Start legt nichts doppelt an.
+
 ## 4. Anpassungen ohne Änderung der Compose
 
 Anderer Host-Port, andere Bind-Adresse oder ein abweichendes Image gehören in

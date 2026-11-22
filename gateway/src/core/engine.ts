@@ -28,6 +28,7 @@ import type {
   AssistantResponse,
   EngineResult,
   ParsedAction,
+  QueryChannel,
   TraceEvent,
   VoiceQuery,
 } from '../types.js';
@@ -416,10 +417,13 @@ async function executeAction(
       trace.push({ ts: Date.now(), step: 'help.empty', detail: { action: action.name } });
       return { speech: renderHelpFallback(filter), followUp: true, followupPrompt: 'Was interessiert dich?' };
     }
-    const system = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? '').replace(
+    const base = (action.system_prompt?.replaceAll('{assistant_name}', assistantName()) ?? '').replace(
       '{agent_inventory}',
       catalog
     );
+    // Bestands-DBs kennen {channel_hint} nicht: dann als Zusatzzeile anhaengen.
+    const hint = helpChannelHint(query.channel);
+    const system = base.includes('{channel_hint}') ? base.replace('{channel_hint}', hint) : `${base}\n\n${hint}`;
     trace.push({ ts: Date.now(), step: 'help.catalog', detail: { action: action.name } });
     try {
       const history = query.sessionId ? priorTurns(query.sessionId, query.text) : [];
@@ -560,6 +564,19 @@ function finishResult(
     durationMs,
     trace,
   };
+}
+
+// Der Hilfetext nennt Beispielkommandos; je nach Kanal muss er anders
+// formuliert sein (Monitor: Eingabefeld, Alexa: Sprachbefehl). Ohne Kanal
+// bleiben die Beispiele kanalneutral.
+export function helpChannelHint(channel?: QueryChannel): string {
+  if (channel === 'monitor') {
+    return 'Der Nutzer tippt im Eingabefeld des Monitors. Beispiele als reinen Befehl nennen, ohne Anrede und ohne Wake-Word.';
+  }
+  if (channel === 'alexa') {
+    return 'Der Nutzer spricht ueber Alexa; der Skill-Aufruf steht ohnehin davor. Beispiele als reinen Befehl nennen, ohne Anrede und ohne Wake-Word.';
+  }
+  return 'Beispiele als reinen Befehl nennen, ohne Anrede und ohne Wake-Word.';
 }
 
 export async function processQuery(query: VoiceQuery): Promise<EngineResult> {

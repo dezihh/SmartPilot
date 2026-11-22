@@ -19,6 +19,7 @@ interface VoiceQuery {
   sessionId: string;
   userId?: string;
   text: string;
+  channel?: 'monitor' | 'alexa' | 'api';  // formuliert Hilfetexte passend
 }
 
 interface AssistantResponse {

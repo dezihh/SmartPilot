@@ -446,12 +446,23 @@ db.prepare("DELETE FROM actions WHERE name = 'news_summary'").run();
   const row = db.prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt?: string } | undefined;
   const sp = row?.system_prompt;
   if (sp && sp.includes('Hilfe-Anfrage') && !sp.includes('starte chat modus')) {
-    const hint = 'Erwaehne zusaetzlich die freie Unterhaltung: einzelne freie Fragen ohne Kommando ("frage smart pilot warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". ';
+    const hint = 'Erwaehne zusaetzlich die freie Unterhaltung: einzelne freie Fragen ohne Kommando ("warum ist der himmel blau") sowie den Chat-Modus fuer ein laufendes Gespraech - Start mit "starte chat modus", Ende mit "chat beenden". ';
     const base = sp.replace(/Erwaehne zusaetzlich die freie Unterhaltung:.*?chat beenden"\)\.\s*/s, '');
     const neu = base.includes('Am Ende von speech')
       ? base.replace('Am Ende von speech', hint + 'Am Ende von speech')
       : `${base.trim()}\n\n${hint.trim()}`;
     db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(neu);
+  }
+}
+// Bestands-DBs: Beispielkommandos einheitlich ohne Anrede/Wake-Word. Nur die
+// alte Seed-Formulierung ersetzen, eigene Prompt-Texte bleiben unangetastet.
+{
+  const row = db.prepare("SELECT system_prompt FROM actions WHERE name = 'hilfe'").get() as { system_prompt?: string } | undefined;
+  const sp = row?.system_prompt;
+  if (sp && sp.includes('frage smart pilot warum ist der himmel blau')) {
+    db.prepare("UPDATE actions SET system_prompt = ?, updated_at = datetime('now') WHERE name = 'hilfe'").run(
+      sp.split('frage smart pilot warum ist der himmel blau').join('warum ist der himmel blau')
+    );
   }
 }
 // Bestands-DBs: den Hilfe-Hauptsatz haerten (kein Erfinden von Faehigkeiten).

@@ -382,6 +382,8 @@ async function preheat(
       }
     ),
     now: nowCtx,
+    // Sekunden seit dem Start dieses Prozesses (Container-Neustart = 0).
+    uptime: Math.round(process.uptime()),
   };
 }
 

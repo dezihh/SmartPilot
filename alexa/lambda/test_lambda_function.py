@@ -246,7 +246,7 @@ class CallGatewayTest(unittest.TestCase):
         self.assertEqual(kwargs["headers"]["Authorization"], "Bearer test-token")
         self.assertEqual(
             json.loads(kwargs["data"]),
-            {"sessionId": "sess-1", "text": "frage", "userId": "user-1"},
+            {"sessionId": "sess-1", "text": "frage", "userId": "user-1", "channel": "alexa"},
         )
         self.assertEqual(speech, "hallo")
         self.assertFalse(follow_up)
@@ -576,7 +576,7 @@ class SignatureTest(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "application/json")
         self.assertEqual(
             json.loads(body.decode("utf-8")),
-            {"sessionId": "sess", "text": "frage", "userId": "user"},
+            {"sessionId": "sess", "text": "frage", "userId": "user", "channel": "alexa"},
         )
         canonical = "{}\n{}\n{}".format(
             headers["X-Timestamp"], headers["X-Nonce"], hashlib.sha256(body).hexdigest()
