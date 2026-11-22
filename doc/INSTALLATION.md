@@ -217,7 +217,7 @@ Betrieb, Update, Rollback, Diagnose und der Weg zu Alexa stehen kompakt in
 
 Beide Architekturen prüfen:
 
-    docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.1
+    docker buildx imagetools inspect ghcr.io/dezihh/smartpilot:0.6.2
 
 `armv7` (ältere Raspberry-Pi-Modelle) wird nicht gebaut. Wer einen Branch
 testen will, nimmt weiter den Weg mit Klon und `--build`.

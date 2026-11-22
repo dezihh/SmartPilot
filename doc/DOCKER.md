@@ -84,7 +84,7 @@ eine `compose.override.yaml` neben der Compose:
 services:
   gateway:
     ports: !override
-      - "192.168.10.2:8332:3000"
+      - "192.0.2.10:8332:3000"
 ```
 
 Compose lädt diese Datei automatisch, solange die Basisdatei `compose.yaml`

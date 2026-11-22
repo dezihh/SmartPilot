@@ -75,6 +75,8 @@ Im **Build**-Tab → **JSON Editor** folgendes Modell einsetzen (den
         { "name": "AMAZON.CancelIntent", "samples": [] },
         { "name": "AMAZON.HelpIntent", "samples": [] },
         { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.YesIntent", "samples": [] },
+        { "name": "AMAZON.NoIntent", "samples": [] },
         { "name": "AMAZON.FallbackIntent", "samples": [] },
         {
           "name": "GptQueryIntent",
@@ -98,6 +100,8 @@ Das Modell legt fest:
 - Intent `GptQueryIntent` mit Slot `query` und Sample `{query}` für freie Fragen.
 - `AMAZON.HelpIntent`, `AMAZON.CancelIntent`, `AMAZON.StopIntent`,
   `AMAZON.FallbackIntent`.
+- `AMAZON.YesIntent` / `AMAZON.NoIntent` — ohne sie landet ein „ja"/„nein" auf
+  eine Rückfrage im FallbackIntent und erreicht das Gateway nie.
 
 ## 3. Weg A: Alexa-hosted
 

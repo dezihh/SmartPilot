@@ -1,4 +1,4 @@
-# Beispiel: HTTP
+# Beispiel: HTTP-Abruf
 
 Legt zwei Beispiel-Funktionen an:
 

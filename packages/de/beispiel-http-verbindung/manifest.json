@@ -1,7 +1,7 @@
 {
   "id": "beispiel-http-verbindung",
-  "version": "1.0.0",
-  "name": "Beispiel: HTTP-Verbindung",
+  "version": "1.0.1",
+  "name": "Beispiel: HTTP mit Verbindung",
   "summary": "Benannte HTTP-Verbindung mit GET und POST am Beispiel von JSONPlaceholder.",
   "description": "Zeigt, wie ein Paket eine benannte HTTP-Verbindung mitbringt und darueber GET- und POST-Aufrufe macht. Die Verbindung 'jsonplaceholder' zeigt auf eine oeffentliche Demo-API; die Funktionen sind reine Beispiele und lesen bzw. legen Demo-Beitraege an.",
   "author": "dezihh",
@@ -10,7 +10,7 @@
   "homepage": "https://github.com/dezihh/SmartPilot",
   "requires": "Internetzugang des Gateway-Containers zu jsonplaceholder.typicode.com (oeffentliche Demo-API, ohne Key).",
   "minGatewayVersion": "0.6.0",
-  "changelog": "1.0.0 — Erstveroeffentlichung: Beispiel fuer GET und POST ueber eine vom Paket mitgebrachte HTTP-Verbindung.",
+  "changelog": "1.0.1: Anzeigename praezisiert (feste Base-URL statt dynamischer URLs).\n1.0.0 — Erstveroeffentlichung: Beispiel fuer GET und POST ueber eine vom Paket mitgebrachte HTTP-Verbindung.",
   "category": "function",
   "params": [],
   "httpConnections": [

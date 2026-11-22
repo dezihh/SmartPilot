@@ -1,7 +1,7 @@
 {
   "id": "beispiel-http",
-  "version": "1.0.0",
-  "name": "Beispiel: HTTP",
+  "version": "1.0.1",
+  "name": "Beispiel: HTTP-Abruf",
   "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über öffentliche APIs.",
   "description": "Legt zwei Beispiel-Funktionen an: meine_ip (oeffentliche IP-Adresse ueber ifconfig.me) und luftqualitaet (europaeischer AQI und PM2,5 ueber die Open-Meteo-Luftqualitaets-API). Zeigt die Muster 'http()-Abruf deterministisch formulieren' und 'Rohwert holen, LLM ordnet ein (hybrid)' und dient als Vorlage fuer eigene Rezepte.",
   "author": "dezihh",
@@ -69,5 +69,5 @@
     "fn_luftqualitaet"
   ],
   "setupDocs": "Keine Gegenseite - beide Dienste sind oeffentlich und ohne Key. Der Gateway-Container braucht Internetzugang. Legt die Funktionen fn_meine_ip und fn_luftqualitaet sowie die Vorgaenge 'meine_ip' (deterministisch) und 'luftqualitaet' (hybrid, LLM ordnet ein) an; Koordinaten fuer die Luftqualitaet im Funktionen-Editor anpassen.",
-  "changelog": "1.0.0: Erste Fassung (Beispiel-Funktionen meine_ip [deterministisch] und luftqualitaet [hybrid])."
+  "changelog": "1.0.1: Anzeigename praezisiert (Abruf mit dynamischen URLs), damit die Abgrenzung zur benannten Verbindung klar ist.\n1.0.0: Erste Fassung (Beispiel-Funktionen meine_ip [deterministisch] und luftqualitaet [hybrid])."
 }

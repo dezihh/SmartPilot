@@ -7,7 +7,7 @@ der [Installation](INSTALLATION.md).
 
 | Tab | Aufgabe |
 |---|---|
-| Grundeinstellungen | Modelle, Laufzeitwerte und Agent-Prompts |
+| Grundeinstellungen | Laufzeitwerte, Darstellung und Agent-Vorgaben (das Modell steht in der `.env`) |
 | Monitor / Test | Anfrage ohne Alexa ausführen und Trace ansehen |
 | Vorgänge | Trigger und Antwortmodus konfigurieren |
 | Funktionen | wiederverwendbare Templates erstellen und testen |
@@ -178,7 +178,7 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
 | `LLM_MODEL` | – | Startmodell (Pflicht); Wechsel erfordert einen Neustart |
 | `TOOL_MODEL` | leer | eigenes Modell nur für Router-/Werkzeugrunden; leer = wie `LLM_MODEL` |
-| `LLM_KEEPALIVE_MS` | `120000` | Modell warm halten; `0` = aus |
+| `LLM_KEEPALIVE_MS` | leer | Modell warm halten (Millisekunden); leer oder `0` = aus |
 | `AGENT_CLARIFICATION_BUDGET` | `2` | Rückfragebudget |
 | `TRUST_PROXY` | leer | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); leer = aus |
 | `QUERY_MAX_CHARS` | `500` | max. Zeichen für `/api/query` (Kostenschutz) |
