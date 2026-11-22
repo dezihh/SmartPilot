@@ -135,6 +135,7 @@ Felder:
 | `command`, `args`, `env` | bei `stdio` | Befehl im Gateway-Container (z. B. `node_modules/.bin/mcp-searxng`), Argumente, Umgebungsvariablen |
 | `auth_token` | nein | Bearer-Token (HTTP); `${key}` fuer Secrets |
 | `headers` | nein | zusaetzliche HTTP-Header als Objekt (z. B. `{"X-Portainer-API-Key":"…"}`); Secrets per `${key}` |
+| `healthTool` | nein | Werkzeugname fuer den Health-Check nach dem MCP-Handshake (z. B. `mqtt_snapshot`); ohne Angabe gilt nur der Handshake als Nachweis |
 | `inventory_prompt` | nein | Kaskaden-/Regeltext fuer den Agenten |
 | `sideEffect` | nein | `read`/`write` (Default `write`) |
 | `enabled` | nein | Default `true` |

@@ -101,9 +101,12 @@ Stufen:
   Verhaltenswechsel.
 - **MINOR** (`0.1.x → 0.2.0`): neue Features abwärtskompatibel — neue
   Template-Bausteine, Settings, Admin-Endpunkte, neue Pakete.
-- **MAJOR**: Breaking Changes — Env-Variablen entfernt oder umbenannt,
-  Antwortvertrag, DB-Schema, Paket-Parameter umbenannt. Immer mit
-  Migrations-Hinweis im Changelog.
+- **Breaking Changes** — Env-Variablen entfernt oder umbenannt,
+  Antwortvertrag, DB-Schema, Paket-Parameter umbenannt. Ab `1.0.0` als
+  **MAJOR**, darunter als **MINOR** (`0.x.0`), immer mit Migrations-Hinweis im
+  Changelog. `0.6.2` hat solche Änderungen als PATCH ausgeliefert; das war eine
+  dokumentierte Ausnahme (Breaking-Hinweis im Changelog) und ist nicht der
+  Maßstab.
 
 Ablauf Gateway-Release: Änderungen sammeln sich unter `[Unreleased]` im
 [Changelog](CHANGELOG.md); beim Release Version heben, `[Unreleased]` zum
@@ -117,8 +120,8 @@ in `packages/de/index.json` eintragen, `changelog`-Feld im Manifest
 ergänzen (neueste Zeile oben), Paket-README bei Verhaltensänderungen
 anpassen.
 
-Solange die Version unter `1.0.0` liegt: Features als MINOR, Fixes als
-PATCH, Breaking Changes vermeiden (siehe Grundsätze oben). `1.0.0` setzt
+Solange die Version unter `1.0.0` liegt: Features und Breaking Changes als
+MINOR, Fixes als PATCH (siehe Grundsätze oben). `1.0.0` setzt
 du bewusst, wenn der Env-/API-Vertrag eingefroren ist — es signalisiert,
 dass bestehende Setups Updates überleben.
 

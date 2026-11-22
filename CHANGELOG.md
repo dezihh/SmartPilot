@@ -23,13 +23,13 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 - **Port-Mapping gehört in die Compose:** `GATEWAY_PORT` und `GATEWAY_BIND`
   entfallen als Umgebungsvariablen; die Compose veröffentlicht fest `3000`.
   Abweichende Host-Ports oder eine Bindung nur an `127.0.0.1` stehen in einer
-  nicht versionierten `docker-compose.override.yml`.
+  nicht versionierten `compose.override.yaml`.
 - **Image-Betrieb ohne Klon:** `compose.release.yaml` liest eine einzige
   `.env` (Vorlage `env.example`, identisch mit `gateway/.env.example`) und
   legt die Datenbank unter `./data`
   ab. Die Compose nennt den Image-Tag der Version fest; Compose und
-  `.env`-Vorlage liegen als Release-Assets bereit. Eigene Anpassungen (Port, Image) gehören in eine
-  `docker-compose.override.yml`.
+  `.env`-Vorlage liegen als Release-Assets bereit. Eigene Anpassungen (Port,
+  Image) gehören in eine `compose.override.yaml`.
 
 ### Behoben
 

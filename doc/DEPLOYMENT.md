@@ -75,6 +75,17 @@ Ohne diese beiden Secrets laufen `sync-manifest.yml`, `sync-model.yml` und
   (`alexa/lambda/test_lambda_function.py`; stubbt ask-sdk/requests, es wird
   nichts installiert); läuft bei Änderungen unter `alexa/lambda/**` und
   manuell.
+- `registry-ci.yml` — prüft die Paket-Registry: Manifeste gegen das Schema,
+  Version/Hash in `packages/de/index.json` konsistent
+  (`node scripts/build-registry-index.mjs --check`); läuft bei Änderungen unter
+  `packages/**`.
+- `docker-image.yml` — baut das Gateway-Image nativ für `amd64`
+  (`ubuntu-latest`) und `arm64` (`ubuntu-24.04-arm`), prüft je Architektur einen
+  Start samt `/healthz` und verbindet die Digests zu `X.Y.Z` und `latest`; läuft
+  bei Tag `v*` oder manuell (Eingabe `version`, baut aus `v<version>`).
+- `docker-build-check.yml` — baut beide Architekturen ohne Push und mit
+  `/healthz`- Smoke-Test, wenn sich `gateway/package.json`, `Dockerfile` oder
+  Entrypoint ändern (überspringt sich bei getaggten Commits).
 
 ## Workflows
 
@@ -225,7 +236,7 @@ docker compose -f gateway/docker-compose.yml up --build
 
 - Image-Betrieb ohne Klon: [DOCKER.md](DOCKER.md).
 - Erreichbar unter `http://localhost:3000/admin` (Port `3000`, im Netz offen;
-  lokale Einschränkung über eine `docker-compose.override.yml`).
+  lokale Einschränkung über eine `compose.override.yaml`).
 - Voraussetzung: `gateway/.env` (Vorlage: `gateway/.env.example`).
 - Tests im laufenden Container:
   `docker compose -f gateway/docker-compose.yml exec gateway npm test`
