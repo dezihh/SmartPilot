@@ -67,11 +67,11 @@
     },
     {
       "id": "beispiel-http",
-      "name": "Beispiel: HTTP",
+      "name": "Beispiel: HTTP-Abruf",
       "summary": "Beispiel-Rezepte: öffentliche IP (deterministisch) und Luftqualität (hybrid) über öffentliche APIs.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "function",
-      "sha256": "f0ae7fa694ee5a5563fdd1107fd469dc73a715c9bde9be1ee56dcae9397e1dad"
+      "sha256": "e861c56d175efa2751a82d56a92d4d63475f3810e46313d2dc071ccb9ca0f85e"
     },
     {
       "id": "beispiel-llm",
@@ -115,11 +115,11 @@
     },
     {
       "id": "beispiel-http-verbindung",
-      "name": "Beispiel: HTTP-Verbindung",
+      "name": "Beispiel: HTTP mit Verbindung",
       "summary": "Benannte HTTP-Verbindung mit GET und POST am Beispiel von JSONPlaceholder.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "category": "function",
-      "sha256": "86ecc43ae3c1964ae11b2d439f583f697531af98060e818c26acb415f814c460"
+      "sha256": "c940ee4445597825546dc613dd765f9fba569f3ce217f4fc3be36784fc36bc4b"
     },
     {
       "id": "portainer",
