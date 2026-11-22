@@ -77,6 +77,12 @@ const apiSigningSecret = (process.env.API_SIGNING_SECRET ?? '').trim();
 if (apiSigningSecret) assertStrongToken('API_SIGNING_SECRET', apiSigningSecret);
 const dbPath = resolveDbPath(process.env.DB_PATH, existsSync);
 
+// Betriebswerte ohne env-Quelle. Ein Wert, der im Betrieb aenderbar ist, hat
+// genau zwei moegliche Quellen: das UI-Setting oder diesen Default.
+export const DEFAULT_MAX_TOKENS = 2000;
+export const DEFAULT_TOOL_DEADLINE_MS = 12_000;
+export const DEFAULT_MAX_TOOL_ITERATIONS = 6;
+
 export const config = {
   port: envPositiveNumber(process.env.PORT, 3000),
   // Zwei getrennte Schluessel (Principle of Least Privilege): ADMIN_TOKEN nur fuer
@@ -117,12 +123,13 @@ export const config = {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),
     model: req('LLM_MODEL'),
-    maxTokens: envPositiveNumber(process.env.LLM_MAX_TOKENS, 2000),
-    reasoningEffort: process.env.LLM_REASONING_EFFORT,
   },
+  // Eigenes Modell nur fuer Router-/Werkzeugrunden (leer = llm.model).
+  toolModel: (process.env.TOOL_MODEL ?? '').trim() || undefined,
   agentClarificationBudget: envPositiveNumber(process.env.AGENT_CLARIFICATION_BUDGET, 2),
-  maxToolIterations: envPositiveNumber(process.env.MAX_TOOL_ITERATIONS, 6),
-  toolDeadlineMs: envPositiveNumber(process.env.LLM_TOOL_DEADLINE_MS, 12_000),
+  // Betriebswerte ohne env-Quelle: Default hier, geaendert wird in der UI.
+  maxToolIterations: DEFAULT_MAX_TOOL_ITERATIONS,
+  toolDeadlineMs: DEFAULT_TOOL_DEADLINE_MS,
   // Paket-Registry-Basis (die Sprache wird angehaengt). Default = Haupt-Repo;
   // per PACKAGES_REGISTRY_URL z. B. auf einen Test-Branch umstellbar.
   packagesRegistryUrl:
@@ -143,7 +150,7 @@ export const config = {
   queryRateMax: envPositiveNumber(process.env.QUERY_RATE_MAX, 30),
   // Grosszuegiges Limit fuer die Admin-API pro Client-IP. Auch fehlgeschlagene
   // Token-Versuche zaehlen, damit Brute-Force nicht unbegrenzt ist.
-  adminRateMax: envPositiveNumber(process.env.ADMIN_RATE_MAX, 600),
+  adminRateMax: envPositiveNumber(process.env.ADMIN_RATE_MAX, 240),
   // Erwartete Alexa-Skill-ID. Die Lambda sendet ihre applicationId als Header
   // X-Alexa-Skill-Id; gesetzt + abweichend -> Warnung (spaeter ggf. Ablehnung).
   alexaSkillId: (process.env.ALEXA_SKILL_ID ?? '').trim(),

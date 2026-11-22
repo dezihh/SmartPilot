@@ -214,7 +214,14 @@ im jeweiligen Editor (MCP-Server, Funktion, Index) angepasst.
 | Paket-Parameter | Werte eines installierten Pakets | `host`, `token`, `port` (aus `manifest.params`) |
 | DB-Tabellen | Inhalte | Vorgänge, Funktionen, Prompts, MCP-Server, Logs |
 
-Ein Setting mit leerem Wert fällt auf den `.env`- bzw. Code-Default zurück.
+**Ein Parameter hat genau eine Quelle.** Startwerte (Tokens, Ports, Pfade,
+LLM-Endpunkt, Modell) stehen ausschließlich in der `.env`; Betriebswerte
+(Token-Budget, Tool-Runden, Deadline, HTTP-Grenzen, Gedächtnis) ausschließlich
+in den Grundeinstellungen der Admin-UI, mit einem Default im Code. Für
+Betriebswerte gibt es bewusst keine Umgebungsvariable: eine Änderung dort wäre
+sonst wirkungslos, sobald das Feld einmal in der UI gespeichert wurde.
+
+Ein Setting mit leerem Wert fällt auf den Code-Default zurück.
 `TRUST_PROXY` gehört hinter einen Reverse-Proxy gesetzt (Hops, z. B. `1`),
 sonst sieht das Gateway nur die Proxy-IP.
 

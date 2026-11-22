@@ -109,12 +109,12 @@ git clone https://github.com/dezihh/SmartPilot.git
 cd SmartPilot
 cp gateway/.env.example gateway/.env
 # gateway/.env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-GATEWAY_PORT=3000 docker compose up -d --build
+docker compose up -d --build
 ```
 
-Der Compose bindet den Port standardmäßig nur lokal (`GATEWAY_BIND=127.0.0.1`).
-Für Zugriff aus dem LAN/über eine andere Maschine `GATEWAY_BIND=0.0.0.0`
-setzen — die Admin-UI gehört ohnehin nur ins vertrauenswürdige Netz.
+Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört nur
+ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
+`docker-compose.override.yml` auf `127.0.0.1:3000:3000` einschränken.
 
 Danach: `http://<host>:3000/admin` öffnen, mit `ADMIN_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.

@@ -176,24 +176,20 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `PORT` | `3000` | HTTP-Port |
 | `DB_PATH` | `./data/smartpilot.db` | SQLite-Datei |
 | `BASE_PATH` | leer | Pfad-Prefix nur für die Admin-UI (leer = `/admin`) |
-| `LLM_MODEL` | – | Startmodell (Pflicht) |
-| `LLM_MAX_TOKENS` | `2000` | Ausgabe-Budget |
-| `LLM_REASONING_EFFORT` | leer | Reasoning-Stufe, falls das Modell sie unterstützt |
+| `LLM_MODEL` | – | Startmodell (Pflicht); Wechsel erfordert einen Neustart |
+| `TOOL_MODEL` | leer | eigenes Modell nur für Router-/Werkzeugrunden; leer = wie `LLM_MODEL` |
 | `LLM_KEEPALIVE_MS` | `120000` | Modell warm halten; `0` = aus |
 | `AGENT_CLARIFICATION_BUDGET` | `2` | Rückfragebudget |
-| `MAX_TOOL_ITERATIONS` | `6` | maximale Tool-Runden |
-| `LLM_TOOL_DEADLINE_MS` | `9000` | Deadline des Agent-Loops |
 | `TRUST_PROXY` | leer | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); leer = aus |
 | `QUERY_MAX_CHARS` | `500` | max. Zeichen für `/api/query` (Kostenschutz) |
 | `QUERY_RATE_MAX` | `30` | max. `/api/query`-Anfragen pro Minute und Client |
-| `ADMIN_RATE_MAX` | `600` | max. Admin-Anfragen pro Minute und Client-IP für Admin-API **und** `/metrics` (eigene Buckets, auch fehlgeschlagene Tokens) |
+| `ADMIN_RATE_MAX` | `240` | max. Admin-Anfragen pro Minute und Client-IP für Admin-API **und** `/metrics` (eigene Buckets, auch fehlgeschlagene Tokens) |
 | `MCP_NPM_ALLOW_SCRIPTS` | leer | `1` = Lifecycle-Skripte beim Provisionieren erlauben; Standard aus |
 | `TZ` | `Europe/Berlin` | Zeitzone fuer `now.hour`/`now.date`/`now.time` im Template-Kontext |
 | `MCP_FAILURE_TTL_MS` | `30000` | Sperre nach fehlgeschlagenem MCP-Init (kein erneuter Versuch im Fenster) |
 | `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; prüft den Header `X-Alexa-Skill-Id` der Lambda nur warnend (reine Log-Info, **keine** Sicherheitsgrenze) |
 | `LOG_LEVEL` | `info` | Ausführlichkeit der Logzeilen: `debug`, `info`, `warn`, `error` (anderer Wert verhindert den Start) |
 | `SESSION_MAX_HOURS` | `24` | absolute Obergrenze einer Admin-Session (Sliding-TTL verlängert sonst unbegrenzt) |
-| `GATEWAY_PORT` | `3000` | nur Compose-Host-Mapping (der Code liest `PORT`) |
 
 Pflichtvariablen: `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
 `ADMIN_TOKEN` und `API_TOKEN` müssen sich unterscheiden; die Beispielwerte

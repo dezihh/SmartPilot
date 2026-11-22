@@ -5,8 +5,9 @@ services:
       target: runtime
     restart: unless-stopped
     ports:
-      # Nur lokal binden (Default 127.0.0.1); fuer LAN-Zugriff GATEWAY_BIND=0.0.0.0 setzen.
-      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:3000"
+      # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz
+      # betreiben oder das Mapping auf 127.0.0.1:3000:3000 einschraenken.
+      - "3000:3000"
     env_file:
       - ./gateway/.env
     volumes:

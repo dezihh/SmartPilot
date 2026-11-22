@@ -310,11 +310,11 @@ Credentials pragmatisch per `.env`/Env-Vars; MCP-Token in der Registry.
 - **MCP-Server**: beliebige Server (HTTP oder stdio), die per Registry
   angebunden werden. Home Assistant, Music Assistant usw. kommen als Paket.
 - **`.env`** (Pflicht): `ADMIN_TOKEN`, `API_TOKEN`, `LLM_BASE_URL`,
-  `LLM_API_KEY`, `LLM_MODEL`. **Optional**: `PORT`, `DB_PATH`, `LLM_MAX_TOKENS`,
-  `LLM_REASONING_EFFORT`, `LLM_TOOL_DEADLINE_MS`, `MAX_TOOL_ITERATIONS`,
-  `AGENT_CLARIFICATION_BUDGET`, `LLM_KEEPALIVE_MS`.
-- **DB-Settings** überschreiben zur Laufzeit (u. a. Modell, Token-Budget,
-  Fuzzy, Gedächtnis, Followup).
+  `LLM_API_KEY`, `LLM_MODEL`. **Optional**: `DB_PATH`, `PORT`, `TRUST_PROXY`,
+  `TOOL_MODEL`, Rate-Limits, MCP- und Keepalive-Werte.
+- **DB-Settings** (Grundeinstellungen) tragen alle Betriebswerte — u. a.
+  Token-Budget, Tool-Runden, Deadline, Fuzzy, Gedächtnis, Followup. Sie haben
+  keine Umgebungsvariable; ein Parameter hat also immer genau eine Quelle.
 
 Fachliche Dienste (Wetter, Verkehr, Suche …) sind bewusst **nur allgemein**
 über Template-Bausteine bzw. Pakete angebunden und austauschbar; konkrete

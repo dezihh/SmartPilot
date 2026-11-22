@@ -14,6 +14,16 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 
 ### Geändert
 
+- **Ein Parameter, eine Quelle (Breaking):** Betriebswerte (`llm_max_tokens`,
+  `llm_reasoning_effort`, `tool_deadline_ms`, `max_tool_iterations`) haben
+  keine Umgebungsvariable mehr — sie kommen aus den Grundeinstellungen oder dem
+  Code-Default. `LLM_MODEL` ist die einzige Modellquelle, `TOOL_MODEL` optional
+  für Werkzeugrunden; die UI-Felder für Modell und Tool-Modell entfallen.
+  `ADMIN_RATE_MAX`-Default sinkt von 600 auf 240 Anfragen pro Minute.
+- **Port-Mapping gehört in die Compose:** `GATEWAY_PORT` und `GATEWAY_BIND`
+  entfallen als Umgebungsvariablen; die Compose veröffentlicht fest `3000`.
+  Abweichende Host-Ports oder eine Bindung nur an `127.0.0.1` stehen in einer
+  nicht versionierten `docker-compose.override.yml`.
 - **Image-Betrieb ohne Klon:** `compose.release.yaml` liest eine einzige
   `.env` (Vorlage `.env.release.example`, per `.gitignore`-Ausnahme
   eingecheckt) und legt die Datenbank unter `./data` ab. Damit besteht eine

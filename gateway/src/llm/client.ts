@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import { config, DEFAULT_MAX_TOKENS } from '../config.js';
 import { getSetting, getSettingNum } from '../db.js';
 
 // Hartes Default-Zeitfenster: kein LLM-Aufruf (auch der Hybrid-Pfad ohne
@@ -43,8 +43,8 @@ export async function chatCompletion(
   maxTokensOverride?: number,
   toolChoice?: 'auto' | 'none'
 ): Promise<ChatCompletionResult> {
-  // Betriebs-Tuning via Web-UI-Settings; .env/Code liefert die Defaults
-  const primaryModel = modelOverride ?? (getSetting('llm_model')?.trim() || config.llm.model);
+  // Modell kommt aus LLM_MODEL (Start), max_tokens aus dem UI-Setting.
+  const primaryModel = modelOverride ?? config.llm.model;
   return callLlm(config.llm.baseUrl, config.llm.apiKey, primaryModel, messages, tools, timeoutMs, maxTokensOverride, toolChoice);
 }
 
@@ -61,7 +61,7 @@ async function callLlm(
   const body: Record<string, unknown> = {
     model,
     messages,
-    max_tokens: maxTokensOverride ?? getSettingNum('llm_max_tokens', config.llm.maxTokens),
+    max_tokens: maxTokensOverride ?? getSettingNum('llm_max_tokens', DEFAULT_MAX_TOKENS),
     temperature: 0.2,
   };
   if (tools && tools.length > 0) {
@@ -71,7 +71,7 @@ async function callLlm(
     // Kombination fuer die Formulierungsrunde.
     body.tool_choice = toolChoice ?? 'auto';
   }
-  const reasoningEffort = getSetting('llm_reasoning_effort')?.trim() || config.llm.reasoningEffort;
+  const reasoningEffort = getSetting('llm_reasoning_effort')?.trim() || undefined;
   if (reasoningEffort) {
     body.reasoning_effort = reasoningEffort;
   }

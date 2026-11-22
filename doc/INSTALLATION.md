@@ -85,15 +85,15 @@ Diese Variablen liest der Gateway-Code beim Start:
 | `API_TOKEN` | ja | schützt nur die Adapter-API (`/api/query`, `/api/lambda-trace`); gleiche Längenregel, muss sich von `ADMIN_TOKEN` unterscheiden |
 | `LLM_BASE_URL` | ja | Basis-URL der OpenAI-kompatiblen Schnittstelle |
 | `LLM_API_KEY` | ja | API-Schlüssel; der Prozess verlangt einen Wert |
-| `PORT` | nein | Gateway-Port, Standard `3000` |
 | `DB_PATH` | nein | SQLite-Datei im persistierten Datenvolume, Standard `./data/smartpilot.db` |
 | `BASE_PATH` | nein | Pfad-Prefix nur für die Admin-UI (leer = `/admin`); z. B. `/smartpilot` |
 | `TRUST_PROXY` | nein | Express `trust proxy` (Hops, z. B. `1`, oder `loopback`); hinter dem Reverse-Proxy setzen, sonst gilt das Login-Rate-Limit für alle Clients gemeinsam |
 | `LLM_MODEL` | ja | Name des LLM-Modells |
-| `LLM_MAX_TOKENS` | nein | Ausgabe-Budget, Standard `2000` |
 
-Weitere optionale Variablen (Tool-Runden, Deadline, Keepalive) sind
-in der [Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Für die
+Weitere optionale Variablen (Keepalive, Grenzen, MCP) sind in der
+[Referenz](REFERENCE.md#laufzeitkonfiguration) aufgelistet. Betriebswerte wie
+Token-Budget, Tool-Runden und Deadline stehen dagegen in den Grundeinstellungen
+der Admin-UI und haben bewusst keine Umgebungsvariable. Für die
 Alexa-Anbindung über AWS Lambda benötigt das Gateway keine Alexa-spezifischen
 Umgebungsvariablen. Die Lambda greift mit `API_TOKEN` auf `/api/query` zu.
 
@@ -170,18 +170,17 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
    SQLite-Datenbank. Dieses Verzeichnis nicht löschen, wenn Konfiguration,
    Pakete, Funktionen und Vorgänge ein Update überleben sollen.
 
-3. Container bauen und starten; Host-Port wählen:
+3. Container bauen und starten:
 
-       GATEWAY_PORT=3000 docker compose up -d --build
+       docker compose up -d --build
 
-   `GATEWAY_PORT` ist nur das Host-Port-Mapping (der Code liest `PORT`,
-   im Container 3000). Ohne Angabe: Port 3000. Der Port wird standardmäßig nur
-   lokal gebunden (`GATEWAY_BIND=127.0.0.1`); für Zugriff aus dem LAN
-   `GATEWAY_BIND=0.0.0.0` setzen. Die Compose bringt einen Healthcheck mit.
+   Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört
+   nur ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
+   `docker-compose.override.yml` auf `127.0.0.1:3000:3000` einschränken. Die
+   Compose bringt einen Healthcheck mit.
 
-4. Admin-Oberfläche öffnen: `http://<host>:<port>/admin` — Login mit
-   `ADMIN_TOKEN` (Login-Seite: `/admin/login.html`). `<port>` ist der bei
-   `GATEWAY_PORT` gewählte Host-Port (Standard `3000`).
+4. Admin-Oberfläche öffnen: `http://<host>:3000/admin` — Login mit
+   `ADMIN_TOKEN` (Login-Seite: `/admin/login.html`).
 
 5. Testmonitor prüfen (Tab „Monitor / Test“): eine Frage stellen und eine
    Antwort erwarten.
@@ -202,10 +201,9 @@ Datenverzeichnis:
     # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
     docker compose -f compose.release.yaml up -d
 
-Eine `.env` für beides: Compose liest daraus `${SMARTPILOT_VERSION}` (und
-`GATEWAY_PORT`/`GATEWAY_BIND`), `env_file` reicht dieselben Werte an den
-Container weiter. Die Datenbank liegt in `./data`, nicht mehr unter
-`gateway/data`.
+Eine `.env` für beides: Compose liest daraus `${SMARTPILOT_VERSION}`,
+`env_file` reicht dieselben Werte an den Container weiter. Die Datenbank liegt
+in `./data`, nicht mehr unter `gateway/data`.
 
 - **Update:** `SMARTPILOT_VERSION` in `.env` auf die neue Version setzen,
   `pull`, `up -d`.

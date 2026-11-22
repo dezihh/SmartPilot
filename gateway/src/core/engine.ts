@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import { config, DEFAULT_MAX_TOOL_ITERATIONS, DEFAULT_TOOL_DEADLINE_MS } from '../config.js';
 import { log } from './logger.js';
 import {
   addLog,
@@ -112,7 +112,7 @@ function rememberTurn(sessionId: string, query: string, speech: string): void {
   sessionRememberTurn(sessionId, query, speech, Date.now(), memoryTurns() * 2);
 }
 
-const toolDeadline = (): number => getSettingNum('tool_deadline_ms', config.toolDeadlineMs);
+const toolDeadline = (): number => getSettingNum('tool_deadline_ms', DEFAULT_TOOL_DEADLINE_MS);
 
 function assistantName(): string {
   return getSetting('assistant_name') ?? 'Dein SmartPilot';
@@ -196,9 +196,8 @@ async function runToolLoop(
   // Issue #9: Groesse des Tool-Angebots sichtbar machen (Naeherung chars/4);
   // die echte Prompt-Groesse steht in der LLM-Antwort als usage.prompt_tokens.
   log.debug('Tool-Specs', toolSpecStats(specs));
-  // Tool-Runden mit eigenem (schnellen) Modell: Setting 'tool_model';
-  // leer = llm_model wie bisher.
-  const roundModel = getSetting('tool_model')?.trim() || undefined;
+  // Tool-Runden mit eigenem (schnellen) Modell aus TOOL_MODEL; leer = LLM_MODEL.
+  const roundModel = config.toolModel;
   const history = sessionId ? priorTurns(sessionId, queryText) : [];
   const messages: ChatMessage[] = [
     { role: 'system', content: system },
@@ -303,7 +302,7 @@ async function runToolLoop(
     traceUsage(trace, roundModel ?? config.llm.model, result);
     return result.message;
   };
-  const maxIter = Math.max(2, getSettingNum('max_tool_iterations', config.maxToolIterations));
+  const maxIter = Math.max(2, getSettingNum('max_tool_iterations', DEFAULT_MAX_TOOL_ITERATIONS));
   for (let i = 0; i < maxIter; i++) {
     if (i > 0 && Date.now() >= overallDeadline) {
       trace.push({ ts: Date.now(), step: 'tool.deadline' });

@@ -11,12 +11,15 @@ process.env.LLM_API_KEY = 'test-key';
 process.env.LLM_MODEL = 'test-model';
 // Ungueltige Zahlen duerfen nicht als NaN in die Laufzeit gelangen.
 process.env.PORT = 'abc';
-process.env.LLM_MAX_TOKENS = 'abc';
 process.env.AGENT_CLARIFICATION_BUDGET = 'abc';
-process.env.MAX_TOOL_ITERATIONS = 'abc';
-process.env.LLM_TOOL_DEADLINE_MS = 'abc';
+// Betriebswerte haben keine env-Quelle mehr: Diese Werte muessen ignoriert werden.
+process.env.LLM_MAX_TOKENS = '999';
+process.env.LLM_REASONING_EFFORT = 'high';
+process.env.MAX_TOOL_ITERATIONS = '99';
+process.env.LLM_TOOL_DEADLINE_MS = '9999';
 
-const { resolveDbPath, normalizeBasePath, envPositiveNumber, config, assertTokensDistinct, assertStrongToken } = await import('../src/config.js');
+const { resolveDbPath, normalizeBasePath, envPositiveNumber, config, assertTokensDistinct, assertStrongToken,
+  DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_ITERATIONS, DEFAULT_TOOL_DEADLINE_MS } = await import('../src/config.js');
 
 test('envPositiveNumber: ungueltig/0/negativ -> Default, gueltig -> Wert', () => {
   assert.equal(envPositiveNumber('5', 1), 5);
@@ -29,10 +32,20 @@ test('envPositiveNumber: ungueltig/0/negativ -> Default, gueltig -> Wert', () =>
 
 test('config: ungueltige Zahlen fallen auf Defaults (kein NaN)', () => {
   assert.equal(config.port, 3000);
-  assert.equal(config.llm.maxTokens, 2000);
   assert.equal(config.agentClarificationBudget, 2);
+  assert.equal(config.maxToolIterations, DEFAULT_MAX_TOOL_ITERATIONS);
+  assert.equal(config.toolDeadlineMs, DEFAULT_TOOL_DEADLINE_MS);
+});
+
+test('Betriebswerte ignorieren die .env (nur UI-Setting oder Code-Default)', () => {
+  // Die Variablen sind oben gesetzt; sie duerfen den Default nicht veraendern.
+  assert.equal(DEFAULT_MAX_TOKENS, 2000);
+  assert.equal(DEFAULT_MAX_TOOL_ITERATIONS, 6);
+  assert.equal(DEFAULT_TOOL_DEADLINE_MS, 12_000);
   assert.equal(config.maxToolIterations, 6);
   assert.equal(config.toolDeadlineMs, 12_000);
+  assert.equal('maxTokens' in config.llm, false, 'llm.maxTokens kommt nicht mehr aus der .env');
+  assert.equal('reasoningEffort' in config.llm, false);
 });
 
 test('resolveDbPath: explizites DB_PATH hat Vorrang', () => {
