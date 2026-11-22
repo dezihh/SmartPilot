@@ -1,18 +1,16 @@
 # Betrieb mit dem fertigen Image aus GHCR: kein Build, kein Repo-Klon.
 #
-# Layout neben dieser Datei:
-#   .env    Image-Version und Laufzeit-Konfiguration (Vorlage: .env.release.example)
+# Diese Datei gehoert zu genau einer Release-Version (Tag im Image-Namen) und
+# liegt im Release als compose.yaml. Layout daneben:
+#   .env    Laufzeit-Konfiguration (Vorlage: .env.release.example)
 #   data/   SQLite-Datenbank, Backups, installierte MCP-Server (entsteht beim Start)
 #
-# Erststart: docker compose -f compose.release.yaml up -d
-# Update:    SMARTPILOT_VERSION in .env aendern, dann pull und up -d
-# Rollback:  alte Version eintragen, pull, up -d
-#
-# Eine .env fuer beides: Compose liest sie fuer ${SMARTPILOT_VERSION}, env_file
-# reicht dieselben Werte an den Container weiter.
+# Erststart: docker compose up -d
+# Update:    die compose.yaml des neuen Releases laden, dann pull und up -d
+# Anpassungen (anderer Port, anderes Image): compose.override.yaml
 services:
   gateway:
-    image: ghcr.io/dezihh/smartpilot:${SMARTPILOT_VERSION:-latest}
+    image: ghcr.io/dezihh/smartpilot:0.6.1
     restart: unless-stopped
     ports:
       # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz

@@ -89,18 +89,21 @@ LLM-Schnittstelle (mit Tool-Calling).
 
 ```bash
 mkdir smartpilot && cd smartpilot
-curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/compose.release.yaml
-curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/.env.release.example
+curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/.env.release.example
 mv .env.release.example .env
 # .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
-docker compose -f compose.release.yaml up -d
+docker compose up -d
 ```
 
-Im Verzeichnis liegen danach nur `compose.release.yaml`, `.env` und `data/` —
-mehr braucht der Betrieb nicht. Update: `SMARTPILOT_VERSION` in `.env` auf die
-neue Version setzen, dann `pull` und `up -d`. Rollback: alte Version eintragen
-und erneut starten. Die Version steht bewusst als feste Zahl — `latest` ist nur
-der Bequemlichkeits-Tag für neue Installationen.
+Beide Dateien stammen aus dem GitHub-Release und gehören zu **genau dieser
+Version** — die Image-Version steht in der Compose. Im Verzeichnis liegen danach
+nur `compose.yaml`, `.env` und `data/`.
+
+- **Update:** die `compose.yaml` des neuen Releases laden, dann `pull`
+  und `up -d`.
+- **Anpassung** (anderer Port, anderes Image, zusätzliche Umgebungsvariable):
+  in eine `compose.override.yaml` daneben — die Compose bleibt unverändert.
 
 **Variante B — selbst bauen (Repository-Stand):**
 
@@ -114,7 +117,7 @@ docker compose up -d --build
 
 Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört nur
 ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
-`docker-compose.override.yml` auf `127.0.0.1:3000:3000` einschränken.
+`compose.override.yaml` auf `127.0.0.1:3000:3000` einschränken.
 
 Danach: `http://<host>:3000/admin` öffnen, mit `ADMIN_TOKEN` anmelden und im
 Tab **Monitor / Test** die erste Frage stellen.

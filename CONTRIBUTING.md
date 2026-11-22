@@ -107,7 +107,8 @@ Stufen:
 
 Ablauf Gateway-Release: Änderungen sammeln sich unter `[Unreleased]` im
 [Changelog](CHANGELOG.md); beim Release Version heben, `[Unreleased]` zum
-datierten Abschnitt machen und Tag `v*` pushen — `lambda-zip.yml` baut
+datierten Abschnitt machen, den `image:`-Tag in `compose.release.yaml` auf die
+neue Version setzen und Tag `v*` pushen — `lambda-zip.yml` baut
 dann automatisch ein versioniertes Release (neben dem rollenden
 `latest`).
 

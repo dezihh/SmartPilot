@@ -176,7 +176,7 @@ gewählte Modell zunächst im Testmonitor, bevor du Pakete oder Alexa ergänzt.
 
    Port `3000` wird auf allen Interfaces veröffentlicht; die Admin-UI gehört
    nur ins vertrauenswürdige Netz. Für lokalen Betrieb das Mapping in einer
-   `docker-compose.override.yml` auf `127.0.0.1:3000:3000` einschränken. Die
+   `compose.override.yaml` auf `127.0.0.1:3000:3000` einschränken. Die
    Compose bringt einen Healthcheck mit.
 
 4. Admin-Oberfläche öffnen: `http://<host>:3000/admin` — Login mit
@@ -195,19 +195,20 @@ Klon und der Build aus den Schritten 1–3 — es bleiben zwei Dateien und ein
 Datenverzeichnis:
 
     mkdir smartpilot && cd smartpilot
-    curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/compose.release.yaml
-    curl -LO https://raw.githubusercontent.com/dezihh/SmartPilot/main/.env.release.example
+    curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
+    curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/.env.release.example
     mv .env.release.example .env
     # .env ausfuellen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
-    docker compose -f compose.release.yaml up -d
+    docker compose up -d
 
-Eine `.env` für beides: Compose liest daraus `${SMARTPILOT_VERSION}`,
-`env_file` reicht dieselben Werte an den Container weiter. Die Datenbank liegt
-in `./data`, nicht mehr unter `gateway/data`.
+`compose.yaml` und `.env`-Vorlage stammen aus dem GitHub-Release und gehoeren zu
+genau dieser Version; die Image-Version steht in der Compose. Die Datenbank
+liegt in `./data`.
 
-- **Update:** `SMARTPILOT_VERSION` in `.env` auf die neue Version setzen,
-  `pull`, `up -d`.
-- **Rollback:** alte Version eintragen, `pull`, `up -d`.
+- **Update:** die `compose.yaml` des neuen Releases laden, `pull`,
+  `up -d`.
+- **Anpassung oder Rollback:** `image:` in einer `compose.override.yaml`
+  daneben setzen (oder den Port), dann `pull`, `up -d`.
 - **Vor jedem Update** `./data` sichern: Die Datenbank wird beim Start
   migriert; ein Rückschritt auf ein älteres Schema ist nicht garantiert.
 

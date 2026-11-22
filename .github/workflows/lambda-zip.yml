@@ -95,6 +95,11 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Release-Version: ${VERSION}"
 
+      # Release-Asset heisst compose.yaml, damit im Zielverzeichnis das
+      # automatische Laden von compose.override.yaml greift.
+      - name: Compose fuer das Release bereitstellen
+        run: cp compose.release.yaml "${RUNNER_TEMP}/compose.yaml"
+
       - name: Rolling release "latest" aktualisieren
         if: >-
           (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')) ||
@@ -109,6 +114,8 @@ jobs:
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
+            ${{ runner.temp }}/compose.yaml
+            .env.release.example
 
       - name: Release-Asset anhaengen (Tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -118,6 +125,8 @@ jobs:
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
+            ${{ runner.temp }}/compose.yaml
+            .env.release.example
 
       - name: Versioniertes Release (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -130,3 +139,5 @@ jobs:
           files: |
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
+            ${{ runner.temp }}/compose.yaml
+            .env.release.example
