@@ -97,8 +97,12 @@ jobs:
 
       # Release-Asset heisst compose.yaml, damit im Zielverzeichnis das
       # automatische Laden von compose.override.yaml greift.
-      - name: Compose fuer das Release bereitstellen
-        run: cp compose.release.yaml "${RUNNER_TEMP}/compose.yaml"
+      - name: Release-Dateien bereitstellen
+        run: |
+          cp compose.release.yaml "${RUNNER_TEMP}/compose.yaml"
+          # Punktdateien bekommen im Release ein "default."-Praefix, deshalb
+          # wird die Vorlage ohne fuehrenden Punkt hochgeladen.
+          cp .env.release.example "${RUNNER_TEMP}/env.release.example"
 
       - name: Rolling release "latest" aktualisieren
         if: >-
@@ -115,7 +119,7 @@ jobs:
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
             ${{ runner.temp }}/compose.yaml
-            .env.release.example
+            ${{ runner.temp }}/env.release.example
 
       - name: Release-Asset anhaengen (Tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -126,7 +130,7 @@ jobs:
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
             ${{ runner.temp }}/compose.yaml
-            .env.release.example
+            ${{ runner.temp }}/env.release.example
 
       - name: Versioniertes Release (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -140,4 +144,4 @@ jobs:
             smartpilot-alexa-lambda.zip
             smartpilot-alexa-hosted.zip
             ${{ runner.temp }}/compose.yaml
-            .env.release.example
+            ${{ runner.temp }}/env.release.example
