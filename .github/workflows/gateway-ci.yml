@@ -64,8 +64,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Kontext ist die Repo-Wurzel: das Dockerfile kopiert gateway/ und
+      # packages/de/open-meteo-wetter (Seed-Manifest).
       - name: Docker-Image (runtime)
-        run: docker build --target runtime -t smartpilot-gateway:ci .
+        working-directory: ${{ github.workspace }}
+        run: docker build -f gateway/Dockerfile --target runtime -t smartpilot-gateway:ci .
 
       - name: Tests + Coverage-Gate
         run: npm run coverage
