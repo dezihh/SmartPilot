@@ -25,9 +25,10 @@ Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
   Abweichende Host-Ports oder eine Bindung nur an `127.0.0.1` stehen in einer
   nicht versionierten `docker-compose.override.yml`.
 - **Image-Betrieb ohne Klon:** `compose.release.yaml` liest eine einzige
-  `.env` (Vorlage `.env.release.example`) und legt die Datenbank unter `./data`
-  ab. Die Compose nennt den Image-Tag der Version fest; beide Dateien liegen als
-  Release-Assets bereit. Eigene Anpassungen (Port, Image) gehören in eine
+  `.env` (Vorlage `env.example`, identisch mit `gateway/.env.example`) und
+  legt die Datenbank unter `./data`
+  ab. Die Compose nennt den Image-Tag der Version fest; Compose und
+  `.env`-Vorlage liegen als Release-Assets bereit. Eigene Anpassungen (Port, Image) gehören in eine
   `docker-compose.override.yml`.
 
 ### Behoben

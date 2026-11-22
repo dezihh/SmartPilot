@@ -90,8 +90,8 @@ LLM-Schnittstelle (mit Tool-Calling).
 ```bash
 mkdir smartpilot && cd smartpilot
 curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/compose.yaml
-curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/env.release.example
-mv env.release.example .env
+curl -LO https://github.com/dezihh/SmartPilot/releases/latest/download/env.example
+mv env.example .env
 # .env ausfüllen: ADMIN_TOKEN, API_TOKEN, LLM_BASE_URL, LLM_API_KEY, LLM_MODEL (Pflicht)
 docker compose up -d
 ```
