@@ -10,7 +10,7 @@
 # Anpassungen (anderer Port, anderes Image): compose.override.yaml
 services:
   gateway:
-    image: ghcr.io/dezihh/smartpilot:0.6.1
+    image: ghcr.io/dezihh/smartpilot:0.6.2
     restart: unless-stopped
     ports:
       # 0.0.0.0 = im Netz erreichbar. Admin-UI nur im vertrauenswuerdigen Netz

@@ -10,7 +10,7 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
-## [Unreleased]
+## [0.6.2] – 2026-11-22
 
 ### Geändert
 
@@ -1122,7 +1122,8 @@ AWS-Lambda. Grundlage ist der Architektur-Review vom 2026-09-06
   Dokumentations-Lernpfad, Status); `CONTRIBUTING.md` und
   `CODE_OF_CONDUCT.md` (zweisprachig) ergänzt
 
-[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/dezihh/SmartPilot/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/dezihh/SmartPilot/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/dezihh/SmartPilot/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/dezihh/SmartPilot/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/dezihh/SmartPilot/compare/v0.5.0...v0.5.1
