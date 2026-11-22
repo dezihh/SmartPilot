@@ -50,6 +50,10 @@ function req(name: string): string {
   return v;
 }
 
+// Profil fuer die Beispieldaten beim Erststart. Ohne Wert gilt 'example';
+// 'none' startet bewusst leer.
+export const DEFAULT_SEED_PROFILE = 'example';
+
 const adminToken = req('ADMIN_TOKEN');
 const apiToken = req('API_TOKEN');
 // Beide Schluessel schuetzen unterschiedliche Bereiche. Waeren sie gleich,
@@ -119,6 +123,8 @@ export const config = {
   timezone: (process.env.TZ ?? '').trim() || 'Europe/Berlin',
   // Ausfuehrlichkeit der Logzeilen (debug: zusaetzlich Stacks/Tool-Details).
   logLevel: resolveLogLevel(process.env.LOG_LEVEL),
+  // Beispieldaten beim Erststart: 'example' (Default) oder 'none'.
+  seedProfile: (process.env.SEED_PROFILE ?? '').trim() || DEFAULT_SEED_PROFILE,
   llm: {
     baseUrl: req('LLM_BASE_URL').replace(/\/+$/, ''),
     apiKey: req('LLM_API_KEY'),

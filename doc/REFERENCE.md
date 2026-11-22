@@ -185,6 +185,7 @@ Neue Index-Quellen ohne Handarbeit entwerfen:
 | `QUERY_RATE_MAX` | `30` | max. `/api/query`-Anfragen pro Minute und Client |
 | `ADMIN_RATE_MAX` | `240` | max. Admin-Anfragen pro Minute und Client-IP für Admin-API **und** `/metrics` (eigene Buckets, auch fehlgeschlagene Tokens) |
 | `MCP_NPM_ALLOW_SCRIPTS` | leer | `1` = Lifecycle-Skripte beim Provisionieren erlauben; Standard aus |
+| `SEED_PROFILE` | `example` | Beispieldaten beim Erststart: `example` legt Wetter (Berlin) und den Vorgang „Laufzeit" an, `none` startet leer; wirkt nur, solange keine Datenbank existiert |
 | `TZ` | `Europe/Berlin` | Zeitzone fuer `now.hour`/`now.date`/`now.time` im Template-Kontext |
 | `MCP_FAILURE_TTL_MS` | `30000` | Sperre nach fehlgeschlagenem MCP-Init (kein erneuter Versuch im Fenster) |
 | `ALEXA_SKILL_ID` | leer | erwartete Skill-ID; prüft den Header `X-Alexa-Skill-Id` der Lambda nur warnend (reine Log-Info, **keine** Sicherheitsgrenze) |

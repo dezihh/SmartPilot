@@ -1,0 +1,16 @@
+# Build-Kontext ist die Repo-Wurzel (damit das Wetter-Manifest fuer den Seed
+# mitkopiert werden kann). Alles, was das Image nicht braucht, bleibt draussen.
+.git
+.github
+.vscode
+**/node_modules
+gateway/data
+gateway/test
+gateway/dist
+doc
+alexa
+scripts
+testinstall
+testdeploy
+packages/de/*
+!packages/de/open-meteo-wetter

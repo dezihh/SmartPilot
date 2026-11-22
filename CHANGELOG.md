@@ -10,6 +10,17 @@ Mensch-lesbar, neueste zuerst. Format angelehnt an
 Beitrag mit nennenswerter Änderung? Bitte unter `[Unreleased]` eintragen
 (siehe [CONTRIBUTING.md](CONTRIBUTING.md)).
 
+## [Unreleased]
+
+### Hinzugefügt
+
+- **Beispieldaten beim Erststart:** Ohne vorhandene Datenbank legt das Gateway
+  die Vorgänge „Wetter" (Open-Meteo, Beispielstandort Berlin) und „Laufzeit"
+  an — ohne Zugangsdaten, aus einem Manifest im Image, über den normalen
+  Paketpfad (Herkunft `seed`, deinstallierbar). Schalter `SEED_PROFILE`
+  (`example` = Default, `none` = leer starten). Neue Template-Variable
+  `uptime` liefert die Prozess-Laufzeit in Sekunden. Betrieb: `doc/DOCKER.md`.
+
 ## [0.6.2] – 2026-11-22
 
 ### Geändert
