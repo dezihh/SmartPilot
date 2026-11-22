@@ -209,6 +209,9 @@ liegt in `./data`.
   `up -d`.
 - **Anpassung oder Rollback:** `image:` in einer `compose.override.yaml`
   daneben setzen (oder den Port), dann `pull`, `up -d`.
+
+Betrieb, Update, Rollback, Diagnose und der Weg zu Alexa stehen kompakt in
+[DOCKER.md](DOCKER.md).
 - **Vor jedem Update** `./data` sichern: Die Datenbank wird beim Start
   migriert; ein Rückschritt auf ein älteres Schema ist nicht garantiert.
 

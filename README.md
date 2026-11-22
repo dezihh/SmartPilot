@@ -104,6 +104,7 @@ nur `compose.yaml`, `.env` und `data/`.
   und `up -d`.
 - **Anpassung** (anderer Port, anderes Image, zusätzliche Umgebungsvariable):
   in eine `compose.override.yaml` daneben — die Compose bleibt unverändert.
+- **Betrieb, Update, Rollback und der Weg zu Alexa:** [doc/DOCKER.md](doc/DOCKER.md).
 
 **Variante B — selbst bauen (Repository-Stand):**
 
