@@ -47,6 +47,7 @@ const starterManifest: PackageManifest = {
     {
       name: 'laufzeit',
       description: 'Laufzeit des Gateways in Tagen, Stunden und Minuten. Keine Argumente.',
+      inventory_prompt: 'Laufzeit: wie lange das Gateway schon laeuft (Prozess-Start, keine Systemzeit)',
       template: [
         '{%- set s = uptime -%}',
         '{%- set d = (s / 86400) | int -%}',
