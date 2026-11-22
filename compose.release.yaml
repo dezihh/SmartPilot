@@ -2,7 +2,7 @@
 #
 # Diese Datei gehoert zu genau einer Release-Version (Tag im Image-Namen) und
 # liegt im Release als compose.yaml. Layout daneben:
-#   .env    Laufzeit-Konfiguration (Vorlage: .env.release.example)
+#   .env    Laufzeit-Konfiguration (Vorlage: env.example aus dem Release)
 #   data/   SQLite-Datenbank, Backups, installierte MCP-Server (entsteht beim Start)
 #
 # Erststart: docker compose up -d
