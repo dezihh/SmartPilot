@@ -223,6 +223,7 @@ Die Entwicklung läuft in Docker: Der Quellcode ist per Bind-Mount eingebunden,
 docker compose -f gateway/docker-compose.yml up --build
 ```
 
+- Image-Betrieb ohne Klon: [DOCKER.md](DOCKER.md).
 - Erreichbar unter `http://localhost:3000/admin` (Port `3000`, im Netz offen;
   lokale Einschränkung über eine `docker-compose.override.yml`).
 - Voraussetzung: `gateway/.env` (Vorlage: `gateway/.env.example`).
