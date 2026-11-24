@@ -48,7 +48,7 @@ liegen danach nur `compose.yaml`, `.env` und `data/`.
 
 | Quelle | Beispiele |
 |---|---|
-| **MCP** | Home Assistant, Music Assistant, Websuche |
+| **MCP** | Home Assistant, Music Assistant, Websuche, weitere MCP-Server |
 | **HTTP / REST** | Wetter, Strompreis, Verkehr, Portainer, eigene Dienste |
 | **MQTT** | Topics lesen, freigegebene Topics schalten (z. B. ioBroker) |
 | **Shell** | Befehle in der Gateway-Umgebung |
