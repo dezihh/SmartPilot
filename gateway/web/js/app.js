@@ -1,4 +1,4 @@
-import { $, api, esc, token } from './lib.js';
+import { $, api, esc, token, brandTitle } from './lib.js';
 import { loadMaintenance, setTestPackageHandler, getPackageForTest } from './packages.js';
 import { loadLogs } from './logs.js';
 import { initMonitor, testInMonitor, testPackage, sendTest } from './monitor.js';
@@ -8,9 +8,17 @@ import { renderIndexes, saveIndexUi, deleteIndexUi, previewIndex } from './index
 import { renderServers, toggleMcpTransportFields, openServerEditor, saveServer, healthServer, deleteServer, setServerContext } from './servers.js';
 
 
+function applyBrand() {
+  const title = brandTitle(state.bootstrap.settings);
+  const el = $('brand');
+  if (el) el.textContent = title;
+  document.title = `${title} Admin`;
+}
+
 async function loadBootstrap() {
   try {
     state.bootstrap = await api('/bootstrap');
+    applyBrand();
     renderSettings();
     renderPromptKeys();
     renderActions();
@@ -673,6 +681,7 @@ function init() {
     const res = await api('/settings/restore-defaults', { method: 'POST' });
     state.bootstrap.settings = res.settings;
     state.bootstrap.settingSet = res.settingSet;
+    applyBrand();
     renderSettings();
     alert('Grundeinstellungen auf Defaults zurueckgesetzt.');
   };

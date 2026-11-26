@@ -29,4 +29,8 @@ export async function api(path, options = {}) {
 }
 
 export const $ = (id) => document.getElementById(id);
+
+// Marke der Admin-UI: Display-Titel aus den Einstellungen, sonst SmartPilot.
+// Der Display-Titel ist derselbe Name, den das Echo-Show-Display zeigt.
+export const brandTitle = (settings) => String(settings?.display_title ?? '').trim() || 'SmartPilot';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

@@ -3,7 +3,9 @@
 // tatsaechliche Verhalten von `esc`, `cmpVersion` und `diffValue`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { esc } from '../web/js/lib.js';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { esc, brandTitle } from '../web/js/lib.js';
 
 // `packages.js` verdrahtet beim Laden Event-Handler auf UI-Elemente. Fuer den
 // Verhaltenstest genuegt ein minimaler DOM-Stub; die getesteten Helfer selbst
@@ -30,6 +32,23 @@ test('esc behandelt null/undefined/numerische Werte', () => {
   assert.equal(esc(undefined), '');
   assert.equal(esc(42), '42');
   assert.equal(esc(0), '0');
+});
+
+test('brandTitle nimmt den Display-Titel', () => {
+  assert.equal(brandTitle({ display_title: 'Wohnzimmer-Pilot' }), 'Wohnzimmer-Pilot');
+  assert.equal(brandTitle({ display_title: '  Wohnzimmer-Pilot  ' }), 'Wohnzimmer-Pilot');
+});
+
+test('brandTitle faellt auf SmartPilot zurueck', () => {
+  assert.equal(brandTitle({}), 'SmartPilot');
+  assert.equal(brandTitle({ display_title: '' }), 'SmartPilot');
+  assert.equal(brandTitle(undefined), 'SmartPilot');
+});
+
+test('Admin-UI traegt nicht mehr die alte Marke VoiceAssist', () => {
+  const html = readFileSync(join(process.cwd(), 'web', 'index.html'), 'utf8');
+  assert.equal(html.includes('VoiceAssist'), false);
+  assert.match(html, /<div class="brand" id="brand">/);
 });
 
 test('updateChip nennt installierte und Registry-Version', () => {
