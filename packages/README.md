@@ -68,24 +68,28 @@ Die aktive Sprache kommt aus dem Gateway-Setting `registry_language`
 `packages/<lang>/...` — weitere Sprachen (`packages/en/...`) koennen so ohne
 Umbau ergaenzt werden.
 
-## Registry-Kanaele (stabil / community)
+## Registry-Kanaele (stabil / pkg-next)
 
 Das Gateway liest immer **einen** Kanal: `PACKAGES_REGISTRY_URL` + `/<lang>`
 (Default: `main`). Ein Kanal ist kein Zusammenfuehren — zeigt die Variable auf
 einen Branch, kommen die Pakete genau dieses Branches.
 
-- **`main`** = stabiler, kuratierter Katalog (Default).
-- **`packages/community`** = Vorschlags-/Testkanal. Von `main` abgezweigt;
-  neue/Community-Pakete kommen zuerst hierhin (`packages/de/<id>/` **und**
-  Eintrag in `packages/de/index.json`).
-- **Testen**: `PACKAGES_REGISTRY_URL=https://raw.githubusercontent.com/dezihh/SmartPilot/packages/community/packages`
-  setzen und den Gateway-Container neu erstellen. Die Registry wird live
-  gelesen — kein Build und kein Release noetig.
-- **Nach `main` uebernehmen**: Paketordner + Index-Eintrag per Pull Request
-  mergen. Das ist ein reiner Datei-Merge und loest **kein** GitHub-Release aus
-  (Releases haengen nur an `alexa/lambda/**` bzw. Tags). Nur wenn ein Paket
-  eine neue Laufzeit-Abhaengigkeit braucht (z. B. ein neues stdio-Binary im
-  Container), ist ein Gateway-Update noetig.
+- **`main`** = stabiler, kuratierter Katalog. Den liest die Produktion.
+- **`pkg-next`** = Prae-Release-Kanal. Enthaelt `main` plus alles, was noch
+  nicht uebernommen ist (eigene Arbeit und Community-Vorschlaege). Pull
+  Requests fuer Pakete zielen auf diesen Branch. Er enthaelt **nur** Commits
+  unter `packages/**`.
+- **Testen**: `PACKAGES_REGISTRY_URL=https://raw.githubusercontent.com/dezihh/SmartPilot/pkg-next/packages`
+  setzen und den Container neu erstellen, dann im Admin „Aktualisieren“. Bis
+  zu 5 Minuten nach einem Push kann die CDN-Kopie noch alt sein.
+- **Version**: Beim Iterieren auf `pkg-next` bleibt die Manifest-Version
+  stehen — die Installation ist ein Upsert, „Aktualisieren“ genuegt. Erst bei
+  der Uebernahme `version` und `changelog` einmal heben.
+- **Nach `main` uebernehmen**: `pkg-next` per Pull Request nach `main` mergen
+  (ohne Squash), danach `main` zurueck nach `pkg-next`. Reiner Datei-Merge,
+  kein Build, kein Tag, kein Release. Nur wenn ein Paket eine neue
+  Laufzeit-Abhaengigkeit braucht (z. B. ein neues stdio-Binary im Container),
+  ist ein Gateway-Update noetig. Dabei `minGatewayVersion` im Manifest setzen.
 
 ## Manifest-Felder
 

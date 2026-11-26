@@ -7,7 +7,7 @@ name: Registry CI
 # und ist nach 60 s Registry-Cache fuer alle Installationen live.
 on:
   push:
-    branches: [main]
+    branches: [main, pkg-next]
     paths:
       - 'packages/**'
       - 'scripts/build-registry-index.mjs'

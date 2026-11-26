@@ -115,10 +115,13 @@ neue Version setzen und Tag `v*` pushen — `lambda-zip.yml` baut
 dann automatisch ein versioniertes Release (neben dem rollenden
 `latest`).
 
-Ablauf Paket-Release: `version` im `manifest.json` heben, denselben Wert
-in `packages/de/index.json` eintragen, `changelog`-Feld im Manifest
-ergänzen (neueste Zeile oben), Paket-README bei Verhaltensänderungen
-anpassen.
+Ablauf Paket-Änderung: Manifest und Paket-README anpassen, danach
+`node scripts/build-registry-index.mjs` ausführen (der Index übernimmt Version
+und Hash aus den Manifesten) und einen Pull Request gegen den Branch
+`pkg-next` stellen. Dort wird getestet; die Manifest-Version bleibt während des
+Iterierens stehen. Erst bei der Übernahme nach `main` einmal `version` und
+`changelog` heben (neueste Zeile oben) und den Index neu erzeugen. Details:
+`packages/README.md`.
 
 Solange die Version unter `1.0.0` liegt: Features und Breaking Changes als
 MINOR, Fixes als PATCH (siehe Grundsätze oben). `1.0.0` setzt
