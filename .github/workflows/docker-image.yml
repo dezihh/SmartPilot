@@ -168,8 +168,11 @@ jobs:
         run: |
           set -euo pipefail
           tags=(-t "$IMAGE:${{ needs.meta.outputs.version }}")
-          # Release-Kandidaten (X.Y.Z-rc.N) verschieben "latest" nicht.
-          if [[ "${{ needs.meta.outputs.version }}" != *-* ]]; then
+          # Release-Kandidaten (X.Y.Z-rc.N) verschieben "latest" nicht, sondern
+          # den beweglichen Testkanal ":rc". Stabile Releases setzen "latest".
+          if [[ "${{ needs.meta.outputs.version }}" == *-* ]]; then
+            tags+=(-t "$IMAGE:rc")
+          else
             tags+=(-t "$IMAGE:latest")
           fi
           docker buildx imagetools create "${tags[@]}" \
