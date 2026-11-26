@@ -72,6 +72,12 @@ Aufbereitet wird mit Jinja-Templates (Nunjucks) — ohne Programmieren.
 | „Wie ist der Strompreis?" | Börsen-API, LLM formuliert den Satz |
 | „Hausstatus" | Home Assistant, sofern als Paket angebunden |
 
+## In Aktion
+
+![Installation in 30 Sekunden](doc/media/basic-setup-preview.gif)
+
+[Alle Demos →](doc/DEMO.md)
+
 ## Wie es funktioniert
 
 ```mermaid
