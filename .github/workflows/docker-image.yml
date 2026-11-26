@@ -167,9 +167,15 @@ jobs:
       - name: Manifest verbinden
         run: |
           set -euo pipefail
-          docker buildx imagetools create \
-            -t "$IMAGE:${{ needs.meta.outputs.version }}" \
-            -t "$IMAGE:latest" \
+          tags=(-t "$IMAGE:${{ needs.meta.outputs.version }}")
+          # Release-Kandidaten (X.Y.Z-rc.N) verschieben "latest" nicht, sondern
+          # den beweglichen Testkanal ":rc". Stabile Releases setzen "latest".
+          if [[ "${{ needs.meta.outputs.version }}" == *-* ]]; then
+            tags+=(-t "$IMAGE:rc")
+          else
+            tags+=(-t "$IMAGE:latest")
+          fi
+          docker buildx imagetools create "${tags[@]}" \
             "$IMAGE@${{ needs.build.outputs.digest-amd64 }}" \
             "$IMAGE@${{ needs.build.outputs.digest-arm64 }}"
 
