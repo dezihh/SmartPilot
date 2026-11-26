@@ -44,6 +44,12 @@ liegen danach nur `compose.yaml`, `.env` und `data/`.
 > Netz. Lokal einschränken mit `127.0.0.1:3000:3000` im Override. Mit
 > `BASE_PATH` liegt die UI unter `/<BASE_PATH>/admin/`.
 
+Der Ablauf im Video (1:03):
+
+![Installation in 30 Sekunden](doc/media/basic-setup-preview.gif)
+
+[Alle Demos →](doc/DEMO.md)
+
 ## Was es kann
 
 | Quelle | Beispiele |
@@ -71,12 +77,6 @@ Aufbereitet wird mit Jinja-Templates (Nunjucks) — ohne Programmieren.
 | „Wie lange läufst du schon?" | Laufzeit des Gateways, ohne externe Quelle |
 | „Wie ist der Strompreis?" | Börsen-API, LLM formuliert den Satz |
 | „Hausstatus" | Home Assistant, sofern als Paket angebunden |
-
-## In Aktion
-
-![Installation in 30 Sekunden](doc/media/basic-setup-preview.gif)
-
-[Alle Demos →](doc/DEMO.md)
 
 ## Wie es funktioniert
 
