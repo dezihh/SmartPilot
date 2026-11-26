@@ -60,6 +60,21 @@ test('shell- und fn-Abrufe', () => {
   assert.deepEqual(x.fns, ['find_entities']);
 });
 
+test('shell mit inneren Anfuehrungszeichen', () => {
+  const x = extractLiterals(`{{ shell('grep "model name" /proc/cpuinfo | head -1') }}`);
+  assert.deepEqual(x.shells, ['grep "model name" /proc/cpuinfo | head -1']);
+});
+
+test('shell mit inneren einfachen Anfuehrungszeichen', () => {
+  const x = extractLiterals(`{{ shell("awk '{print $1}' /proc/loadavg") }}`);
+  assert.deepEqual(x.shells, ["awk '{print $1}' /proc/loadavg"]);
+});
+
+test('shell mit Konkatenation ist kein Literal', () => {
+  const x = extractLiterals("{{ shell('grep ' ~ args.muster ~ ' /proc/cpuinfo') }}");
+  assert.deepEqual(x.shells, []);
+});
+
 test('http mit Literal-URL und TTL', () => {
   const x = extractLiterals("{{ http('https://example.com/rss', 300000).items }}");
   assert.deepEqual(x.httpCalls, [{ url: 'https://example.com/rss', ttl: 300000 }]);

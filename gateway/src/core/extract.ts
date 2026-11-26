@@ -54,6 +54,31 @@ export function splitTopLevelArgs(expr: string): string[] {
   return parts;
 }
 
+// Liest einen String als vollstaendiges Argument: aeussere Quotes, innen
+// duerfen andere Quote-Zeichen stehen. Escapes werden wie in Nunjucks
+// aufgeloest, damit der Key zum spaeteren shell()-Aufruf passt. Liefert null,
+// wenn das Argument kein einzelnes Literal ist (z. B. Konkatenation).
+function unquoteStringLiteral(expr: string): string | null {
+  const s = expr.trim();
+  const quote = s[0];
+  if (quote !== '"' && quote !== "'") return null;
+  const escapes: Record<string, string> = { n: '\n', r: '\r', t: '\t', '"': '"', "'": "'", '\\': '\\' };
+  let out = '';
+  for (let i = 1; i < s.length; i++) {
+    const ch = s[i]!;
+    if (ch === '\\') {
+      const next = s[i + 1];
+      if (next === undefined) return null;
+      out += escapes[next] ?? next;
+      i++;
+      continue;
+    }
+    if (ch === quote) return i === s.length - 1 ? out : null;
+    out += ch;
+  }
+  return null;
+}
+
 // Findet alle Aufrufe "name(...)" mit balancierten Klammern (Strings werden
 // respektiert). Liefert den Inhalt zwischen den Klammern.
 function extractCallArgs(template: string, name: string): string[] {
@@ -173,7 +198,12 @@ export function extractLiterals(rawTemplate: string): LiteralCalls {
     const fb = m[3] as string | undefined;
     mcpCallDyn.push({ tool: m[1] as string, expr: `{${m[2] as string}}`, ...(fb ? { fallback: fb } : {}) });
   }
-  for (const m of sideEffectSrc.matchAll(/(?<![\w.])shell\(\s*["']([^"']+)["']\s*\)/g)) shells.push(m[1] as string);
+  // Argument erst als Ganzes lesen, dann als Literal pruefen: so bleiben innere
+  // Quotes (grep "model name") im Kommando erhalten.
+  for (const expr of extractCallArgs(sideEffectSrc, 'shell')) {
+    const cmd = unquoteStringLiteral(expr);
+    if (cmd !== null) shells.push(cmd);
+  }
   for (const m of template.matchAll(/(?<![\w.])fn\(\s*["']([a-zA-Z0-9_]+)["']\s*\)/g)) fns.push(m[1] as string);
   // http(...): Inneres je Call extrahieren (eine Klammerebene toleriert),
   // danach reines Literal (optional mit TTL) -> httpCalls; alles andere
