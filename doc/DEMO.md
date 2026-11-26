@@ -1,10 +1,11 @@
 # Demos
 
-Kurze Videos zu den wichtigsten Abläufen. Die Videos starten erst auf Klick.
+Kurze Videos zu den wichtigsten Abläufen. Die Standbilder verlinken auf das
+jeweilige Video.
 
 ## Installation
 
-https://github.com/user-attachments/assets/787194d0-14b4-4262-a5d6-8ad8d56efe36
+[![Installation](media/basic-setup-poster.png)](media/basic-setup.mp4)
 
 Docker-Compose, `.env`, erster Start und Login. Länge: 1:03.
 
