@@ -35,7 +35,7 @@
     "mcp-searxng": "^2.5.0",
     "mqtt": "^5.16.1",
     "nunjucks": "^3.2.4",
-    "undici": "^8.12.4"
+    "undici": "^8.13.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
