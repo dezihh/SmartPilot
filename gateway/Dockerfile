@@ -1,4 +1,4 @@
-FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS deps
+FROM node:26-bookworm-slim@sha256:0042e17d232a87a2cd485be1da7900fca4d10a4ad11b29e9285da1d2e54798c9 AS deps
 WORKDIR /app
 COPY gateway/package.json gateway/package-lock.json ./
 # better-sqlite3 13 ist ein N-API-Modul und bringt fertige Binaries (prebuilds/)
@@ -14,7 +14,7 @@ RUN npm run build
 FROM deps AS dev
 CMD ["npm", "run", "dev"]
 
-FROM node:26-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS runtime
+FROM node:26-bookworm-slim@sha256:0042e17d232a87a2cd485be1da7900fca4d10a4ad11b29e9285da1d2e54798c9 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # gosu fuer den Privilegien-Wechsel im Entrypoint (siehe docker-entrypoint.sh).
